@@ -1,0 +1,24 @@
+{
+  "task_id": "TASK_007",
+  "assigned_to_id": "006",
+  "assigned_to_name": "赵静员工",
+  "chat_history": [
+    {
+      "timestamp": "2025-02-28 17:18",
+      "sender": "Agent",
+      "message": "您好，请核查以下运单异常：包装破损。详见风险数据文件。请在24小时内提交核查结果。",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2025-02-28 06:47",
+      "sender": "赵静员工",
+      "message": "收到，我已查看风险数据。会尽快完成核查。",
+      "message_type": "text"
+    }
+  ],
+  "uploaded_files": [],
+  "feedback_summary": "",
+  "summary_timestamp": "",
+  "verification_timestamp": "",
+  "status": "已下发"
+}

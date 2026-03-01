@@ -1,0 +1,59 @@
+{
+  "task_id": "TASK_015",
+  "assigned_to_id": "006",
+  "assigned_to_name": "李芳员工",
+  "chat_history": [
+    {
+      "timestamp": "2025-02-28 01:38",
+      "sender": "Agent",
+      "message": "您好，请核查以下运单异常：未及时签收。详见风险数据文件。请在24小时内提交核查结果。",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2025-02-28 23:28",
+      "sender": "李芳员工",
+      "message": "收到，我已查看风险数据。会尽快完成核查。",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2025-02-28 12:30",
+      "sender": "李芳员工",
+      "message": "已上传运单核查单和货物重量证明",
+      "message_type": "file_upload",
+      "file_names": [
+        "运单核查单.pdf",
+        "货物重量证明.jpg"
+      ]
+    },
+    {
+      "timestamp": "2025-02-28 21:52",
+      "sender": "Agent",
+      "message": "感谢反馈。已收到您的核查结果，正在验证文件内容。",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2025-02-28 12:21",
+      "sender": "Agent",
+      "message": "文件验证通过。任务已完成，反馈总结已生成。",
+      "message_type": "text"
+    }
+  ],
+  "uploaded_files": [
+    {
+      "filename": "运单核查单.pdf",
+      "upload_time": "2025-02-28 16:20",
+      "file_path": "uploads/TASK_015/006/运单核查单.pdf",
+      "file_size": 197967
+    },
+    {
+      "filename": "货物重量证明.jpg",
+      "upload_time": "2025-02-28 15:32",
+      "file_path": "uploads/TASK_015/006/货物重量证明.jpg",
+      "file_size": 1789328
+    }
+  ],
+  "feedback_summary": "吴伟员工已完成路线异常的核查工作。已上传运单核查单和货物重量证明。经过AI验证，文件内容完整，包含必要的核查信息。本次核查发现了虚假签收的根本原因，并提出了相应的改进措施。风险等级评估为高。",
+  "summary_timestamp": "2025-02-28 11:10",
+  "verification_timestamp": "2025-02-28 13:29",
+  "status": "反馈完成"
+}
