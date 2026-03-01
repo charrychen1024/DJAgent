@@ -1,69 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
+import { useState, useEffect } from 'react'
+import './App.css'
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://127.0.0.1:5000/api'
 
 function App() {
-  const [users, setUsers] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [inputMessage, setInputMessage] = useState('');
+  console.log('App component rendering')
+  const [users, setUsers] = useState([])
+  const [tasks, setTasks] = useState([])
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [chatMessages, setChatMessages] = useState([])
+  const [inputMessage, setInputMessage] = useState('')
 
   useEffect(() => {
-    fetchUsers();
-    fetchTasks();
-  }, []);
+    console.log('useEffect running')
+    fetchUsers()
+    fetchTasks()
+  }, [])
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${API_BASE}/users`);
-      const data = await response.json();
-      setUsers(data);
+      console.log('Fetching users from:', `${API_BASE}/users`)
+      const response = await fetch(`${API_BASE}/users`)
+      const data = await response.json()
+      console.log('Users fetched:', data.length)
+      setUsers(data)
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error fetching users:', error)
     }
-  };
+  }
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`${API_BASE}/tasks`);
-      const data = await response.json();
-      setTasks(data);
+      console.log('Fetching tasks from:', `${API_BASE}/tasks`)
+      const response = await fetch(`${API_BASE}/tasks`)
+      const data = await response.json()
+      console.log('Tasks fetched:', data.length)
+      setTasks(data)
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      console.error('Error fetching tasks:', error)
     }
-  };
+  }
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim()) return
     
     const newMessage = {
       sender: 'user',
       message: inputMessage,
       timestamp: new Date().toLocaleString()
-    };
+    }
     
-    setChatMessages([...chatMessages, newMessage]);
-    setInputMessage('');
+    setChatMessages([...chatMessages, newMessage])
+    setInputMessage('')
     
     try {
       const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: inputMessage })
-      });
-      const data = await response.json();
+      })
+      const data = await response.json()
       
       setChatMessages(prev => [...prev, {
         sender: 'agent',
         message: data.message,
         timestamp: data.timestamp
-      }]);
+      }])
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error sending message:', error)
     }
-  };
+  }
 
   return (
     <div className="App">
@@ -72,7 +78,6 @@ function App() {
       </header>
       
       <div className="main-layout">
-        {/* 左侧栏 - 用户列表 */}
         <div className="sidebar left">
           <h2>用户列表</h2>
           <div className="user-list">
@@ -101,7 +106,6 @@ function App() {
           </div>
         </div>
         
-        {/* 中间栏 - 智能体对话框 */}
         <div className="main-content">
           <div className="chat-header">
             <h2>💬 智能体对话</h2>
@@ -131,7 +135,6 @@ function App() {
           </div>
         </div>
         
-        {/* 右侧栏 - 辅助信息 */}
         <div className="sidebar right">
           <h2>辅助信息</h2>
           {selectedUser ? (
@@ -150,7 +153,7 @@ function App() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
