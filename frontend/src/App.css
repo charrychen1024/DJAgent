@@ -1,0 +1,220 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.App {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.App-header {
+  background-color: #1890ff;
+  color: white;
+  padding: 1rem 2rem;
+  text-align: center;
+}
+
+.App-header h1 {
+  font-size: 1.5rem;
+}
+
+.main-layout {
+  display: flex;
+  height: calc(100vh - 60px);
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.sidebar {
+  width: 250px;
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.sidebar h2 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: #333;
+  border-bottom: 2px solid #1890ff;
+  padding-bottom: 0.5rem;
+}
+
+.main-content {
+  flex: 1;
+  background: white;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.chat-header {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  background-color: #fafafa;
+  border-radius: 8px 8px 0 0;
+}
+
+.chat-header h2 {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+}
+
+.message {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.message.user {
+  background-color: #1890ff;
+  color: white;
+  margin-left: auto;
+}
+
+.message.agent {
+  background-color: white;
+  border: 1px solid #ddd;
+}
+
+.message-header {
+  font-size: 0.8rem;
+  margin-bottom: 0.3rem;
+  opacity: 0.8;
+}
+
+.message-content {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.chat-input {
+  display: flex;
+  padding: 1rem;
+  border-top: 1px solid #eee;
+  gap: 0.5rem;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.chat-input button {
+  padding: 0.8rem 1.5rem;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.chat-input button:hover {
+  background-color: #40a9ff;
+}
+
+.user-list, .task-list {
+  margin-bottom: 1.5rem;
+}
+
+.user-card, .task-card {
+  padding: 0.8rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-card:hover, .task-card:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.user-card.selected {
+  border-color: #1890ff;
+  background-color: #e6f7ff;
+}
+
+.user-name {
+  font-weight: bold;
+  color: #333;
+}
+
+.user-role {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.2rem;
+}
+
+.user-dept {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.task-id {
+  font-size: 0.8rem;
+  color: #1890ff;
+  font-weight: bold;
+}
+
+.task-summary {
+  font-size: 0.85rem;
+  color: #333;
+  margin: 0.3rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.status-已创建 { background-color: #d9d9d9; color: #666; }
+.status-已下发 { background-color: #1890ff; color: white; }
+.status-反馈完成 { background-color: #52c41a; color: white; }
+.status-已超期 { background-color: #ff4d4f; color: white; }
+
+.user-detail {
+  background-color: #f6ffed;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid #b7eb8f;
+}
+
+.user-detail h3 {
+  margin-bottom: 0.8rem;
+  color: #52c41a;
+}
+
+.user-detail p {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.placeholder {
+  color: #999;
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.9rem;
+}
