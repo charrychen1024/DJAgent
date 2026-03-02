@@ -4,16 +4,17 @@ import './App.css'
 const API_BASE = 'http://127.0.0.1:5000/api'
 
 // 业务负责人工作区
-function ManagerWorkspace({ currentUser }) {
+function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [tasks, setTasks] = useState([])
   const [allRiskData, setAllRiskData] = useState([])
+  const [selectedRows, setSelectedRows] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [loading, setLoading] = useState({ tasks: false, riskData: false, chat: false })
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
-  const [leftWidth, setLeftWidth] = useState(25)
+  const [leftWidth, setLeftWidth] = useState(35)
   const [rightWidth, setRightWidth] = useState(25)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
@@ -32,7 +33,7 @@ function ManagerWorkspace({ currentUser }) {
       const handleMouseMove = (e) => {
         if (isDraggingLeft) {
           const newWidth = (e.clientX / window.innerWidth) * 100
-          if (newWidth > 15 && newWidth < 40) setLeftWidth(newWidth)
+          if (newWidth > 20 && newWidth < 50) setLeftWidth(newWidth)
         }
         if (isDraggingRight) {
           const newWidth = ((window.innerWidth - e.clientX) / window.innerWidth) * 100
@@ -52,14 +53,22 @@ function ManagerWorkspace({ currentUser }) {
     }
   }, [isDraggingLeft, isDraggingRight])
 
+  // 模拟任务数据
+  const mockTasks = [
+    { task_id: 'TASK_001', risk_summary: '运单WLYD001重量异常核查', status: '已下发', assigned_to_name: '刘伟快递', created_time: '2026-03-01 10:00', creator_name: '王经理' },
+    { task_id: 'TASK_002', risk_summary: '运单WLYD002超时派送核查', status: '反馈完成', assigned_to_name: '刘秀英快递', created_time: '2026-03-01 14:30', creator_name: '王经理', completed_time: '2026-03-01 16:00' },
+    { task_id: 'TASK_003', risk_summary: '运单WLYD003未及时签收核查', status: '已创建', assigned_to_name: '黄强快递', created_time: '2026-03-02 09:00', creator_name: '王经理' },
+  ]
+
   const fetchTasks = async () => {
     setLoading(prev => ({ ...prev, tasks: true }))
     try {
       const response = await fetch(`${API_BASE}/tasks`)
       const data = await response.json()
-      setTasks(data)
+      setTasks(data.length > 0 ? data : mockTasks)
     } catch (err) {
       console.error('[ERROR] 获取任务失败:', err)
+      setTasks(mockTasks)
     } finally {
       setLoading(prev => ({ ...prev, tasks: false }))
     }
@@ -80,6 +89,42 @@ function ManagerWorkspace({ currentUser }) {
     }
     setAllRiskData(allData)
     setLoading(prev => ({ ...prev, riskData: false }))
+  }
+
+  // 获取所有字段名
+  const getAllColumns = () => {
+    if (allRiskData.length === 0) return []
+    return Object.keys(allRiskData[0]).filter(k => k !== 'source')
+  }
+
+  // 全选/取消全选
+  const handleSelectAll = () => {
+    if (selectedRows.length === allRiskData.length) {
+      setSelectedRows([])
+    } else {
+      setSelectedRows(allRiskData.map((_, i) => i));
+    }
+  }
+
+  // 选择/取消单行
+  const handleSelectRow = (index) => {
+    if (selectedRows.includes(index)) {
+      setSelectedRows(selectedRows.filter(i => i !== index))
+    } else {
+      setSelectedRows([...selectedRows, index])
+    }
+  }
+
+  // 一键添加到聊天框
+  const handleAddSelectedToChat = () => {
+    if (selectedRows.length === 0) return
+    const selectedData = selectedRows.map(i => allRiskData[i])
+    const summary = selectedData.map(d => 
+      `运单号: ${d.运单号 || '-'}, 异常类型: ${d.异常类型 || '-'}, 风险等级: ${d.风险等级 || '-'}, 发货地: ${d.发货地 || '-'}, 收货地: ${d.收货地 || '-'}`
+    ).join('\n')
+    
+    const message = `我选择了${selectedRows.length}条风险数据，请帮我分析：\n${summary}`
+    setInputMessage(message)
   }
 
   const handleTaskClick = async (task) => {
@@ -147,18 +192,61 @@ function ManagerWorkspace({ currentUser }) {
     e.target.value = ''
   }
 
+  const columns = getAllColumns()
+
   return (
     <div className="workspace manager-workspace">
       <div className="sidebar left" style={{ width: `${leftWidth}%` }}>
         <div className="risk-data-section">
-          <h3>📊 风险明细数据</h3>
+          <div className="section-header">
+            <h3>📊 风险明细数据</h3>
+            <div className="action-buttons">
+              <button 
+                className="action-btn" 
+                onClick={handleAddSelectedToChat}
+                disabled={selectedRows.length === 0}
+              >
+                📤 添加到对话 ({selectedRows.length})
+              </button>
+            </div>
+          </div>
           {loading.riskData ? <div className="loading-tip">加载中...</div> : allRiskData.length > 0 ? (
             <div className="risk-table-wrapper">
               <table className="risk-table">
-                <thead><tr><th>运单号</th><th>异常类型</th><th>风险等级</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th className="checkbox-col">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedRows.length === allRiskData.length && allRiskData.length > 0}
+                        onChange={handleSelectAll}
+                      />
+                    </th>
+                    {columns.map(col => (
+                      <th key={col}>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>
-                  {allRiskData.slice(0, 15).map((row, i) => (
-                    <tr key={i}><td>{row.运单号 || '-'}</td><td>{row.异常类型 || '-'}</td><td><span className={`risk-level ${row.风险等级}`}>{row.风险等级 || '-'}</span></td></tr>
+                  {allRiskData.slice(0, 20).map((row, i) => (
+                    <tr key={i} className={selectedRows.includes(i) ? 'selected-row' : ''}>
+                      <td className="checkbox-col">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedRows.includes(i)}
+                          onChange={() => handleSelectRow(i)}
+                        />
+                      </td>
+                      {columns.map(col => (
+                        <td key={col}>
+                          {col === '风险等级' ? (
+                            <span className={`risk-level ${row[col]}`}>{row[col] || '-'}</span>
+                          ) : (
+                            row[col] || '-'
+                          )}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -221,6 +309,23 @@ function ManagerWorkspace({ currentUser }) {
             <p><strong>执行人:</strong> {selectedTask.assigned_to_name}</p>
             <p><strong>创建时间:</strong> {selectedTask.created_time}</p>
             {selectedTask.completed_time && <p><strong>完成时间:</strong> {selectedTask.completed_time}</p>}
+            
+            <div className="feedback-section">
+              <h5>📝 反馈详情</h5>
+              <div className="chat-history-mini">
+                {chatMessages.length > 0 ? chatMessages.map((msg, i) => (
+                  <div key={i} className={`mini-message ${msg.sender}`}>
+                    <span className="mini-sender">{msg.sender === 'user' ? '我' : 'Agent'}:</span>
+                    <span className="mini-content">{msg.message.substring(0, 50)}{msg.message.length > 50 ? '...' : ''}</span>
+                  </div>
+                )) : <div className="empty-tip">暂无对话记录</div>}
+              </div>
+            </div>
+            
+            <div className="files-section">
+              <h5>📎 上传文件</h5>
+              <div className="empty-tip">暂无上传文件</div>
+            </div>
           </div>
         ) : <div className="placeholder">点击左侧任务查看详情</div>}
       </div>

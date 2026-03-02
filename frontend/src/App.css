@@ -140,36 +140,73 @@
 
 .risk-data-section {
   flex: 1;
-  padding: 1rem;
+  padding: 0.8rem;
   border-bottom: 1px solid #e8e8e8;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 200px;
 }
 
-.risk-data-section h3, .task-list-section h3 {
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.section-header h3 {
   font-size: 0.9rem;
   color: #333;
-  margin-bottom: 0.8rem;
-  flex-shrink: 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  background: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  background: #096dd9;
+}
+
+.action-btn:disabled {
+  background: #d9d9d9;
+  cursor: not-allowed;
 }
 
 .risk-table-wrapper {
   flex: 1;
   overflow: auto;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
 }
 
 .risk-table {
   width: 100%;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   border-collapse: collapse;
 }
 
 .risk-table th, .risk-table td {
-  padding: 0.4rem 0.3rem;
+  padding: 0.3rem 0.25rem;
   border: 1px solid #e8e8e8;
   text-align: left;
   white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .risk-table th {
@@ -177,12 +214,28 @@
   font-weight: bold;
   position: sticky;
   top: 0;
+  z-index: 1;
+}
+
+.checkbox-col {
+  width: 30px;
+  text-align: center;
+}
+
+.checkbox-col input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.selected-row {
+  background-color: #e6f7ff;
 }
 
 .risk-level {
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: bold;
 }
 
@@ -203,11 +256,19 @@
 
 /* Task List Section */
 .task-list-section {
-  flex: 1;
-  padding: 1rem;
+  flex: 0 0 auto;
+  max-height: 200px;
+  padding: 0.8rem;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.task-list-section h3 {
+  font-size: 0.9rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
 }
 
 .task-list-section .task-list {
@@ -217,8 +278,8 @@
 }
 
 .task-card {
-  padding: 0.7rem;
-  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.4rem;
   border: 1px solid #e8e8e8;
   border-radius: 6px;
   cursor: pointer;
@@ -239,17 +300,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
 }
 
 .task-card .task-id {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #1890ff;
   font-weight: bold;
 }
 
 .task-status {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   padding: 0.1rem 0.4rem;
   border-radius: 8px;
 }
@@ -260,9 +321,9 @@
 .task-status.已超期 { background: #ff4d4f; color: white; }
 
 .task-summary {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #333;
-  margin: 0.3rem 0;
+  margin: 0.2rem 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -271,7 +332,7 @@
 .task-info {
   display: flex;
   justify-content: space-between;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: #999;
 }
 
@@ -383,6 +444,8 @@
 .message-content {
   font-size: 0.9rem;
   line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Chat Input */
@@ -458,33 +521,65 @@
 
 .task-detail {
   background-color: #fafafa;
-  padding: 1rem;
+  padding: 0.8rem;
   border-radius: 8px;
   border: 1px solid #e8e8e8;
 }
 
 .task-detail h4 {
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.6rem;
   color: #1890ff;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .task-detail p {
-  margin-bottom: 0.5rem;
-  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.75rem;
   color: #333;
 }
 
 .status-tag {
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
 }
 
 .status-tag.已创建 { background: #d9d9d9; }
 .status-tag.已下发 { background: #1890ff; color: white; }
 .status-tag.反馈完成 { background: #52c41a; color: white; }
 .status-tag.已超期 { background: #ff4d4f; color: white; }
+
+.feedback-section, .files-section {
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #e8e8e8;
+}
+
+.feedback-section h5, .files-section h5 {
+  font-size: 0.8rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.chat-history-mini {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.mini-message {
+  padding: 0.3rem 0;
+  font-size: 0.7rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.mini-sender {
+  font-weight: bold;
+  margin-right: 0.3rem;
+}
+
+.mini-content {
+  color: #666;
+}
 
 .placeholder {
   color: #999;
@@ -566,7 +661,7 @@
 
 .empty-tip, .loading-tip {
   text-align: center;
-  padding: 20px;
+  padding: 10px;
   color: #999;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
