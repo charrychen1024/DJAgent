@@ -69,9 +69,24 @@ def get_user(user_id):
 
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
-    """获取任务列表"""
+    """获取任务列表（支持user_id过滤）"""
     logger.info("[API] GET /api/tasks - 获取任务列表")
+    user_id = request.args.get('user_id')
     tasks = read_csv_file('tasks.csv')
+    
+    # 如果提供了user_id，根据角色过滤
+    if user_id:
+        users = read_csv_file('users.csv')
+        user = next((u for u in users if u['user_id'] == user_id), None)
+        if user:
+            role = user.get('role', '')
+            if role == '业务负责人' or role == '普通分析人员':
+                # 业务负责人看到自己创建的任务
+                tasks = [t for t in tasks if t['creator_id'] == user_id]
+            else:
+                # 一线人员看到分配给自己的任务
+                tasks = [t for t in tasks if t['assigned_to_id'] == user_id]
+    
     logger.info(f"[API] 返回任务数: {len(tasks)}")
     return jsonify(tasks)
 
@@ -228,6 +243,230 @@ def health_check():
         'status': 'ok',
         'timestamp': datetime.now().isoformat(),
         'data_dir': DATA_DIR
+    })
+
+# === 补充的API ===
+
+@app.route('/api/tasks/<task_id>/chat-history', methods=['GET'])
+def get_chat_history(task_id):
+    """获取任务的对话历史"""
+    logger.info(f"[API] GET /api/tasks/{task_id}/chat-history")
+    feedback_path = os.path.join(DATA_DIR, 'feedback', f'{task_id}.json')
+    
+    if os.path.exists(feedback_path):
+        try:
+            with open(feedback_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return jsonify(data.get('chat_history', []))
+        except Exception as e:
+            logger.error(f"[ERROR] 读取对话历史失败: {str(e)}")
+            return jsonify({'chat_history': []})
+    
+    # 如果没有反馈文件，返回初始消息
+    tasks = read_csv_file('tasks.csv')
+    task = next((t for t in tasks if t['task_id'] == task_id), None)
+    if task:
+        initial_message = {
+            'timestamp': task['created_time'],
+            'sender': 'Agent',
+            'message': f'您好！您有新任务需要核查。\n\n风险简述：{task.get("risk_summary", "")}\n风险数据：{task.get("risk_data_url", "")}\n\n请根据风险数据进行核查，并在完成后上传相关证明文件。',
+            'message_type': 'text'
+        }
+        return jsonify([initial_message])
+    
+    return jsonify({'chat_history': []})
+
+@app.route('/api/tasks/<task_id>/message', methods=['POST'])
+def send_message(task_id):
+    """一线人员发送消息，获取AI回复"""
+    logger.info(f"[API] POST /api/tasks/{task_id}/message")
+    data = request.json
+    message = data.get('message', '')
+    user_id = data.get('user_id')
+    username = data.get('username', '')
+    
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # 用户消息
+    user_message = {
+        'timestamp': timestamp,
+        'sender': username,
+        'message': message,
+        'message_type': 'text'
+    }
+    
+    # AI回复（简化版）
+    ai_response = get_staff_ai_response(message, task_id)
+    
+    agent_reply = {
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'sender': 'Agent',
+        'message': ai_response,
+        'message_type': 'text'
+    }
+    
+    # 保存到反馈文件
+    save_chat_message(task_id, user_message, user_id)
+    save_chat_message(task_id, agent_reply, user_id)
+    
+    return jsonify({
+        'user_message': user_message,
+        'agent_reply': agent_reply
+    })
+
+def save_chat_message(task_id, message, user_id):
+    """保存对话消息到反馈文件"""
+    feedback_dir = os.path.join(DATA_DIR, 'feedback')
+    os.makedirs(feedback_dir, exist_ok=True)
+    feedback_path = os.path.join(feedback_dir, f'{task_id}.json')
+    
+    if os.path.exists(feedback_path):
+        with open(feedback_path, 'r', encoding='utf-8') as f:
+            feedback = json.load(f)
+    else:
+        feedback = {
+            'task_id': task_id,
+            'chat_history': [],
+            'uploaded_files': [],
+            'status': '进行中'
+        }
+    
+    feedback['chat_history'].append(message)
+    
+    with open(feedback_path, 'w', encoding='utf-8') as f:
+        json.dump(feedback, f, ensure_ascii=False, indent=2)
+
+def get_staff_ai_response(message, task_id):
+    """一线人员AI回复"""
+    message = message.lower()
+    
+    if any(kw in message for kw in ['上传', '文件', '证明']):
+        return "好的，请上传核查相关的证明文件。您可以点击输入框旁的📎按钮上传文件，支持PDF、图片等格式。"
+    elif any(kw in message for kw in ['完成', '提交', '确认']):
+        return "感谢您的核查工作！请点击上方的'确认完成'按钮完成此任务。"
+    elif any(kw in message for kw in ['查看', '数据', '风险']):
+        tasks = read_csv_file('tasks.csv')
+        task = next((t for t in tasks if t['task_id'] == task_id), None)
+        if task:
+            risk_data_url = task.get('risk_data_url', '')
+            if risk_data_url:
+                filename = risk_data_url.replace('data/risk_data_', '').replace('.csv', '')
+                risk_data = read_csv_file(f'risk_data_{filename}.csv')
+                if risk_data:
+                    info = risk_data[0]
+                    return f"风险数据信息：\n" + "\n".join([f"{k}: {v}" for k, v in list(info.items())[:5]])
+        return "您可以查看任务详情中的风险数据。"
+    else:
+        return f"收到您的消息：{message}。我会记录您的反馈。请继续完成核查工作，上传相关证明文件后点击'确认完成'。"
+
+@app.route('/api/tasks/<task_id>/upload-file', methods=['POST'])
+def upload_file(task_id):
+    """上传文件"""
+    logger.info(f"[API] POST /api/tasks/{task_id}/upload-file")
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    user_id = request.form.get('user_id')
+    filename = request.form.get('filename', file.filename)
+    
+    # 创建上传目录
+    upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', task_id, user_id)
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_path = os.path.join(upload_dir, filename)
+    file.save(file_path)
+    
+    file_size = os.path.getsize(file_path)
+    upload_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # 保存到反馈文件
+    feedback_dir = os.path.join(DATA_DIR, 'feedback')
+    feedback_path = os.path.join(feedback_dir, f'{task_id}.json')
+    
+    if os.path.exists(feedback_path):
+        with open(feedback_path, 'r', encoding='utf-8') as f:
+            feedback = json.load(f)
+    else:
+        feedback = {
+            'task_id': task_id,
+            'chat_history': [],
+            'uploaded_files': [],
+            'status': '进行中'
+        }
+    
+    feedback['uploaded_files'].append({
+        'filename': filename,
+        'upload_time': upload_time,
+        'file_path': f'uploads/{task_id}/{user_id}/{filename}',
+        'file_size': file_size
+    })
+    
+    with open(feedback_path, 'w', encoding='utf-8') as f:
+        json.dump(feedback, f, ensure_ascii=False, indent=2)
+    
+    logger.info(f"[API] 文件上传成功: {filename}")
+    
+    return jsonify({
+        'message': f'文件 {filename} 上传成功！正在进行验证...',
+        'verification_status': '验证中',
+        'filename': filename,
+        'file_path': f'uploads/{task_id}/{user_id}/{filename}',
+        'upload_time': upload_time,
+        'file_size': file_size
+    })
+
+@app.route('/api/tasks/<task_id>/complete', methods=['POST'])
+def complete_task(task_id):
+    """完成任务"""
+    logger.info(f"[API] POST /api/tasks/{task_id}/complete")
+    data = request.json
+    user_id = data.get('user_id')
+    
+    # 生成反馈总结
+    feedback_path = os.path.join(DATA_DIR, 'feedback', f'{task_id}.json')
+    feedback_summary = "任务已完成核查。"
+    
+    if os.path.exists(feedback_path):
+        with open(feedback_path, 'r', encoding='utf-8') as f:
+            feedback = json.load(f)
+            files = feedback.get('uploaded_files', [])
+            if files:
+                file_names = [f['filename'] for f in files]
+                feedback_summary += f"已上传文件：{', '.join(file_names)}。"
+    
+    # 更新任务状态
+    tasks = read_csv_file('tasks.csv')
+    task = next((t for t in tasks if t['task_id'] == task_id), None)
+    if task:
+        task['status'] = '反馈完成'
+        task['completed_time'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+        
+        fieldnames = ['task_id', 'creator_id', 'creator_name', 'assigned_to_id', 'assigned_to_name', 
+                      'status', 'created_time', 'risk_summary', 'risk_data_url', 
+                      'suggested_receiver_id', 'confirmed_receiver_id', 'completed_time']
+        write_csv_file('tasks.csv', tasks, fieldnames)
+        
+        # 更新反馈文件
+        if os.path.exists(feedback_path):
+            with open(feedback_path, 'r', encoding='utf-8') as f:
+                feedback = json.load(f)
+        else:
+            feedback = {'task_id': task_id, 'chat_history': [], 'uploaded_files': []}
+        
+        feedback['feedback_summary'] = feedback_summary
+        feedback['summary_timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        feedback['status'] = 'completed'
+        
+        with open(feedback_path, 'w', encoding='utf-8') as f:
+            json.dump(feedback, f, ensure_ascii=False, indent=2)
+    
+    return jsonify({
+        'task_id': task_id,
+        'status': '反馈完成',
+        'feedback_summary': feedback_summary,
+        'summary_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
 
 if __name__ == '__main__':
