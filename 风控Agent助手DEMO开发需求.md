@@ -5,9 +5,9 @@
 | 项目 | 内容 |
 |------|------|
 | 文档名称 | 风控Agent助手系统 - DEMO开发需求 |
-| 版本 | v1.1 |
-| 最后更新 | 2026年3月1日 |
-| 状态 | 开发中 |
+| 版本 | v1.2 |
+| 最后更新 | 2026年3月3日 |
+| 状态 | 开发中（待接入Claude Agent SDK） |
 
 ---
 
@@ -1254,7 +1254,229 @@ filename: 核查单.pdf
 
 ## 八、关键技术细节
 
-### 8.1 Claude API集成
+### 8.1 Claude Agent SDK 集成（推荐方案）
+
+**重要更新（2026-03-03）**：本项目采用 Claude Agent SDK 而非直接调用 Anthropic API，以支持更强大的智能体能力。
+
+#### 8.1.1 SDK 说明
+
+项目已包含参考实现：`claude_agent_demo.py`
+
+**核心优势**：
+- 支持 MCP（Model Context Protocol）工具扩展
+- 支持多轮对话和上下文管理
+- 支持自定义 System Prompt
+- 支持工具调用（Function Calling）
+
+#### 8.1.2 依赖安装
+
+```bash
+pip install claude-agent-sdk python-dotenv
+```
+
+#### 8.1.3 环境配置
+
+本项目使用本机已安装的 Claude Code 配置（从 `~/.claude.json` 提取）：
+
+**配置信息：**
+| 参数 | 值 |
+|------|-----|
+| ANTHROPIC_BASE_URL | https://ark.cn-beijing.volces.com/api/coding |
+| ANTHROPIC_AUTH_TOKEN | 004082f8-6dd5-49d5-9132-afe3f63e5ce2 |
+| ANTHROPIC_MODEL | ark-code-latest |
+
+在项目根目录创建 `.env` 文件：
+
+```env
+# 火山引擎方舟 Claude Code 配置
+ANTHROPIC_BASE_URL=https://ark.cn-beijing.volces.com/api/coding
+ANTHROPIC_AUTH_TOKEN=004082f8-6dd5-49d5-9132-afe3f63e5ce2
+ANTHROPIC_MODEL=ark-code-latest
+
+# 禁用非必要流量
+CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+```
+
+> 📌 **注意**：本配置与本机 Claude Code 共用相同的 API，无需额外申请。
+
+#### 8.1.4 智能体架构设计
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Flask 后端服务                        │
+├─────────────────────────────────────────────────────────┤
+│  API 层                                                  │
+│  ├── /api/chat (业务负责人对话)                         │
+│  └── /api/tasks/{id}/message (一线人员对话)            │
+├─────────────────────────────────────────────────────────┤
+│  智能体层 (Claude Agent SDK)                            │
+│  ┌─────────────────┐    ┌─────────────────┐           │
+│  │ Web端智能体      │    │ IM端智能体       │           │
+│  │ (Manager Agent) │    │ (Staff Agent)   │           │
+│  └────────┬────────┘    └────────┬────────┘           │
+│           │                       │                     │
+│  ┌───────┴───────────────────────┴───────┐              │
+│  │        System Prompt 设计             │              │
+│  │  • 角色定义                          │              │
+│  │  • 工具能力说明                     │              │
+│  │  • 业务规则                         │              │
+│  └─────────────────────────────────────┘              │
+├─────────────────────────────────────────────────────────┤
+│  工具层 (Tool Functions)                                │
+│  ├── 查询风险数据 (read_risk_data)                      │
+│  ├── 创建任务 (create_task)                             │
+│  ├── 查询任务状态 (get_task_status)                     │
+│  ├── 上传文件 (upload_file)                            │
+│  └── 发送消息 (send_message)                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 8.1.5 System Prompt 设计
+
+**Web端智能体（业务负责人）**：
+```
+你是一个风险控制专家Agent，负责协助业务负责人完成风险数据的分析、任务分派和反馈管理工作。
+
+你的核心职责：
+1. 帮助业务负责人分析上传的风险数据，识别风险特征和关键信息
+2. 基于风险数据推荐合适的一线人员进行核查
+3. 协助业务负责人完成任务的创建和分派
+4. 回答业务负责人关于风险分析方法、任务管理流程的问题
+5. 提供风险分析报告和建议
+
+可用工具：
+- read_risk_data: 读取风险数据CSV文件
+- create_task: 创建新的风险核查任务
+- get_task_status: 查询任务状态和反馈结果
+- list_users: 列出可用的执行人员
+
+请以专业、友好的语气与业务负责人对话，提供准确的分析和建议。
+```
+
+**IM端智能体（一线人员）**：
+```
+你是一个风险核查助手Agent，负责协助一线人员完成风险任务的核查工作。
+
+你的核心职责：
+1. 主动推送任务信息和风险数据给一线人员
+2. 指导一线人员完成风险核查流程
+3. 协助一线人员上传和验证核查文件
+4. 回答一线人员关于风险任务的问题
+5. 帮助一线人员完成任务提交和总结
+
+可用工具：
+- get_task_detail: 获取当前任务详情和风险数据
+- upload_file: 上传核查证明文件
+- complete_task: 完成任务并生成反馈总结
+
+请以友好、专业的语气与一线人员对话，提供清晰的指导和支持。
+```
+
+#### 8.1.6 代码实现示例
+
+**初始化智能体客户端**：
+```python
+import asyncio
+from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+def build_agent_options(system_prompt: str) -> ClaudeAgentOptions:
+    """构建智能体选项"""
+    return ClaudeAgentOptions(
+        env={
+            "ANTHROPIC_BASE_URL": os.getenv("ANTHROPIC_BASE_URL"),
+            "ANTHROPIC_AUTH_TOKEN": os.getenv("ANTHROPIC_AUTH_TOKEN"),
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+        },
+        # 注入自定义 System Prompt
+        prompt=system_prompt,
+        # 权限模式
+        permission_mode="acceptEdits",
+        # 最大对话轮次
+        max_turns=10,
+        thinking={"type": "disabled"}
+    )
+
+# 管理智能体实例（全局/单例）
+manager_agent_client = None
+staff_agent_client = None
+```
+
+**处理对话请求**：
+```python
+async def chat_with_agent(user_message: str, context: dict):
+    """与智能体对话"""
+    global manager_agent_client
+    
+    if manager_agent_client is None:
+        options = build_agent_options(MANAGER_SYSTEM_PROMPT)
+        manager_agent_client = ClaudeSDKClient(options=options)
+        await manager_agent_client.__aenter__()
+    
+    # 构建上下文消息
+    prompt = f"""
+    当前用户：{context.get('username')} ({context.get('role')})
+    任务ID：{context.get('task_id', '无')}
+    
+    用户消息：{user_message}
+    """
+    
+    await manager_agent_client.query(prompt)
+    
+    # 收集回复
+    responses = []
+    async for msg in manager_agent_client.receive_response():
+        responses.append(msg)
+    
+    return process_agent_responses(responses)
+```
+
+#### 8.1.7 工具函数注册
+
+```python
+from claude_agent_sdk import function
+
+@function
+def read_risk_data(file_path: str) -> str:
+    """读取风险数据文件"""
+    # 实现代码
+    pass
+
+@function
+def create_task(task_info: dict) -> dict:
+    """创建新任务"""
+    # 实现代码
+    pass
+
+@function
+def get_task_status(task_id: str) -> dict:
+    """查询任务状态"""
+    # 实现代码
+    pass
+
+@function
+def upload_file(task_id: str, file_data: bytes) -> dict:
+    """上传文件"""
+    # 实现代码
+    pass
+
+# 注册工具
+AGENT_TOOLS = [
+    read_risk_data,
+    create_task,
+    get_task_status,
+    upload_file,
+]
+```
+
+---
+
+### 8.2 Claude API集成（备选方案）
+
+> ⚠️ **注意**：以下为备选方案，仅在 Claude Agent SDK 无法满足需求时使用。
 
 **需要集成的4个场景**:
 1. **风险数据分析** (POST /api/analyze)
@@ -1423,25 +1645,97 @@ with open(f'data/feedback/{task_id}.json', 'w') as f:
 
 ---
 
-## 📋 当前实现状态 (2026-03-02)
+## 📋 当前实现状态 (2026-03-03)
 
 ### 已完成 ✅
 - [x] 用户列表展示
 - [x] 任务列表展示
 - [x] 基础三栏布局（用户列表/任务列表 + 对话 + 详情）
-- [x] 基础智能体对话功能
 - [x] 创建任务弹窗
+- [x] 用户选择界面（支持URL参数 user_id=xxx）
+- [x] 区分业务负责人和一线人员的界面
+- [x] 业务负责人：风险数据展示
+- [x] 一线人员：IM风格聊天界面（已优化为纯对话，无任务列表）
+- [x] 一线人员：文件上传功能
+- [x] 基础对话功能（伪智能体 - 关键词匹配）
 
 ### 待完善 🔧
-- [ ] 添加用户选择界面（选择业务负责人/一线人员）
-- [ ] 区分业务负责人和一线人员的界面和功能
-- [ ] 业务负责人：风险数据上传功能
-- [ ] 业务负责人：数据分析结果展示
-- [ ] 一线人员：IM风格聊天界面
-- [ ] 一线人员：文件上传功能
-- [ ] 一线人员：任务完成确认
+- [ ] **修复任务对话数据混乱问题（重要！）**
+  - [ ] Web端和IM端对话数据需要分开存储
+  - [ ] Web端：任务创建对话（业务负责人 ↔ 智能体）
+  - [ ] IM端：任务执行对话（一线人员 ↔ 智能体）
+- [ ] **接入 Claude Agent SDK（核心任务）**
+  - [ ] 安装 claude-agent-sdk 依赖
+  - [ ] 配置 API 环境和 .env 文件
+  - [ ] 实现 Web端智能体（Manager Agent）
+  - [ ] 实现 IM端智能体（Staff Agent）
+  - [ ] 设计 System Prompt
+  - [ ] 注册工具函数（风险数据查询、任务管理等）
+- [ ] 风险数据上传功能
+- [ ] 数据分析结果展示
 - [ ] 反馈总结展示
+
+### 🔴 严重问题修复
+
+#### 问题描述（2026-03-03 更新）
+
+**问题现象**：点击任务卡片后，Web端显示了IM端一线人员的对话内容
+
+**问题根源**：
+- 当前所有对话历史都存储在 `feedback/{task_id}.json` 文件中
+- Web端（业务负责人）和IM端（一线人员）共用同一个存储
+- 导致业务负责人点击任务时，看到的是一线人员的对话记录
+
+**正确的数据流设计**：
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    任务全生命周期                              │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  【阶段1：任务创建】← Web端智能体处理                          │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │ 业务负责人 → 智能体：分析风险数据                      │    │
+│  │ 智能体 → 业务负责人：推荐执行人                        │    │
+│  │ 业务负责人 → 智能体：确认创建任务                      │    │
+│  │ 智能体 → 业务负责人：任务创建成功                      │    │
+│  └─────────────────────────────────────────────────────┘    │
+│  存储位置：task_creation/{task_id}_creation.json           │
+│                                                               │
+│  【阶段2：任务执行】← IM端智能体处理                          │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │ 智能体 → 一线人员：推送任务信息                        │    │
+│  │ 一线人员 → 智能体：回复核查情况                        │    │
+│  │ 一线人员 → 智能体：上传证明材料                        │    │
+│  │ 智能体 → 一线人员：确认完成                            │    │
+│  └─────────────────────────────────────────────────────┘    │
+│  存储位置：feedback/{task_id}.json                         │
+│                                                               │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Web端（业务负责人）应该看到的**：
+- 任务创建时的对话记录（分析→推荐→确认→下发）
+- 任务创建成功后可以在右侧查看"任务详情"
+- 不应该看到一线人员的执行对话
+
+**IM端（一线人员）应该看到的**：
+- 自己接收到的任务推送
+- 与智能体的核查对话
+- 上传文件的记录
+- 任务完成状态
+
+### 智能体接入计划 📋
+
+| 阶段 | 内容 | 优先级 |
+|------|------|--------|
+| Phase 1 | 环境配置 + SDK集成 | P0 |
+| Phase 2 | Web端智能体实现 | P0 |
+| Phase 3 | IM端智能体实现 | P0 |
+| Phase 4 | 工具函数注册 | P1 |
+| Phase 5 | 对话测试和调优 | P1 |
 
 ### 问题修复 🐛
 - [x] ~~前端启动命令~~ (已修复，需用python3)
+- [x] ~~伪智能体~~ (计划接入真智能体)
 - [ ] 风控数据API文件路径问题 (当前返回空数据)

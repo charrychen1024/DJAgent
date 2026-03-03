@@ -276,6 +276,31 @@ def get_chat_history(task_id):
     
     return jsonify({'chat_history': []})
 
+@app.route('/api/tasks/<task_id>/creation-history', methods=['GET'])
+def get_creation_history(task_id):
+    """获取任务创建对话历史（Web端业务负责人使用）"""
+    logger.info(f"[API] GET /api/tasks/{task_id}/creation-history")
+    creation_path = os.path.join(DATA_DIR, 'task_creation', f'{task_id}.json')
+    
+    if os.path.exists(creation_path):
+        try:
+            with open(creation_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return jsonify(data.get('creation_history', []))
+        except Exception as e:
+            logger.error(f"[ERROR] 读取任务创建对话失败: {str(e)}")
+            return jsonify({'creation_history': []})
+    
+    # 如果没有创建对话文件，返回默认消息
+    return jsonify([
+        {
+            'timestamp': '',
+            'sender': 'Agent',
+            'message': '暂无任务创建对话记录',
+            'message_type': 'text'
+        }
+    ])
+
 @app.route('/api/tasks/<task_id>/message', methods=['POST'])
 def send_message(task_id):
     """一线人员发送消息，获取AI回复"""

@@ -10,6 +10,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [selectedRows, setSelectedRows] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
+  const [taskFeedback, setTaskFeedback] = useState(null)
   const [inputMessage, setInputMessage] = useState('')
   const [loading, setLoading] = useState({ tasks: false, riskData: false, chat: false })
   const messagesEndRef = useRef(null)
@@ -129,8 +130,9 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
 
   const handleTaskClick = async (task) => {
     setSelectedTask(task)
+    setTaskFeedback(null)
     try {
-      const response = await fetch(`${API_BASE}/tasks/${task.task_id}/chat-history`)
+      const response = await fetch(`${API_BASE}/tasks/${task.task_id}/creation-history`)
       if (response.ok) {
         const data = await response.json()
         if (Array.isArray(data)) {
@@ -142,8 +144,13 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           })))
         }
       }
+      const feedbackRes = await fetch(`${API_BASE}/feedback/${task.task_id}`)
+      if (feedbackRes.ok) {
+        const feedbackData = await feedbackRes.json()
+        setTaskFeedback(feedbackData)
+      }
     } catch (err) {
-      console.error('[ERROR] 获取对话历史失败:', err)
+      console.error('[ERROR] 获取任务信息失败:', err)
     }
   }
 
@@ -312,19 +319,28 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
             
             <div className="feedback-section">
               <h5>📝 反馈详情</h5>
-              <div className="chat-history-mini">
-                {chatMessages.length > 0 ? chatMessages.map((msg, i) => (
-                  <div key={i} className={`mini-message ${msg.sender}`}>
-                    <span className="mini-sender">{msg.sender === 'user' ? '我' : 'Agent'}:</span>
-                    <span className="mini-content">{msg.message.substring(0, 50)}{msg.message.length > 50 ? '...' : ''}</span>
-                  </div>
-                )) : <div className="empty-tip">暂无对话记录</div>}
-              </div>
+              {taskFeedback?.feedback_summary ? (
+                <div className="feedback-summary">
+                  <p>{taskFeedback.feedback_summary}</p>
+                </div>
+              ) : (
+                <div className="empty-tip">暂无反馈总结</div>
+              )}
             </div>
             
             <div className="files-section">
               <h5>📎 上传文件</h5>
-              <div className="empty-tip">暂无上传文件</div>
+              {taskFeedback?.uploaded_files && taskFeedback.uploaded_files.length > 0 ? (
+                <div className="file-list">
+                  {taskFeedback.uploaded_files.map((file, i) => (
+                    <div key={i} className="file-item">
+                      <span>📄 {file.filename}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-tip">暂无上传文件</div>
+              )}
             </div>
           </div>
         ) : <div className="placeholder">点击左侧任务查看详情</div>}
