@@ -13,6 +13,9 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [taskFeedback, setTaskFeedback] = useState(null)
   const [inputMessage, setInputMessage] = useState('')
   const [loading, setLoading] = useState({ tasks: false, riskData: false, chat: false })
+  // 分页相关状态
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const [leftWidth, setLeftWidth] = useState(35)
@@ -199,6 +202,28 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
     e.target.value = ''
   }
 
+  // 分页逻辑
+  const totalPages = Math.ceil(allRiskData.length / pageSize)
+  const currentPageData = allRiskData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  
+  // 重置分页到第一页当风险数据变化时
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [allRiskData])
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+      setSelectedRows([]) // 切换页面时清除选中项
+    }
+  }
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize)
+    setCurrentPage(1) // 改变每页条数时回到第一页
+    setSelectedRows([])
+  }
+
   const columns = getAllColumns()
 
   return (
@@ -217,48 +242,124 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
               </button>
             </div>
           </div>
-          {loading.riskData ? <div className="loading-tip">加载中...</div> : allRiskData.length > 0 ? (
-            <div className="risk-table-wrapper">
-              <table className="risk-table">
-                <thead>
-                  <tr>
-                    <th className="checkbox-col">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedRows.length === allRiskData.length && allRiskData.length > 0}
-                        onChange={handleSelectAll}
-                      />
-                    </th>
-                    {columns.map(col => (
-                      <th key={col}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {allRiskData.slice(0, 20).map((row, i) => (
-                    <tr key={i} className={selectedRows.includes(i) ? 'selected-row' : ''}>
-                      <td className="checkbox-col">
+          {loading.riskData ? (
+            <div className="loading-tip">加载中...</div>
+          ) : allRiskData.length > 0 ? (
+            <div className="risk-data-container">
+              <div className="risk-table-wrapper">
+                <table className="risk-table">
+                  <thead>
+                    <tr>
+                      <th className="checkbox-col">
                         <input 
                           type="checkbox" 
-                          checked={selectedRows.includes(i)}
-                          onChange={() => handleSelectRow(i)}
+                          checked={selectedRows.length === currentPageData.length && currentPageData.length > 0}
+                          onChange={handleSelectAll}
                         />
-                      </td>
+                      </th>
                       {columns.map(col => (
-                        <td key={col}>
-                          {col === '风险等级' ? (
-                            <span className={`risk-level ${row[col]}`}>{row[col] || '-'}</span>
-                          ) : (
-                            row[col] || '-'
-                          )}
-                        </td>
+                        <th key={col}>{col}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {currentPageData.map((row, i) => {
+                      const globalIndex = (currentPage - 1) * pageSize + i
+                      return (
+                        <tr key={globalIndex} className={selectedRows.includes(globalIndex) ? 'selected-row' : ''}>
+                          <td className="checkbox-col">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedRows.includes(globalIndex)}
+                              onChange={() => handleSelectRow(globalIndex)}
+                            />
+                          </td>
+                          {columns.map(col => (
+                            <td key={col}>
+                              {col === '风险等级' ? (
+                                <span className={`risk-level ${row[col]}`}>{row[col] || '-'}</span>
+                              ) : (
+                                row[col] || '-'
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {/* 分页组件 */}
+              <div className="pagination">
+                <div className="page-info">
+                  共 {allRiskData.length} 条数据，每页显示 
+                  <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))} className="page-size-select">
+                    <option value={5}>5条</option>
+                    <option value={10}>10条</option>
+                    <option value={20}>20条</option>
+                    <option value={50}>50条</option>
+                    <option value={100}>100条</option>
+                  </select>
+                </div>
+                <div className="page-controls">
+                  <button 
+                    className="page-btn" 
+                    disabled={currentPage === 1} 
+                    onClick={() => handlePageChange(currentPage - 1)}
+                  >
+                    上一页
+                  </button>
+                  <div className="page-numbers">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum
+                      if (totalPages <= 5) {
+                        pageNum = i + 1
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = currentPage - 2 + i
+                      }
+                      return (
+                        <button
+                          key={pageNum}
+                          className={`page-btn ${currentPage === pageNum ? 'active' : ''}`}
+                          onClick={() => handlePageChange(pageNum)}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <button 
+                    className="page-btn" 
+                    disabled={currentPage === totalPages} 
+                    onClick={() => handlePageChange(currentPage + 1)}
+                  >
+                    下一页
+                  </button>
+                </div>
+                <div className="page-jump">
+                  第 <input 
+                    type="number" 
+                    min={1} 
+                    max={totalPages} 
+                    value={currentPage} 
+                    onChange={(e) => {
+                      const num = Number(e.target.value)
+                      if (num >= 1 && num <= totalPages) {
+                        handlePageChange(num)
+                      }
+                    }}
+                    className="page-input"
+                  /> 页
+                </div>
+              </div>
             </div>
-          ) : <div className="empty-tip">暂无风险数据</div>}
+          ) : (
+            <div className="empty-tip">暂无风险数据</div>
+          )}
         </div>
         <div className="task-list-section">
           <h3>📋 下发任务</h3>
@@ -541,7 +642,7 @@ function App() {
     return (
       <div className="App login-page">
         <div className="login-container">
-          <h1>🛡️ 风控Agent助手</h1>
+          <h1>🛡️ 风控数字员工</h1>
           <p>加载中...</p>
         </div>
       </div>
@@ -552,7 +653,7 @@ function App() {
     return (
       <div className="App login-page">
         <div className="login-container">
-          <h1>🛡️ 风控Agent助手系统</h1>
+          <h1>🛡️ 风控数字员工</h1>
           <p className="subtitle">请选择您的身份</p>
           <select onChange={handleUserChange} defaultValue="" className="user-select">
             <option value="" disabled>选择用户...</option>
@@ -572,7 +673,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>🛡️ 风控Agent助手</h1>
+        <h1>🛡️ 风控数字员工</h1>
         <div className="header-right">
           <span className="user-info">{currentUser.username} ({currentUser.role})</span>
           <select value={currentUser.user_id} onChange={handleUserChange} className="user-switch">
