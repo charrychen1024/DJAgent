@@ -1329,6 +1329,22 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 │  ├── 上传文件 (upload_file)                            │
 │  └── 发送消息 (send_message)                           │
 └─────────────────────────────────────────────────────────┘
+
+#### 8.1.5.1 文档解析工具（重要！）
+
+由于Claude Agent本身是文本模型，无法直接读取PDF/Word/Excel，需要通过解析工具将文档转换为文本后再进行分析。
+
+| 工具 | 依赖库 | 功能 |
+|------|--------|------|
+| parse_csv | pandas | 解析CSV文件为DataFrame |
+| parse_excel | pandas, openpyxl | 解析Excel文件 |
+| parse_pdf | PyPDF2, pdfplumber | 解析PDF文件提取文本 |
+| parse_word | python-docx | 解析Word文件提取文本 |
+
+**工作流程**：
+```
+用户上传文件 → 解析工具转文本 → Agent分析 → 返回结果
+```
 ```
 
 #### 8.1.5 System Prompt 设计
@@ -1345,6 +1361,10 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 5. 提供风险分析报告和建议
 
 可用工具：
+- parse_csv: 解析CSV风险数据文件
+- parse_excel: 解析Excel风险数据文件
+- parse_pdf: 解析PDF文档
+- parse_word: 解析Word文档
 - read_risk_data: 读取风险数据CSV文件
 - create_task: 创建新的风险核查任务
 - get_task_status: 查询任务状态和反馈结果
@@ -1365,8 +1385,12 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 5. 帮助一线人员完成任务提交和总结
 
 可用工具：
+- parse_pdf: 解析PDF证明文件
+- parse_word: 解析Word证明文件
+- parse_image: 解析图片文件（通过OCR）
 - get_task_detail: 获取当前任务详情和风险数据
 - upload_file: 上传核查证明文件
+- verify_file: 验证上传文件是否符合要求
 - complete_task: 完成任务并生成反馈总结
 
 请以友好、专业的语气与一线人员对话，提供清晰的指导和支持。
