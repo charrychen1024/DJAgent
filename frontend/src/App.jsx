@@ -335,40 +335,71 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
 
 // 一线人员工作区
 function StaffWorkspace({ currentUser }) {
-  const [tasks, setTasks] = useState([])
   const [selectedTask, setSelectedTask] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
-  const [loading, setLoading] = useState({ tasks: false, chat: false })
+  const [loading, setLoading] = useState({ chat: false, init: true })
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  useEffect(() => { fetchTasks() }, [])
+  // 页面加载时自动获取任务并发起对话
+  useEffect(() => {
+    if (currentUser?.user_id) {
+      initConversation()
+    }
+  }, [currentUser])
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
 
-  const fetchTasks = async () => {
-    setLoading(prev => ({ ...prev, tasks: true }))
+  const initConversation = async () => {
     try {
+      // 获取当前用户的待处理任务
       const response = await fetch(`${API_BASE}/tasks?user_id=${currentUser.user_id}`)
-      const data = await response.json()
-      setTasks(data)
-      const pendingTask = data.find(t => t.status !== '反馈完成')
-      if (pendingTask) handleTaskClick(pendingTask)
-    } catch (err) { console.error('[ERROR] 获取任务失败:', err) }
-    finally { setLoading(prev => ({ ...prev, tasks: false })) }
-  }
-
-  const handleTaskClick = async (task) => {
-    setSelectedTask(task)
-    try {
-      const response = await fetch(`${API_BASE}/tasks/${task.task_id}/chat-history`)
-      if (response.ok) {
-        const data = await response.json()
-        if (Array.isArray(data)) {
-          setChatMessages(data.map(msg => ({ sender: msg.sender === 'Agent' ? 'agent' : 'user', message: msg.message, timestamp: msg.timestamp, messageType: msg.message_type })))
+      const tasks = await response.json()
+      
+      // 找到最新的待处理任务
+      const pendingTask = tasks.find(t => t.status !== '反馈完成') || tasks[0]
+      
+      if (pendingTask) {
+        setSelectedTask(pendingTask)
+        
+        // 获取对话历史
+        const historyRes = await fetch(`${API_BASE}/tasks/${pendingTask.task_id}/chat-history`)
+        const historyData = await historyRes.json()
+        
+        if (Array.isArray(historyData) && historyData.length > 0) {
+          setChatMessages(historyData.map(msg => ({ 
+            sender: msg.sender === 'Agent' ? 'agent' : 'user', 
+            message: msg.message, 
+            timestamp: msg.timestamp, 
+            messageType: msg.message_type 
+          })))
+        } else {
+          // 如果没有对话历史，发送初始消息让智能体推送任务
+          const initResponse = await fetch(`${API_BASE}/tasks/${pendingTask.task_id}/message`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              message: "你好，请告诉我当前有什么任务需要处理", 
+              user_id: currentUser.user_id, 
+              username: currentUser.username 
+            })
+          })
+          const initData = await initResponse.json()
+          if (initData.agent_reply) {
+            setChatMessages([{ 
+              sender: 'agent', 
+              message: initData.agent_reply.message, 
+              timestamp: initData.agent_reply.timestamp 
+            }])
+          }
         }
       }
-    } catch (err) { console.error('[ERROR] 获取对话历史失败:', err) }
+    } catch (err) { 
+      console.error('[ERROR] 初始化对话失败:', err) 
+    } finally {
+      setLoading(prev => ({ ...prev, init: false }))
+    }
   }
 
   const handleSendMessage = async () => {
@@ -391,7 +422,10 @@ function StaffWorkspace({ currentUser }) {
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
-    if (!file || !selectedTask) return
+    if (!file || !selectedTask) {
+      if (!selectedTask) alert('暂无任务，请稍后再试')
+      return
+    }
     const formData = new FormData()
     formData.append('file', file)
     formData.append('user_id', currentUser.user_id)
@@ -405,42 +439,38 @@ function StaffWorkspace({ currentUser }) {
     e.target.value = ''
   }
 
-  const handleComplete = async () => {
-    if (!selectedTask) return
-    try {
-      const response = await fetch(`${API_BASE}/tasks/${selectedTask.task_id}/complete`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: currentUser.user_id, task_id: selectedTask.task_id })
-      })
-      const data = await response.json()
-      setChatMessages(prev => [...prev, { sender: 'agent', message: `✅ 任务已完成！反馈总结：${data.feedback_summary}`, timestamp: new Date().toLocaleString() }])
-      fetchTasks()
-    } catch (err) { console.error('[ERROR] 完成任务失败:', err) }
+  // 完成任务也可以通过对话完成，不需要单独按钮
+
+  // 纯聊天界面渲染
+  if (loading.init) {
+    return (
+      <div className="workspace staff-workspace">
+        <div className="staff-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="loading">正在初始化对话...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!selectedTask) {
+    return (
+      <div className="workspace staff-workspace">
+        <div className="staff-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="empty">暂无任务</div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="workspace staff-workspace">
-      <div className="staff-sidebar">
-        <h3>📋 我的任务</h3>
-        {loading.tasks ? <div className="loading-tip">加载中...</div> : tasks.length > 0 ? (
-          <div className="task-list">
-            {tasks.map(task => (
-              <div key={task.task_id} className={`task-card ${selectedTask?.task_id === task.task_id ? 'selected' : ''}`} onClick={() => handleTaskClick(task)}>
-                <div className="task-header"><span className="task-id">{task.task_id}</span><span className={`task-status ${task.status}`}>{task.status}</span></div>
-                <div className="task-summary">{task.risk_summary}</div>
-                <div className="task-time">{task.created_time}</div>
-              </div>
-            ))}
-          </div>
-        ) : <div className="empty-tip">暂无任务</div>}
-      </div>
-      <div className="staff-main">
+    <div className="workspace staff-workspace" style={{ height: '100vh' }}>
+      {/* 纯聊天界面，无左侧任务列表，无确认按钮 */}
+      <div className="staff-main" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="chat-header">
-          <h3>💬 {selectedTask ? selectedTask.risk_summary : '风险核查助手'}</h3>
-          {selectedTask && selectedTask.status !== '反馈完成' && <button className="complete-btn" onClick={handleComplete}>✅ 确认完成</button>}
+          <h3>💬 风险核查助手</h3>
         </div>
         <div className="chat-messages im-style">
-          {chatMessages.length === 0 && selectedTask && <div className="welcome-message"><p>👋 您有新任务需要核查</p><p><strong>风险简述：</strong>{selectedTask.risk_summary}</p><p className="tip">请根据Agent的指导完成核查并上传相关证明文件</p></div>}
+          {chatMessages.length === 0 && !loading.chat && <div className="welcome-message"><p>👋 您好！智能体正在准备任务信息...</p></div>}
           {chatMessages.map((msg, i) => (
             <div key={i} className={`message ${msg.sender}`}>
               <div className="message-content">{msg.message}</div>
@@ -453,8 +483,8 @@ function StaffWorkspace({ currentUser }) {
         <div className="chat-input">
           <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
           <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-          <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && !loading.chat && handleSendMessage()} placeholder="输入消息..." disabled={loading.chat || !selectedTask} />
-          <button onClick={handleSendMessage} disabled={loading.chat || !inputMessage.trim() || !selectedTask}>发送</button>
+          <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && !loading.chat && handleSendMessage()} placeholder="输入消息..." disabled={loading.chat} />
+          <button onClick={handleSendMessage} disabled={loading.chat || !inputMessage.trim()}>发送</button>
         </div>
       </div>
     </div>
@@ -466,9 +496,19 @@ function App() {
   const [users, setUsers] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
-
+  
+  // 从URL参数读取用户ID
   useEffect(() => {
-    fetch(`${API_BASE}/users`).then(r => r.json()).then(setUsers).catch(console.error).finally(() => setLoading(false))
+    const params = new URLSearchParams(window.location.search)
+    const presetUserId = params.get('user_id')
+    
+    fetch(`${API_BASE}/users`).then(r => r.json()).then(usersData => {
+      setUsers(usersData)
+      if (presetUserId) {
+        const user = usersData.find(u => u.user_id === presetUserId)
+        if (user) setCurrentUser(user)
+      }
+    }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
   const handleUserChange = (e) => {
