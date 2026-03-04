@@ -76,7 +76,7 @@ def build_manager_options() -> ClaudeAgentOptions:
             "ANTHROPIC_AUTH_TOKEN": os.getenv("ANTHROPIC_AUTH_TOKEN", ""),
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
         },
-        prompt=MANAGER_SYSTEM_PROMPT,
+        system_prompt=MANAGER_SYSTEM_PROMPT,
         permission_mode="acceptEdits",
         max_turns=15,
         thinking={"type": "disabled"}

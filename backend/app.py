@@ -5,6 +5,15 @@ import json
 import os
 from datetime import datetime
 import logging
+import asyncio
+
+# 导入智能体模块
+from agents import (
+    get_or_create_staff_agent,
+    get_or_create_manager_agent,
+    close_agent,
+    close_all_agents,
+)
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -202,15 +211,32 @@ def get_risk_data(filename):
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """AI对话接口（简化版）"""
+    """AI对话接口（主Agent - 业务负责人使用）"""
     logger.info("[API] POST /api/chat - AI对话")
     data = request.json
     message = data.get('message', '')
+    user_id = data.get('user_id', 'manager_default')
+    username = data.get('username', '业务负责人')
+    
     logger.info(f"[API] 用户消息: {message}")
     
-    # 这里应该调用Claude Code SDK，简化版返回固定回复
-    # 根据消息内容返回不同回复
-    response_text = get_ai_response(message)
+    # 调用 ManagerAgent 获取真实回复
+    try:
+        # 获取 ManagerAgent（会话复用）
+        agent = get_or_create_manager_agent(user_id, username)
+        
+        # 调用 Agent.chat() 获取回复（异步）
+        async def get_agent_response():
+            return await agent.chat(message)
+        
+        response_text = asyncio.run(get_agent_response())
+        
+        logger.info(f"[API] ManagerAgent 回复成功")
+        
+    except Exception as e:
+        logger.error(f"[ERROR] ManagerAgent 调用失败: {str(e)}")
+        # 降级使用规则回复
+        response_text = get_ai_response(message)
     
     response = {
         'message': response_text,
@@ -251,28 +277,72 @@ def health_check():
 def get_chat_history(task_id):
     """获取任务的对话历史"""
     logger.info(f"[API] GET /api/tasks/{task_id}/chat-history")
+    
+    # 获取用户信息
+    user_id = request.args.get('user_id')
+    username = request.args.get('username', '一线人员')
+    
+    # 先检查是否有已保存的对话历史
     feedback_path = os.path.join(DATA_DIR, 'feedback', f'{task_id}.json')
     
     if os.path.exists(feedback_path):
         try:
             with open(feedback_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                return jsonify(data.get('chat_history', []))
+                existing_history = data.get('chat_history', [])
+                # 如果有历史对话，直接返回
+                if existing_history:
+                    return jsonify(existing_history)
         except Exception as e:
             logger.error(f"[ERROR] 读取对话历史失败: {str(e)}")
-            return jsonify({'chat_history': []})
     
-    # 如果没有反馈文件，返回初始消息
-    tasks = read_csv_file('tasks.csv')
-    task = next((t for t in tasks if t['task_id'] == task_id), None)
-    if task:
+    # 如果没有对话历史，调用 Agent.init_task() 生成初始消息
+    try:
+        # 获取 StaffAgent
+        agent = get_or_create_staff_agent(user_id, username)
+        
+        # 调用 Agent 初始化任务（异步）
+        async def init_and_get_message():
+            return await agent.init_task(task_id)
+        
+        initial_agent_message = asyncio.run(init_and_get_message())
+        
+        # 保存初始消息到反馈文件
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         initial_message = {
-            'timestamp': task['created_time'],
+            'timestamp': timestamp,
             'sender': 'Agent',
-            'message': f'您好！您有新任务需要核查。\n\n风险简述：{task.get("risk_summary", "")}\n风险数据：{task.get("risk_data_url", "")}\n\n请根据风险数据进行核查，并在完成后上传相关证明文件。',
+            'message': initial_agent_message,
             'message_type': 'text'
         }
+        
+        # 保存到反馈文件
+        os.makedirs(os.path.dirname(feedback_path), exist_ok=True)
+        feedback_data = {
+            'task_id': task_id,
+            'chat_history': [initial_message],
+            'uploaded_files': [],
+            'status': '进行中'
+        }
+        with open(feedback_path, 'w', encoding='utf-8') as f:
+            json.dump(feedback_data, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"[API] Agent 初始化任务成功: {task_id}")
         return jsonify([initial_message])
+        
+    except Exception as e:
+        logger.error(f"[ERROR] Agent 初始化任务失败: {str(e)}")
+        # 降级返回固定消息
+        tasks = read_csv_file('tasks.csv')
+        task = next((t for t in tasks if t['task_id'] == task_id), None)
+        if task:
+            initial_message = {
+                'timestamp': task['created_time'],
+                'sender': 'Agent',
+                'message': f'您好！您有新任务需要核查。\n\n风险简述：{task.get("risk_summary", "")}\n风险数据：{task.get("risk_data_url", "")}\n\n请根据风险数据进行核查，并在完成后上传相关证明文件。',
+                'message_type': 'text'
+            }
+            return jsonify([initial_message])
     
     return jsonify({'chat_history': []})
 
@@ -320,8 +390,26 @@ def send_message(task_id):
         'message_type': 'text'
     }
     
-    # AI回复（简化版）
-    ai_response = get_staff_ai_response(message, task_id)
+    # 调用 Agent 获取真实回复
+    try:
+        # 获取 StaffAgent（会话复用）
+        agent = get_or_create_staff_agent(user_id, username)
+        
+        # 设置当前任务
+        agent.current_task_id = task_id
+        
+        # 调用 Agent.chat() 获取回复（异步）
+        async def get_agent_response():
+            return await agent.chat(message)
+        
+        ai_response = asyncio.run(get_agent_response())
+        
+        logger.info(f"[API] Agent 回复成功: {task_id}")
+        
+    except Exception as e:
+        logger.error(f"[ERROR] Agent 调用失败: {str(e)}")
+        # 降级使用规则回复
+        ai_response = get_staff_ai_response(message, task_id)
     
     agent_reply = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -495,8 +583,18 @@ def complete_task(task_id):
     })
 
 if __name__ == '__main__':
+    import atexit
+    
+    # 注册服务关闭时的清理函数
+    def cleanup():
+        logger.info("正在关闭服务，清理Agent会话...")
+        close_all_agents()
+        logger.info("服务已关闭")
+    
+    atexit.register(cleanup)
+    
     logger.info("=" * 50)
     logger.info("风控Agent助手后端服务启动")
     logger.info(f"数据目录: {DATA_DIR}")
     logger.info("=" * 50)
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5005)
