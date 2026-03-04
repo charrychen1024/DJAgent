@@ -1,0 +1,19 @@
+{
+  "task_id": "TASK_023",
+  "chat_history": [
+    {
+      "timestamp": "2026-03-04 13:07:16",
+      "sender": "最终测试",
+      "message": "这个任务要我做什么工作？",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-04 13:07:16",
+      "sender": "Agent",
+      "message": "好的，请继续。",
+      "message_type": "text"
+    }
+  ],
+  "uploaded_files": [],
+  "status": "进行中"
+}
