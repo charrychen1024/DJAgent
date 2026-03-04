@@ -1,0 +1,25 @@
+{
+  "task_id": "TASK_005",
+  "chat_history": [
+    {
+      "timestamp": "2026-03-04 08:36:05",
+      "sender": "Agent",
+      "message": "您好！您有新任务需要核查：\n\n📋 任务ID：TASK_005\n📝 风险简述：虚假签收风险核查\n👤 创建人：李经理\n📅 创建时间：2025-02-28 08:41\n\n请根据风险描述进行核查，并在完成后上传相关证明材料。\n\n如有疑问，请随时问我！",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-04 08:36:10",
+      "sender": "test",
+      "message": "这个任务要怎么做？",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-04 08:36:10",
+      "sender": "Agent",
+      "message": "好的，请继续。",
+      "message_type": "text"
+    }
+  ],
+  "uploaded_files": [],
+  "status": "进行中"
+}

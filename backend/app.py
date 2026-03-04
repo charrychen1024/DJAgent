@@ -231,7 +231,7 @@ def chat():
         
         response_text = asyncio.run(get_agent_response())
         
-        logger.info(f"[API] ManagerAgent 回复成功")
+        logger.info(f"[API] ===== ManagerAgent 调用成功 =====")
         
     except Exception as e:
         logger.error(f"[ERROR] ManagerAgent 调用失败: {str(e)}")
@@ -404,7 +404,7 @@ def send_message(task_id):
         
         ai_response = asyncio.run(get_agent_response())
         
-        logger.info(f"[API] Agent 回复成功: {task_id}")
+        logger.info(f"[API] ===== StaffAgent 调用成功: {task_id}")
         
     except Exception as e:
         logger.error(f"[ERROR] Agent 调用失败: {str(e)}")

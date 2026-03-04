@@ -36,6 +36,18 @@
       "sender": "Agent",
       "message": "文件验证通过。任务已完成，反馈总结已生成。",
       "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-04 07:27:02",
+      "sender": "刘伟快递",
+      "message": "你好",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-04 07:27:02",
+      "sender": "Agent",
+      "message": "收到您的消息：你好。我会记录您的反馈。请继续完成核查工作，上传相关证明文件后点击'确认完成'。",
+      "message_type": "text"
     }
   ],
   "uploaded_files": [
