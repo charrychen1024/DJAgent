@@ -5,5 +5,22 @@
 
 from .manager_agent import ManagerAgent
 from .staff_agent import StaffAgent
+from .session_manager import (
+    get_or_create_staff_agent,
+    get_or_create_manager_agent,
+    get_agent,
+    close_agent,
+    close_all_agents,
+    get_session_count,
+)
 
-__all__ = ['ManagerAgent', 'StaffAgent']
+__all__ = [
+    'ManagerAgent', 
+    'StaffAgent',
+    'get_or_create_staff_agent',
+    'get_or_create_manager_agent',
+    'get_agent',
+    'close_agent',
+    'close_all_agents',
+    'get_session_count',
+]
