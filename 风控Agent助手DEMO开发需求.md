@@ -34,26 +34,26 @@
 
 ```
 ┌─────────────────────────────────────────┐
-│           前端 (React / Vue)             │
+│           前端 (React 18 + Vite)        │
 │  • 业务负责人工作区 (WEB主智能体)       │
 │  • 一线人员工作区 (IM模拟智能体)        │
 │  • 用户选择器                           │
 └──────────────┬──────────────────────────┘
-               │ REST API
+               │ REST API / WebSocket
 ┌──────────────▼──────────────────────────┐
-│        后端 (Flask / Express)            │
-│  • 数据管理和存储                       │
-│  • Claude Code SDK 集成                 │
+│        后端 (FastAPI)                  │
+│  • 异步数据管理和存储                   │
+│  • 智能体服务集成 (Manager/Staff)       │
 │  • 文件上传/下载处理                    │
+│  • CORS跨域支持                         │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
-│    Claude Code SDK 智能体系统           │
-│  • 统一系统prompt设计                   │
-│  • 多角色智能体管理                     │
-│  • 对话状态跟踪和管理                   │
-│  • 文件内容分析和验证                   │
-│  • 任务流程引导和控制                   │
+│    智能体服务层 (agents/)                │
+│  • ManagerAgent - 业务负责人智能体      │
+│  • StaffAgent - 一线人员智能体          │
+│  • SessionManager - 会话管理            │
+│  • Tools - 工具函数 (查询、创建任务等)    │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
@@ -1212,15 +1212,33 @@ filename: 核查单.pdf
 
 ---
 
-## 六、技术栈选型（待确认）
+## 六、技术栈选型（已确定）
 
-### 后端候选方案
-- **Python + Flask** (推荐，集成Claude SDK方便)
-- **Node.js + Express**
+### 后端技术栈
+- **Python 3.10+**
+- **FastAPI** - 现代、高性能异步Web框架
+  - 自动API文档生成 (Swagger/OpenAPI)
+  - 原生异步支持 (async/await)
+  - 类型提示支持 (Pydantic)
+  - CORS中间件支持
+- **Agent SDK** - 智能体服务集成
+  - ManagerAgent - 业务负责人智能体
+  - StaffAgent - 一线人员智能体
+  - SessionManager - 会话状态管理
 
-### 前端候选方案
-- **React** (推荐)
-- **Vue.js**
+### 前端技术栈
+- **React 18** - 现代React版本，支持并发特性
+- **Vite** - 下一代前端构建工具
+  - 快速冷启动
+  - 即时热更新 (HMR)
+  - 优化的生产构建
+- **CSS Modules** - 组件级样式隔离
+
+### 开发环境
+- **Node.js 18+** (前端)
+- **Python 3.10+** (后端)
+- **Uvicorn** - ASGI服务器，用于运行FastAPI
+- **CORS配置** - 支持跨域请求 (开发环境)
 
 ---
 
@@ -1303,11 +1321,16 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Flask 后端服务                        │
+│                    FastAPI 后端服务                      │
 ├─────────────────────────────────────────────────────────┤
 │  API 层                                                  │
-│  ├── /api/chat (业务负责人对话)                         │
-│  └── /api/tasks/{id}/message (一线人员对话)            │
+│  ├── GET  /api/users (用户列表)                         │
+│  ├── GET  /api/users/{id} (单个用户)                    │
+│  ├── GET  /api/tasks (任务列表)                         │
+│  ├── POST /api/tasks (创建任务)                         │
+│  ├── GET  /api/tasks/{id} (任务详情)                    │
+│  ├── POST /api/chat (业务负责人对话)                    │
+│  └── POST /api/agent-chat (一线人员智能体对话)          │
 ├─────────────────────────────────────────────────────────┤
 │  智能体层 (Claude Agent SDK)                            │
 │  ┌─────────────────┐    ┌─────────────────┐           │
@@ -1508,17 +1531,25 @@ AGENT_TOOLS = [
 3. **文件内容验证** (POST /api/tasks/{task_id}/verify-files)
 4. **反馈总结生成** (POST /api/tasks/{task_id}/complete)
 
-**API调用方式** (以Python Flask为例):
+**API调用方式** (以Python FastAPI为例):
 ```python
+from fastapi import FastAPI, HTTPException
 from anthropic import Anthropic
+import os
 
+app = FastAPI()
 client = Anthropic()
 
-def analyze_risk_data(risk_data_content, user_message):
-    response = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
-        max_tokens=1024,
-        messages=[
+@app.post("/api/analyze-risk")
+async def analyze_risk_data(request: dict):
+    try:
+        risk_data_content = request.get("risk_data")
+        user_message = request.get("message")
+        
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1024,
+            messages=[
             {
                 "role": "user",
                 "content": f"""你是一个风险控制分析师...

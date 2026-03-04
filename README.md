@@ -14,8 +14,8 @@
 
 ```
 DJAgent/
-├── backend/                 # Flask后端
-│   ├── app.py              # 主应用
+├── backend/                 # FastAPI后端
+│   ├── app_fastapi.py      # 主应用
 │   └── requirements.txt    # 依赖
 ├── frontend/               # React前端
 │   ├── public/
@@ -46,9 +46,14 @@ pip install -r requirements.txt
 ### 2. 启动后端服务
 
 ```bash
-python app.py
+uvicorn app_fastapi:app --reload --port 5005
 ```
-后端服务将在 http://localhost:5000 启动
+后端服务将在 http://localhost:5005 启动
+
+或者直接运行：
+```bash
+python app_fastapi.py
+```
 
 ### 3. 安装前端依赖
 
@@ -83,9 +88,10 @@ npm start
 | 层级 | 技术 |
 |------|------|
 | 前端 | React 18 |
-| 后端 | Flask |
+| 后端 | FastAPI |
 | 数据存储 | CSV文件 |
 | API风格 | RESTful |
+| 异步支持 | WebSocket / SSE |
 
 ## 📝 API接口
 
