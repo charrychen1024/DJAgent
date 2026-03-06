@@ -87,10 +87,14 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
         const response = await fetch(`${API_BASE}/risk-data/${filename}`)
         if (response.ok) {
           const data = await response.json()
-          if (data.length > 0) allData.push(...data.map(d => ({ ...d, source: `risk_data_${filename}.csv` })))
+          const actualData = data.data || data
+          if (actualData && actualData.length > 0) {
+            allData.push(...actualData.map(d => ({ ...d, source: `risk_data_${filename}.csv` })))
+          }
         }
       } catch (e) {}
     }
+    console.log(`[INFO] 加载了 ${allData.length} 条风险数据`)
     setAllRiskData(allData)
     setLoading(prev => ({ ...prev, riskData: false }))
   }
