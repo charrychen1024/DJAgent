@@ -1,26 +1,26 @@
 # Web Framework
-fastapi>=0.115.0
+fastapi==0.115.0
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
 # Note: CORS is built into FastAPI, no separate package needed
 
-# Agent SDK
-# claude-agent-sdk (需要单独安装: pip install claude-agent-sdk)
+# Agent SDK - 需要手动安装 claude-agent-sdk
 # 如果没有 claude-agent-sdk，可以使用 app_simple.py 作为启动入口
+# pip install claude-agent-sdk
 
 # Environment
 python-dotenv==1.0.0
 
 # Data processing
-pandas>=2.1.0
-openpyxl>=3.1.0
+pandas==2.1.3
+openpyxl==3.1.2
 
 # File parsing
-PyPDF2>=3.0.0
-pdfplumber>=0.10.0
-python-docx>=1.1.0
+PyPDF2==3.0.1
+pdfplumber==0.10.0
+python-docx==1.1.0
 
 # HTTP client for API calls
-http>=0.25.0
-requests>=2.31.0
+httpx==0.28.1
+requests==2.31.0
