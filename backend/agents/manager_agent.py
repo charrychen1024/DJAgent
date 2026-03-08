@@ -174,16 +174,6 @@ class ManagerAgent:
         """
         logger.info(f"[ManagerAgent] 收到消息: {message[:100]}...")
 
-        # 手动检测工具调用（临时方案）
-        manual_response = await self._handle_manual_tool_calls(message)
-        logger.info(
-            f"[ManagerAgent] 手动检测结果: {len(manual_response) if manual_response else 0} 字符"
-        )
-
-        if manual_response:
-            logger.info("[ManagerAgent] 使用手动工具调用")
-            return manual_response
-
         # 构建prompt
         prompt = self._build_prompt(message, context)
 
@@ -206,117 +196,6 @@ class ManagerAgent:
 
         logger.info(f"[ManagerAgent] 回复: {reply[:100]}...")
         return reply
-
-    async def _handle_manual_tool_calls(self, message: str) -> Optional[str]:
-        """
-        手动检测并处理工具调用（临时方案）
-
-        检测用户意图，直接调用相应工具
-        """
-        message_lower = message.lower()
-
-        # 检测：询问一线用户
-        if any(
-            keyword in message_lower
-            for keyword in [
-                "一线用户",
-                "一线人员",
-                "内部人员",
-                "查看用户",
-                "列出用户",
-                "哪些用户",
-            ]
-        ):
-            logger.info("[ManagerAgent] 检测到查询一线用户意图")
-            from tools import list_users
-
-            result = list_users("一线操作人员")
-            if result.get("success"):
-                users = result.get("users", [])
-                return self._format_users_response(users)
-            else:
-                return f"查询用户失败：{result.get('error', '未知错误')}"
-
-        # 检测：创建任务
-        if (
-            "创建" in message_lower
-            or "下发" in message_lower
-            or "任务" in message_lower
-        ):
-            logger.info("[ManagerAgent] 检测到创建任务意图")
-
-            # 尝试提取执行人
-            from tools import list_users
-
-            users_result = list_users("一线操作人员")
-            users = users_result.get("users", [])
-
-            # 查找消息中提到的用户
-            mentioned_user = None
-            for user in users:
-                if user.get("username") in message:
-                    mentioned_user = user
-                    break
-
-            if mentioned_user:
-                user_id = mentioned_user.get("user_id")
-                user_name = mentioned_user.get("username")
-
-                # 创建任务
-                from tools import create_task, assign_task
-
-                task_info = {
-                    "creator_id": self.user_id,
-                    "creator_name": self.user_name,
-                    "assigned_to_id": user_id,
-                    "assigned_to_name": user_name,
-                    "risk_summary": "风险核查任务",
-                    "risk_data_url": "",
-                }
-
-                create_result = create_task(task_info)
-                if "error" not in create_result:
-                    task_id = create_result.get("task_id")
-
-                    # 分配任务
-                    assign_result = assign_task(task_id, user_id, user_name, "已下发")
-                    if "error" not in assign_result:
-                        return f"✅ 任务创建成功！\n\n**任务ID**：{task_id}\n**执行人**：{user_name}\n**状态**：已下发\n\n任务已下发给{user_name}，等待执行。"
-                    else:
-                        return f"任务创建成功，但分配失败：{assign_result.get('error')}"
-                else:
-                    return f"创建任务失败：{create_result.get('error')}"
-
-            return "请明确要为哪位一线人员创建任务，我会帮您创建并下发。"
-
-        return None
-
-    def _format_users_response(self, users: list) -> str:
-        """格式化用户列表响应"""
-        if not users:
-            return "没有找到一线操作人员"
-
-        # 按部门分组
-        dept_groups = {}
-        for user in users:
-            dept = user.get("department", "未知")
-            if dept not in dept_groups:
-                dept_groups[dept] = []
-            dept_groups[dept].append(user)
-
-        response = "## 📋 可用的一线操作人员\n\n"
-
-        for dept, dept_users in dept_groups.items():
-            response += f"### {dept}（{len(dept_users)}人）\n\n"
-            for user in dept_users:
-                response += (
-                    f"- **{user.get('username')}** (ID: {user.get('user_id')})\n"
-                )
-            response += "\n"
-
-        response += f"总共 {len(users)} 名一线操作人员。"
-
-        return response
 
     def _build_prompt(self, message: str, context: Optional[Dict]) -> str:
         """构建prompt"""

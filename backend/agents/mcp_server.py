@@ -23,6 +23,10 @@ from tools import (
     get_task_detail,
     parse_csv,
     read_risk_data,
+    update_task_status,
+    save_chat_message,
+    save_uploaded_file_from_path,
+    list_uploaded_files,
 )
 
 # ============ Define MCP Tools ============
@@ -119,6 +123,71 @@ async def tool_read_risk_data(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
 
 
+@tool(
+    name="update_task_status",
+    description="Update task status. Input: task_id, status.",
+    input_schema={"task_id": str, "status": str},
+)
+async def tool_update_task_status(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Update task status tool"""
+    logger.info(f"[MCP-TOOL] update_task_status called for task: {args.get('task_id')}")
+    result = update_task_status(args["task_id"], args["status"])
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="save_chat_message",
+    description="Save chat message to task. Input: task_id, user_id, user_name, message.",
+    input_schema={"task_id": str, "user_id": str, "user_name": str, "message": str},
+)
+async def tool_save_chat_message(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Save chat message tool"""
+    logger.info(f"[MCP-TOOL] save_chat_message called for task: {args.get('task_id')}")
+    result = save_chat_message(
+        args["task_id"],
+        args["user_id"],
+        args["user_name"],
+        args["message"],
+    )
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="save_uploaded_file",
+    description="Save uploaded file to task. Input: task_id, file_path, file_name.",
+    input_schema={"task_id": str, "file_path": str, "file_name": str},
+)
+async def tool_save_uploaded_file(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Save uploaded file tool"""
+    logger.info(
+        f"[MCP-TOOL] save_uploaded_uploaded_file called for task: {args.get('task_id')}"
+    )
+    result = save_uploaded_file_from_path(
+        args["task_id"],
+        args["file_path"],
+        args["file_name"],
+    )
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="list_uploaded_files",
+    description="List uploaded files for a task. Input: task_id.",
+    input_schema={"task_id": str},
+)
+async def tool_list_uploaded_files(args: Dict[str, Any]) -> Dict[str, Any]:
+    """List uploaded files tool"""
+    logger.info(
+        f"[MCP-TOOL] list_uploaded_files called for task: {args.get('task_id')}"
+    )
+    result = list_uploaded_files(args["task_id"])
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
 # ============ Create MCP Server ============
 
 
@@ -132,6 +201,10 @@ def create_djagent_mcp_server():
         tool_get_task_detail,
         tool_parse_csv,
         tool_read_risk_data,
+        tool_update_task_status,
+        tool_save_chat_message,
+        tool_save_uploaded_file,
+        tool_list_uploaded_files,
     ]
 
     logger.info(f"[MCP-SERVER] Creating server with {len(all_tools)} tools")

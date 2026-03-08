@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
-const API_BASE = 'http://127.0.0.1:5005/api'
+const API_BASE = 'http://127.0.0.1:8000/api'
 
 // 业务负责人工作区
 function ManagerWorkspace({ currentUser, onAddToChat }) {
