@@ -176,6 +176,10 @@ class ManagerAgent:
 
         # 手动检测工具调用（临时方案）
         manual_response = await self._handle_manual_tool_calls(message)
+        logger.info(
+            f"[ManagerAgent] 手动检测结果: {len(manual_response) if manual_response else 0} 字符"
+        )
+
         if manual_response:
             logger.info("[ManagerAgent] 使用手动工具调用")
             return manual_response
