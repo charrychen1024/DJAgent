@@ -30,6 +30,18 @@
       "sender": "Agent",
       "message": "感谢反馈。已收到您的核查结果，正在验证文件内容。",
       "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-07 18:18:53",
+      "sender": "黄伟网点",
+      "message": "你能看到哪些用户",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-07 18:18:53",
+      "sender": "Agent",
+      "message": "您好！作为风险核查助手，我主要能查看与**当前核查任务相关**的数据，包括：\n\n1. **当前任务信息**（任务ID、风险详情、核查要求等）\n2. **您作为执行人的基本信息**（用户ID、所属机构等）\n3. **任务相关的风险数据和历史记录**\n\n---\n\n🔔 **当前您有待处理任务，我来为您推送任务详情：**\n\n<function_calls>\n<invoke name=\"get_task_detail\">\n<parameter name=\"task_id\">TASK_004</parameter>\n</invoke>\n</function_calls>",
+      "message_type": "text"
     }
   ],
   "uploaded_files": [
@@ -49,5 +61,6 @@
   "feedback_summary": "任务已超期，陈芳员工未及时提交核查结果。建议业务负责人与员工沟通，了解延迟原因并重新安排核查时间。",
   "summary_timestamp": "",
   "verification_timestamp": "",
-  "status": "已超期"
+  "status": "已超期",
+  "last_updated": "2026-03-07 18:18:53"
 }

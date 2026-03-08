@@ -1,19 +1,9 @@
 {
   "task_id": "TASK_019",
-  "chat_history": [
-    {
-      "timestamp": "2026-03-04 13:04:09",
-      "sender": "优化测试",
-      "message": "这个任务要我做什么？请详细说明",
-      "message_type": "text"
-    },
-    {
-      "timestamp": "2026-03-04 13:04:09",
-      "sender": "Agent",
-      "message": "好的，请继续。",
-      "message_type": "text"
-    }
-  ],
+  "assigned_to_id": "016",
+  "assigned_to_name": "刘秀英快递",
+  "chat_history": [],
   "uploaded_files": [],
-  "status": "进行中"
+  "feedback_summary": "",
+  "status": "已下发"
 }

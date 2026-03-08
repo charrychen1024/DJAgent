@@ -15,8 +15,16 @@ import httpx
 import logging
 
 # 配置日志
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# 导入智能体核心
+try:
+    from simple_agent import SimpleAgent
+    AGENT_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"无法导入 SimpleAgent: {e}")
+    AGENT_AVAILABLE = False
 
 # FastAPI 应用
 app = FastAPI(title="DJAgent API (Simplified)", version="1.0.0")
@@ -150,8 +158,19 @@ async def chat(request: Request):
     
     logger.info(f"[API] 用户消息: {message}")
     
-    # 简化版本：直接返回模拟响应，不调用 Claude API
-    response_text = f"收到您的消息：{message}\n\n（当前为简化模式，未连接 Claude API）"
+    if AGENT_AVAILABLE:
+        try:
+            # 实例化智能体
+            agent = SimpleAgent(user_id, username)
+            # 调用智能体进行对话
+            response_text = await agent.chat(message)
+            logger.info(f"[API] 智能体回复: {response_text[:50]}...")
+        except Exception as e:
+            logger.error(f"[API] 智能体调用失败: {e}")
+            response_text = f"抱歉，智能体遇到了一些问题: {str(e)}"
+    else:
+        # 降级模式
+        response_text = f"收到您的消息：{message}\n\n（当前为简化模式，智能体核心未加载）"
     
     return {
         'message': response_text,
