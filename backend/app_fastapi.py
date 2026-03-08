@@ -18,16 +18,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 导入Agent模块（尝试导入，失败则降级到简化模式）
+HAS_AGENT_SDK = False
+UnifiedAgent = None
+
 try:
-    from agents.manager_agent import ManagerAgent
-    from agents.staff_agent import StaffAgent
+    from agents.unified_agent import UnifiedAgent
+    from agents.session_manager import get_or_create_manager_agent
 
     HAS_AGENT_SDK = True
+    logger.info("[INFO] UnifiedAgent 导入成功")
 except ImportError as e:
-    logger.warning(f"[WARNING] Agent模块导入失败: {e}，将使用简化模式")
-    ManagerAgent = None
-    StaffAgent = None
-    HAS_AGENT_SDK = False
+    logger.warning(f"[WARNING] UnifiedAgent导入失败 {e}，将使用简化模式")
+    UnifiedAgent = None
 
 # 导入认证模块
 try:
@@ -43,7 +45,7 @@ app = FastAPI(title="DJAgent API", version="1.0.0")
 # CORS配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
