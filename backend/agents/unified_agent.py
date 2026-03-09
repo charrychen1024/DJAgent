@@ -82,7 +82,7 @@ class UnifiedAgent:
             all_messages.append(msg)
         
         logger.info(f"[UnifiedAgent] 收到 {len(all_messages)} 条消息")
-        
+
         # 从消息中提取文本内容
         text_messages = []
         tool_messages = []
@@ -92,10 +92,11 @@ class UnifiedAgent:
                     logger.debug(f"[UnifiedAgent] AssistantMessage model={msg.model}")
                 if hasattr(msg.content, '__iter__'):
                     for block in msg.content:
-                        if hasattr(block, 'type') and block.type == 'text':
-                            if hasattr(block, 'text'):
-                                text_messages.append(block.text)
+                        # 检查是否是文本块（有 text 属性）
+                        if hasattr(block, 'text'):
+                            text_messages.append(block.text)
                             logger.debug(f"[UnifiedAgent] 文本消息: {block.text[:50]}...")
+                        # 检查是否是工具调用
                         elif hasattr(block, 'type') and block.type == 'tool_use':
                             if hasattr(block, 'name') and hasattr(block, 'input'):
                                 tool_messages.append(f"工具调用: {block.name}")

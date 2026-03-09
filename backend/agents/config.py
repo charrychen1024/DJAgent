@@ -81,8 +81,20 @@ class AgentConfig:
         # Manager 模式：使用 MCP 服务器
         if self.mode == "manager" and self.mcp_servers:
             config["mcp_servers"] = self.mcp_servers
-            # 不要设置 allowed_tools，让 SDK 自动处理权限
-            logger.info(f"[AgentConfig] Manager 模式，配置 MCP 工具（自动权限）")
+            # 显式授权所有 MCP 工具
+            config["allowed_tools"] = [
+                "list_users",
+                "create_task",
+                "assign_task",
+                "get_task_detail",
+                "parse_csv",
+                "read_risk_data",
+                "update_task_status",
+                "save_chat_message",
+                "save_uploaded_file",
+                "list_uploaded_files",
+            ]
+            logger.info(f"[AgentConfig] Manager 模式，配置 MCP 工具（显式授权）")
 
         # Staff 模式：加载 Skill
         elif self.mode == "staff":
