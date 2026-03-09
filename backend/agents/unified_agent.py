@@ -100,7 +100,7 @@ class UnifiedAgent:
                             if hasattr(block, 'name') and hasattr(block, 'input'):
                                 tool_messages.append(f"工具调用: {block.name}")
                                 logger.debug(f"[UnifiedAgent] 工具调用: {block.name}")
-                    logger.debug(f"[UnifiedAgent] 输入参数: {block.input}")
+                                logger.debug(f"[UnifiedAgent] 输入参数: {block.input}")
 
             if isinstance(msg, ResultMessage):
                 logger.info(f"[UnifiedAgent] 结果消息: {msg.subtype}")
