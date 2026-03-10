@@ -130,32 +130,33 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const handleAddSelectedToChat = () => {
     if (selectedRows.length === 0) return
     const selectedData = selectedRows.map(i => allRiskData[i])
-    // 使用所有字段，格式化为易读的键值对
-    const summary = selectedData.map(d => {
-      const entries = Object.entries(d).filter(([k]) => k !== 'source')
-      return entries.map(([k, v]) => `${k}: ${v}`).join(', ')
-    }).join('\n')
+
+    let summary
+    if (selectedData.length <= 3) {
+      // 3条及以下显示完整信息
+      summary = selectedData.map(d => {
+        const entries = Object.entries(d).filter(([k]) => k !== 'source')
+        return entries.map(([k, v]) => `${k}: ${v}`).join(', ')
+      }).join('\n')
+    } else {
+      // 超过3条只显示摘要（关键字段）
+      const keyFields = ['客户名称', '风险等级', '风险类型', '涉及金额', '省份', '城市']
+      summary = selectedData.map(d => {
+        const keyInfo = keyFields.filter(f => d[f]).map(f => `${f}: ${d[f]}`).join(', ')
+        return keyInfo || Object.values(d).slice(0, 3).join(', ')
+      }).join('\n')
+    }
 
     const message = `我选择了${selectedRows.length}条风险数据，请帮我分析：\n${summary}`
     setInputMessage(message)
   }
 
   const handleTaskClick = async (task) => {
+    // 只更新任务详情和反馈，不刷新聊天记录
     setSelectedTask(task)
     setTaskFeedback(null)
     try {
-      const response = await fetch(`${API_BASE}/tasks/${task.task_id}/creation-history`)
-      if (response.ok) {
-        const data = await response.json()
-        if (Array.isArray(data)) {
-          setChatMessages(data.map(msg => ({
-            sender: msg.sender === 'Agent' ? 'agent' : 'user',
-            message: msg.message,
-            timestamp: msg.timestamp,
-            messageType: msg.message_type
-          })))
-        }
-      }
+      // 只获取反馈信息，不影响聊天历史
       const feedbackRes = await fetch(`${API_BASE}/feedback/${task.task_id}`)
       if (feedbackRes.ok) {
         const feedbackData = await feedbackRes.json()
@@ -457,7 +458,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           )}
           <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
           <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && e.ctrlKey && !loading.chat && handleSendMessage()} placeholder="输入消息... (Ctrl+Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
+          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
           <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)}>发送</button>
         </div>
       </div>
@@ -713,7 +714,7 @@ function StaffWorkspace({ currentUser }) {
           )}
           <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
           <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && e.ctrlKey && !loading.chat && handleSendMessage()} placeholder="输入消息... (Ctrl+Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
+          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
           <button onClick={handleSendMessage} disabled={loading.chat || !inputMessage.trim()}>发送</button>
         </div>
       </div>
