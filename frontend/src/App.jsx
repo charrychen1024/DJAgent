@@ -131,21 +131,11 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
     if (selectedRows.length === 0) return
     const selectedData = selectedRows.map(i => allRiskData[i])
 
-    let summary
-    if (selectedData.length <= 3) {
-      // 3条及以下显示完整信息
-      summary = selectedData.map(d => {
-        const entries = Object.entries(d).filter(([k]) => k !== 'source')
-        return entries.map(([k, v]) => `${k}: ${v}`).join(', ')
-      }).join('\n')
-    } else {
-      // 超过3条只显示摘要（关键字段）
-      const keyFields = ['客户名称', '风险等级', '风险类型', '涉及金额', '省份', '城市']
-      summary = selectedData.map(d => {
-        const keyInfo = keyFields.filter(f => d[f]).map(f => `${f}: ${d[f]}`).join(', ')
-        return keyInfo || Object.values(d).slice(0, 3).join(', ')
-      }).join('\n')
-    }
+    // 显示所有字段（排除 source）
+    const summary = selectedData.map(d => {
+      const entries = Object.entries(d).filter(([k]) => k !== 'source')
+      return entries.map(([k, v]) => `${k}: ${v}`).join(', ')
+    }).join('\n')
 
     const message = `我选择了${selectedRows.length}条风险数据，请帮我分析：\n${summary}`
     setInputMessage(message)
