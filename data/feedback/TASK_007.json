@@ -110,6 +110,30 @@
       "sender": "Agent",
       "message": "让我为你查询一下任务详情：<|tool_calls_section_begin|><|tool_call_begin|>functions.get_task_detail:1<|tool_call_argument_begin|>{\"task_id\": \"TASK_007\"}<|tool_call_end|><|tool_calls_section_end|>",
       "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-10 23:30:57",
+      "sender": "刘秀英快递",
+      "message": "1",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-10 23:30:57",
+      "sender": "Agent",
+      "message": "好的，请继续。",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-10 23:31:25",
+      "sender": "刘秀英快递",
+      "message": "继续什么",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-10 23:31:25",
+      "sender": "Agent",
+      "message": "好的，请继续。",
+      "message_type": "text"
     }
   ],
   "uploaded_files": [],
@@ -117,5 +141,5 @@
   "summary_timestamp": "",
   "verification_timestamp": "",
   "status": "已下发",
-  "last_updated": "2026-03-07 13:17:53"
+  "last_updated": "2026-03-10 23:31:25"
 }

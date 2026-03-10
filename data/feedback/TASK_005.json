@@ -18,8 +18,21 @@
       "sender": "Agent",
       "message": "好的，请继续。",
       "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-10 23:31:52",
+      "sender": "周芳销售",
+      "message": "1",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-10 23:31:52",
+      "sender": "Agent",
+      "message": "好的，请继续。",
+      "message_type": "text"
     }
   ],
   "uploaded_files": [],
-  "status": "进行中"
+  "status": "进行中",
+  "last_updated": "2026-03-10 23:31:52"
 }
