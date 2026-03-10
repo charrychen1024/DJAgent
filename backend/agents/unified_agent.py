@@ -96,12 +96,13 @@ class UnifiedAgent:
                         if hasattr(block, 'text'):
                             text_messages.append(block.text)
                             logger.debug(f"[UnifiedAgent] 文本消息: {block.text[:50]}...")
-                        # 检查是否是工具调用
+                        # 检查是否是工具调用（确保有 input 属性）
                         elif hasattr(block, 'type') and block.type == 'tool_use':
-                            if hasattr(block, 'name') and hasattr(block, 'input'):
+                            if hasattr(block, 'name'):
                                 tool_messages.append(f"工具调用: {block.name}")
                                 logger.debug(f"[UnifiedAgent] 工具调用: {block.name}")
-                                logger.debug(f"[UnifiedAgent] 输入参数: {block.input}")
+                                if hasattr(block, 'input'):
+                                    logger.debug(f"[UnifiedAgent] 输入参数: {block.input}")
 
             if isinstance(msg, ResultMessage):
                 logger.info(f"[UnifiedAgent] 结果消息: {msg.subtype}")

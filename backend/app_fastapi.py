@@ -45,7 +45,7 @@ app = FastAPI(title="DJAgent API", version="1.0.0")
 # CORS配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -164,10 +164,41 @@ async def create_task(request: Request):
 async def chat(request: Request):
     from agents.session_manager import get_or_create_manager_agent
 
-    data = await request.json()
-    message = data.get("message", "")
-    user_id = data.get("user_id", "manager_default")
-    username = data.get("username", "业务负责人")
+    # 支持 JSON 和 FormData 两种格式
+    content_type = request.headers.get("content-type", "")
+
+    if "multipart/form-data" in content_type:
+        # FormData 格式（包含文件上传）
+        form = await request.form()
+        message = form.get("message", "")
+        user_id = form.get("user_id", "manager_default")
+        username = form.get("username", "业务负责人")
+        task_id = form.get("task_id")
+
+        # 处理文件上传
+        files = []
+        for key in form.keys():
+            if key.startswith("file_"):
+                file = form[key]
+                files.append(file)
+
+        if files:
+            logger.info(f"[API] 收到 {len(files)} 个文件")
+    else:
+        # JSON 格式
+        try:
+            data = await request.json()
+            message = data.get("message", "")
+            user_id = data.get("user_id", "manager_default")
+            username = data.get("username", "业务负责人")
+            task_id = data.get("task_id")
+            files = []
+        except Exception:
+            message = ""
+            user_id = "manager_default"
+            username = "业务负责人"
+            task_id = None
+            files = []
 
     logger.info(f"[API] 用户消息: {message}")
 

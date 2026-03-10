@@ -13,7 +13,7 @@ DJAgent is a risk management AI assistant system built with React + FastAPI + Cl
 cd backend
 source venv/bin/activate
 unset CLAUDECODE  # Required to avoid nested Claude Code session error
-python -m uvicorn app_fastapi:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app_fastapi:app --reload --host 0.0.0.0 --port 5005
 ```
 
 ### Frontend (React + Vite)
@@ -63,7 +63,7 @@ Tools must be explicitly authorized via `allowed_tools` list in config.py. Witho
 ## Important Notes
 
 - The backend MUST be started with `unset CLAUDECODE` to avoid nested Claude Code session errors
-- API runs on port 8000, frontend on port 5173/5174
+- API runs on port 5005, frontend on port 5173/5174
 - Frontend API_BASE in App.jsx must match backend port
 - Agent sessions are cached by user_id in SessionManager - refresh page to apply config changes
 
