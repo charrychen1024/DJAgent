@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import './App.css'
 
-const API_BASE = 'http://127.0.0.1:8000/api'
+const API_BASE = 'http://127.0.0.1:5005/api'
 
 // 业务负责人工作区
 function ManagerWorkspace({ currentUser, onAddToChat }) {
@@ -12,6 +14,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [chatMessages, setChatMessages] = useState([])
   const [taskFeedback, setTaskFeedback] = useState(null)
   const [inputMessage, setInputMessage] = useState('')
+  const [pendingFiles, setPendingFiles] = useState([]) // 待发送的文件列表
   const [loading, setLoading] = useState({ tasks: false, riskData: false, chat: false })
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1)
@@ -127,10 +130,12 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const handleAddSelectedToChat = () => {
     if (selectedRows.length === 0) return
     const selectedData = selectedRows.map(i => allRiskData[i])
-    const summary = selectedData.map(d => 
-      `运单号: ${d.运单号 || '-'}, 异常类型: ${d.异常类型 || '-'}, 风险等级: ${d.风险等级 || '-'}, 发货地: ${d.发货地 || '-'}, 收货地: ${d.收货地 || '-'}`
-    ).join('\n')
-    
+    // 使用所有字段，格式化为易读的键值对
+    const summary = selectedData.map(d => {
+      const entries = Object.entries(d).filter(([k]) => k !== 'source')
+      return entries.map(([k, v]) => `${k}: ${v}`).join(', ')
+    }).join('\n')
+
     const message = `我选择了${selectedRows.length}条风险数据，请帮我分析：\n${summary}`
     setInputMessage(message)
   }
@@ -161,49 +166,79 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
     }
   }
 
+  // 文件选择后添加到待发送列表
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    const newFiles = files.map(file => ({
+      id: Date.now() + Math.random(),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file: file
+    }))
+
+    setPendingFiles(prev => [...prev, ...newFiles])
+    e.target.value = '' // 清空input，允许重复选择同一文件
+  }
+
+  // 移除待发送文件
+  const handleRemovePendingFile = (fileId) => {
+    setPendingFiles(prev => prev.filter(f => f.id !== fileId))
+  }
+
+  // 发送消息（包含待发送的文件）
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return
-    const userMessage = { sender: 'user', message: inputMessage, timestamp: new Date().toLocaleString() }
+    if (!inputMessage.trim() && pendingFiles.length === 0) return
+
+    // 先将用户消息和文件显示在对话框
+    const fileDesc = pendingFiles.length > 0
+      ? `\n[附件: ${pendingFiles.map(f => f.name).join(', ')}]`
+      : ''
+
+    const userMessage = {
+      sender: 'user',
+      message: inputMessage + fileDesc,
+      timestamp: new Date().toLocaleString(),
+      files: pendingFiles.map(f => ({ name: f.name, type: f.type }))
+    }
     setChatMessages(prev => [...prev, userMessage])
+
+    const messageToSend = inputMessage
     setInputMessage('')
+    setPendingFiles([]) // 清空待发送文件
     setLoading(prev => ({ ...prev, chat: true }))
-    
+
     try {
+      // 构建 FormData 发送消息和文件
+      const formData = new FormData()
+      formData.append('message', messageToSend)
+      formData.append('user_id', currentUser.user_id)
+      formData.append('username', currentUser.username)
+      if (selectedTask) {
+        formData.append('task_id', selectedTask.task_id)
+      }
+
+      // 添加文件
+      pendingFiles.forEach(f => {
+        formData.append('files', f.file, f.name)
+      })
+
       const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: inputMessage, user_id: currentUser.user_id, role: currentUser.role })
+        body: formData
       })
+
       const data = await response.json()
       setChatMessages(prev => [...prev, { sender: 'agent', message: data.message, timestamp: data.timestamp }])
       fetchTasks()
     } catch (err) {
       console.error('[ERROR] 发送消息失败:', err)
+      setChatMessages(prev => [...prev, { sender: 'agent', message: '抱歉，发送消息失败，请稍后重试。', timestamp: new Date().toLocaleString() }])
     } finally {
       setLoading(prev => ({ ...prev, chat: false }))
     }
-  }
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const fileMessage = { sender: 'user', message: `[上传文件] ${file.name}`, timestamp: new Date().toLocaleString() }
-    setChatMessages(prev => [...prev, fileMessage])
-    
-    if (selectedTask) {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('user_id', currentUser.user_id)
-      formData.append('filename', file.name)
-      try {
-        const response = await fetch(`${API_BASE}/tasks/${selectedTask.task_id}/upload-file`, { method: 'POST', body: formData })
-        const data = await response.json()
-        setChatMessages(prev => [...prev, { sender: 'agent', message: data.message || `文件 ${file.name} 上传成功`, timestamp: new Date().toLocaleString() }])
-      } catch (err) {
-        console.error('[ERROR] 文件上传失败:', err)
-      }
-    }
-    e.target.value = ''
   }
 
   // 分页逻辑
@@ -395,17 +430,35 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           {chatMessages.map((msg, i) => (
             <div key={i} className={`message ${msg.sender}`}>
               <div className="message-header"><span className="sender">{msg.sender === 'user' ? '👤 我' : '🤖 Agent'}</span><span className="timestamp">{msg.timestamp}</span></div>
-              <div className="message-content">{msg.message}</div>
+              <div className="message-content">
+                {msg.sender === 'user' ? (
+                  msg.message
+                ) : (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
+                )}
+              </div>
             </div>
           ))}
           {loading.chat && <div className="message agent loading"><div className="message-content">正在思考...</div></div>}
           <div ref={messagesEndRef} />
         </div>
         <div className="chat-input">
-          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
+          {/* 待发送文件列表 */}
+          {pendingFiles.length > 0 && (
+            <div className="pending-files">
+              {pendingFiles.map(f => (
+                <div key={f.id} className="pending-file">
+                  <span className="file-icon">📄</span>
+                  <span className="file-name">{f.name}</span>
+                  <button className="remove-file" onClick={() => handleRemovePendingFile(f.id)}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
           <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-          <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && !loading.chat && handleSendMessage()} placeholder="输入消息... (所有操作可通过对话完成)" disabled={loading.chat} />
-          <button onClick={handleSendMessage} disabled={loading.chat || !inputMessage.trim()}>发送</button>
+          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && e.ctrlKey && !loading.chat && handleSendMessage()} placeholder="输入消息... (Ctrl+Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
+          <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)}>发送</button>
         </div>
       </div>
       <div className="resize-handle" onMouseDown={() => setIsDraggingRight(true)} />
@@ -459,6 +512,7 @@ function StaffWorkspace({ currentUser }) {
   const [selectedTask, setSelectedTask] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
+  const [pendingFiles, setPendingFiles] = useState([]) // 待发送的文件列表
   const [loading, setLoading] = useState({ chat: false, init: true })
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -524,15 +578,45 @@ function StaffWorkspace({ currentUser }) {
   }
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !selectedTask) return
-    const userMessage = { sender: 'user', message: inputMessage, timestamp: new Date().toLocaleString() }
+    if (!inputMessage.trim() && pendingFiles.length === 0) return
+    if (!selectedTask) {
+      alert('暂无任务，请先获取任务')
+      return
+    }
+
+    // 先将用户消息和文件显示在对话框
+    const fileDesc = pendingFiles.length > 0
+      ? `\n[附件: ${pendingFiles.map(f => f.name).join(', ')}]`
+      : ''
+
+    const userMessage = {
+      sender: 'user',
+      message: inputMessage + fileDesc,
+      timestamp: new Date().toLocaleString(),
+      files: pendingFiles.map(f => ({ name: f.name, type: f.type }))
+    }
     setChatMessages(prev => [...prev, userMessage])
+
+    const messageToSend = inputMessage
     setInputMessage('')
+    setPendingFiles([])
     setLoading(prev => ({ ...prev, chat: true }))
+
     try {
+      // 构建 FormData 发送消息和文件
+      const formData = new FormData()
+      formData.append('message', messageToSend)
+      formData.append('user_id', currentUser.user_id)
+      formData.append('username', currentUser.username)
+
+      // 添加文件
+      pendingFiles.forEach(f => {
+        formData.append('files', f.file, f.name)
+      })
+
       const response = await fetch(`${API_BASE}/tasks/${selectedTask.task_id}/message`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: inputMessage, user_id: currentUser.user_id, username: currentUser.username })
+        method: 'POST',
+        body: formData
       })
       const data = await response.json()
       if (data.user_message) setChatMessages(prev => [...prev, { sender: 'user', message: data.user_message.message, timestamp: data.user_message.timestamp }])
@@ -541,23 +625,30 @@ function StaffWorkspace({ currentUser }) {
     finally { setLoading(prev => ({ ...prev, chat: false })) }
   }
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file || !selectedTask) {
-      if (!selectedTask) alert('暂无任务，请稍后再试')
+  // 文件选择后添加到待发送列表
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    if (!selectedTask) {
+      alert('暂无任务，请先获取任务')
       return
     }
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('user_id', currentUser.user_id)
-    formData.append('filename', file.name)
-    try {
-      const response = await fetch(`${API_BASE}/tasks/${selectedTask.task_id}/upload-file`, { method: 'POST', body: formData })
-      const data = await response.json()
-      setChatMessages(prev => [...prev, { sender: 'user', message: `[上传文件] ${file.name}`, timestamp: new Date().toLocaleString() }])
-      setTimeout(() => setChatMessages(prev => [...prev, { sender: 'agent', message: data.message || `文件已上传`, timestamp: new Date().toLocaleString() }]), 500)
-    } catch (err) { console.error('[ERROR] 文件上传失败:', err) }
+
+    const newFiles = files.map(file => ({
+      id: Date.now() + Math.random(),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file: file
+    }))
+
+    setPendingFiles(prev => [...prev, ...newFiles])
     e.target.value = ''
+  }
+
+  // 移除待发送文件
+  const handleRemovePendingFile = (fileId) => {
+    setPendingFiles(prev => prev.filter(f => f.id !== fileId))
   }
 
   // 完成任务也可以通过对话完成，不需要单独按钮
@@ -594,7 +685,13 @@ function StaffWorkspace({ currentUser }) {
           {chatMessages.length === 0 && !loading.chat && <div className="welcome-message"><p>👋 您好！智能体正在准备任务信息...</p></div>}
           {chatMessages.map((msg, i) => (
             <div key={i} className={`message ${msg.sender}`}>
-              <div className="message-content">{msg.message}</div>
+              <div className="message-content">
+                {msg.sender === 'user' ? (
+                  msg.message
+                ) : (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
+                )}
+              </div>
               <div className="message-time">{msg.timestamp}</div>
             </div>
           ))}
@@ -602,9 +699,21 @@ function StaffWorkspace({ currentUser }) {
           <div ref={messagesEndRef} />
         </div>
         <div className="chat-input">
-          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
+          {/* 待发送文件列表 */}
+          {pendingFiles.length > 0 && (
+            <div className="pending-files">
+              {pendingFiles.map(f => (
+                <div key={f.id} className="pending-file">
+                  <span className="file-icon">📄</span>
+                  <span className="file-name">{f.name}</span>
+                  <button className="remove-file" onClick={() => handleRemovePendingFile(f.id)}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
           <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-          <input type="text" value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && !loading.chat && handleSendMessage()} placeholder="输入消息..." disabled={loading.chat} />
+          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && e.ctrlKey && !loading.chat && handleSendMessage()} placeholder="输入消息... (Ctrl+Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
           <button onClick={handleSendMessage} disabled={loading.chat || !inputMessage.trim()}>发送</button>
         </div>
       </div>

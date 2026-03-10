@@ -81,28 +81,45 @@ class AgentConfig:
         # Manager 模式：使用 MCP 服务器
         if self.mode == "manager" and self.mcp_servers:
             config["mcp_servers"] = self.mcp_servers
-            # 显式授权所有 MCP 工具
+            # 显式授权所有 MCP 工具（使用 mcp__ 命名空间）
             config["allowed_tools"] = [
-                # "list_users",
-                # "create_task",
-                # "assign_task",
-                # "get_task_detail",
-                "parse_csv",
-                # "read_risk_data",
-                # "update_task_status",
-                # "save_chat_message",
-                # "save_uploaded_file",
-                # "list_uploaded_files",
-                "mcp__djagent_tools__list_users"
+                "mcp__djagent_tools__list_users",
+                "mcp__djagent_tools__create_task",
+                "mcp__djagent_tools__assign_task",
+                "mcp__djagent_tools__get_task_detail",
+                "mcp__djagent_tools__parse_csv",
+                "mcp__djagent_tools__read_risk_data",
+                "mcp__djagent_tools__update_task_status",
+                "mcp__djagent_tools__save_chat_message",
+                "mcp__djagent_tools__save_uploaded_file",
+                "mcp__djagent_tools__list_uploaded_files",
             ]
-            logger.info(f"[AgentConfig] Manager 模式，配置 MCP 工具（显式授权）")
+            logger.info(f"[AgentConfig] Manager 模式，配置 {len(config['allowed_tools'])} 个 MCP 工具（显式授权）")
 
-        # Staff 模式：加载 Skill
+        # Staff 模式：加载 Skill + MCP 工具
         elif self.mode == "staff":
             skills_dict = self._load_skills()
             config["skills"] = skills_dict
-            config["allowed_tools"] = list(skills_dict.keys())
-            logger.info(f"[AgentConfig] Staff 模式，加载 {len(skills_dict)} 个 Skill")
+
+            # Staff 模式下也配置 MCP 工具（用于文件解析等）
+            if self.mcp_servers:
+                config["mcp_servers"] = self.mcp_servers
+                # Staff 需要的基础 MCP 工具
+                staff_mcp_tools = [
+                    "mcp__djagent_tools__get_task_detail",
+                    "mcp__djagent_tools__parse_csv",
+                    "mcp__djagent_tools__update_task_status",
+                    "mcp__djagent_tools__save_chat_message",
+                    "mcp__djagent_tools__save_uploaded_file",
+                    "mcp__djagent_tools__list_uploaded_files",
+                ]
+                # 合并 skills 和 mcp 工具
+                all_tools = list(skills_dict.keys()) + staff_mcp_tools
+                config["allowed_tools"] = all_tools
+                logger.info(f"[AgentConfig] Staff 模式，加载 {len(skills_dict)} 个 Skill + {len(staff_mcp_tools)} 个 MCP 工具")
+            else:
+                config["allowed_tools"] = list(skills_dict.keys())
+                logger.info(f"[AgentConfig] Staff 模式，加载 {len(skills_dict)} 个 Skill")
 
         return config
 
