@@ -425,10 +425,24 @@ async def get_chat_history(task_id: str, user_id: str = None, username: str = No
 async def send_message(task_id: str, request: Request):
     from agents.session_manager import get_or_create_staff_agent
 
-    data = await request.json()
-    message = data.get("message", "")
-    user_id = data.get("user_id")
-    username = data.get("username", "")
+    # 支持 JSON 和 FormData 两种格式
+    content_type = request.headers.get("content-type", "")
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        message = form.get("message", "")
+        user_id = form.get("user_id")
+        username = form.get("username", "")
+    else:
+        try:
+            data = await request.json()
+            message = data.get("message", "")
+            user_id = data.get("user_id")
+            username = data.get("username", "")
+        except Exception:
+            message = ""
+            user_id = None
+            username = ""
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
