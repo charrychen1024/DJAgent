@@ -53,8 +53,21 @@ async def tool_list_users(args: Dict[str, Any]) -> Dict[str, Any]:
 )
 async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
     """Create task tool"""
+    import json
     logger.info(f"[MCP-TOOL] create_task called with args keys: {list(args.keys())}")
-    result = create_task(args["task_info"])
+
+    # 处理 task_info 可能是字符串或缺失的情况
+    task_info = args.get("task_info")
+    if task_info is None:
+        return {"content": [{"type": "text", "text": "错误: task_info 不能为空"}], "is_error": True}
+    if isinstance(task_info, str):
+        try:
+            task_info = json.loads(task_info)
+            logger.info(f"[MCP-TOOL] Parsed task_info from string")
+        except json.JSONDecodeError:
+            return {"content": [{"type": "text", "text": "错误: task_info 必须是有效的 JSON 对象"}], "is_error": True}
+
+    result = create_task(task_info)
     logger.info(f"[MCP-TOOL] create_task returned: {result.get('task_id', 'N/A')}")
     error_flag = "error" in result
     return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
