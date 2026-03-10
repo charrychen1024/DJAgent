@@ -96,12 +96,9 @@ class AgentConfig:
             ]
             logger.info(f"[AgentConfig] Manager 模式，配置 {len(config['allowed_tools'])} 个 MCP 工具（显式授权）")
 
-        # Staff 模式：加载 Skill + MCP 工具
+        # Staff 模式：使用 MCP 工具
         elif self.mode == "staff":
-            skills_dict = self._load_skills()
-            config["skills"] = skills_dict
-
-            # Staff 模式下也配置 MCP 工具（用于文件解析等）
+            # Staff 模式下配置 MCP 工具
             if self.mcp_servers:
                 config["mcp_servers"] = self.mcp_servers
                 # Staff 需要的基础 MCP 工具
@@ -113,13 +110,11 @@ class AgentConfig:
                     "mcp__djagent_tools__save_uploaded_file",
                     "mcp__djagent_tools__list_uploaded_files",
                 ]
-                # 合并 skills 和 mcp 工具
-                all_tools = list(skills_dict.keys()) + staff_mcp_tools
-                config["allowed_tools"] = all_tools
-                logger.info(f"[AgentConfig] Staff 模式，加载 {len(skills_dict)} 个 Skill + {len(staff_mcp_tools)} 个 MCP 工具")
+                config["allowed_tools"] = staff_mcp_tools
+                logger.info(f"[AgentConfig] Staff 模式，配置 {len(staff_mcp_tools)} 个 MCP 工具")
             else:
-                config["allowed_tools"] = list(skills_dict.keys())
-                logger.info(f"[AgentConfig] Staff 模式，加载 {len(skills_dict)} 个 Skill")
+                config["allowed_tools"] = []
+                logger.info(f"[AgentConfig] Staff 模式，未配置 MCP 工具")
 
         return config
 
