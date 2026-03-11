@@ -179,15 +179,28 @@ async def chat(request: Request):
         username = form.get("username", "业务负责人")
         task_id = form.get("task_id")
 
-        # 处理文件上传
+        # 处理文件上传 - 键名是 "files"
         files = []
         for key in form.keys():
-            if key.startswith("file_"):
+            if key == "files":
                 file = form[key]
                 files.append(file)
+                logger.info(f"[API] 收到文件: {file.filename}")
 
         if files:
-            logger.info(f"[API] 收到 {len(files)} 个文件")
+            logger.info(f"[API] 共收到 {len(files)} 个文件")
+
+        # 保存文件到临时目录
+        import tempfile
+        import os
+        temp_dir = tempfile.mkdtemp()
+        saved_files = []
+        for f in files:
+            file_path = os.path.join(temp_dir, f.filename)
+            with open(file_path, 'wb') as pf:
+                pf.write(f.read())
+            saved_files.append(file_path)
+            logger.info(f"[API] 文件已保存: {file_path}")
     else:
         # JSON 格式
         try:
@@ -196,15 +209,16 @@ async def chat(request: Request):
             user_id = data.get("user_id", "manager_default")
             username = data.get("username", "业务负责人")
             task_id = data.get("task_id")
-            files = []
+            saved_files = []
         except Exception:
             message = ""
             user_id = "manager_default"
             username = "业务负责人"
             task_id = None
-            files = []
+            saved_files = []
 
     logger.info(f"[API] 用户消息: {message}")
+    logger.info(f"[API] 上传文件数: {len(saved_files) if saved_files else 0}")
 
     if not HAS_AGENT_SDK:
         response_text = (
@@ -213,7 +227,7 @@ async def chat(request: Request):
     else:
         try:
             agent = await get_or_create_manager_agent(user_id, username)
-            response_text = await agent.chat(message)
+            response_text = await agent.chat(message, files=saved_files if saved_files else None)
             logger.info(f"[API] ManagerAgent 回复成功")
         except Exception as e:
             logger.error(f"[ERROR] ManagerAgent 调用失败: {str(e)}")

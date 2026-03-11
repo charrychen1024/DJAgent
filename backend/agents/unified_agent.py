@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from claude_agent_sdk import ClaudeSDKClient, AssistantMessage, TextBlock, ResultMessage
 
 from .config import AgentConfig
@@ -54,7 +54,12 @@ class UnifiedAgent:
             await self.client.__aexit__(exc_type, exc_val, exc_tb)
             logger.info(f"[UnifiedAgent] 会话关闭: {self.config.user_name}")
 
-    async def chat(self, message: str, context: Optional[Dict[str, Any]] = None) -> str:
+    async def chat(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        files: Optional[List[str]] = None,
+    ) -> str:
         """
         统一入口 - SDK 自主处理
 
@@ -64,14 +69,17 @@ class UnifiedAgent:
         Args:
             message: 用户消息
             context: 上下文信息（如当前任务ID等）
+            files: 上传的文件路径列表
 
         Returns:
             Agent 回复
         """
         logger.info(f"[UnifiedAgent] 收到消息: {message[:100]}...")
+        if files:
+            logger.info(f"[UnifiedAgent] 收到文件: {files}")
 
         # 构建提示词
-        prompt = self._build_prompt(message, context)
+        prompt = self._build_prompt(message, context, files)
 
         # 发送 SDK 处理
         await self.client.query(prompt)
@@ -124,15 +132,30 @@ class UnifiedAgent:
         logger.info(f"[UnifiedAgent] 回复: {reply[:100]}...")
         return reply
 
-    def _build_prompt(self, message: str, context: Optional[Dict[str, Any]]) -> str:
+    def _build_prompt(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        files: Optional[List[str]] = None,
+    ) -> str:
         """构建提示词"""
         prompt = f"""当前用户：{self.config.user_name} (ID: {self.config.user_id})
 角色：{"业务负责人" if self.config.mode == "manager" else "一线操作人员"}
 """
 
+        # 添加上传文件信息
+        if files:
+            prompt += "\n用户上传了以下文件：\n"
+            for i, file_path in enumerate(files, 1):
+                # 提取文件名
+                import os
+                filename = os.path.basename(file_path)
+                prompt += f"{i}. {filename} (路径: {file_path})\n"
+            prompt += "请根据文件类型选择合适的解析工具（parse_csv, parse_excel, parse_pdf, parse_word）来读取文件内容。\n"
+
         if context:
             if context.get("task_id"):
-                prompt += f"当前任务ID：{context.get('task_id')}\n"
+                prompt += f"\n当前任务ID：{context.get('task_id')}\n"
                 self.current_task_id = context.get("task_id")
             if context.get("risk_data"):
                 prompt += f"风险数据：{context.get('risk_data')}\n"
