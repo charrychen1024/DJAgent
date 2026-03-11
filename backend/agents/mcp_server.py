@@ -23,6 +23,9 @@ from tools import (
     assign_task,
     get_task_detail,
     parse_csv,
+    parse_excel,
+    parse_pdf,
+    parse_word,
     read_risk_data,
     update_task_status,
     save_chat_message,
@@ -236,6 +239,45 @@ async def tool_list_uploaded_files(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
 
 
+@tool(
+    name="parse_excel",
+    description="Parse Excel file and return its contents. Input: file_path (string), sheet_name (string, optional).",
+    input_schema={"file_path": str, "sheet_name": str},
+)
+async def tool_parse_excel(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse Excel tool"""
+    logger.info(f"[MCP-TOOL] parse_excel called for file: {args.get('file_path')}")
+    result = parse_excel(args["file_path"], args.get("sheet_name"))
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="parse_pdf",
+    description="Parse PDF file and extract text. Input: file_path (string), max_pages (int, optional, default 3).",
+    input_schema={"file_path": str, "max_pages": int},
+)
+async def tool_parse_pdf(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse PDF tool"""
+    logger.info(f"[MCP-TOOL] parse_pdf called for file: {args.get('file_path')}")
+    result = parse_pdf(args["file_path"], args.get("max_pages", 3))
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="parse_word",
+    description="Parse Word document and extract text. Input: file_path (string).",
+    input_schema={"file_path": str},
+)
+async def tool_parse_word(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse Word tool"""
+    logger.info(f"[MCP-TOOL] parse_word called for file: {args.get('file_path')}")
+    result = parse_word(args["file_path"])
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
 # ============ Create MCP Server ============
 
 
@@ -248,6 +290,9 @@ def create_djagent_mcp_server():
         tool_assign_task,
         tool_get_task_detail,
         tool_parse_csv,
+        tool_parse_excel,
+        tool_parse_pdf,
+        tool_parse_word,
         tool_read_risk_data,
         tool_update_task_status,
         tool_save_chat_message,

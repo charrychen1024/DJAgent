@@ -161,6 +161,60 @@
   color: #333;
 }
 
+/* 风险数据筛选栏 */
+.risk-filter-bar {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.filter-select {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  min-width: 80px;
+  background: white;
+}
+
+.filter-input {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  min-width: 80px;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #1890ff;
+}
+
+.filter-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+  background: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  background: #096dd9;
+}
+
+.filter-btn.reset {
+  background: #8c8c8c;
+}
+
+.filter-btn.reset:hover {
+  background: #595959;
+}
+
 .risk-data-container {
   flex: 1;
   display: flex;
