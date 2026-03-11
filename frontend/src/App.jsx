@@ -31,6 +31,45 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
     fetchAllRiskData()
   }, [])
 
+  // SSE 事件监听 - 实时接收任务通知
+  useEffect(() => {
+    if (!currentUser?.user_id) return
+
+    const eventSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log('[SSE] 收到事件:', data.type, data)
+
+        if (data.type === 'task_created') {
+          // Manager 创建了新任务，刷新任务列表
+          console.log('[SSE] 任务创建:', data.task_id)
+          fetchTasks()
+        } else if (data.type === 'task_completed' || data.type === 'task_updated') {
+          // 任务状态更新（Staff 反馈完成），刷新任务列表和详情
+          console.log('[SSE] 任务更新:', data.task_id, data.status)
+          fetchTasks()
+          // 如果当前选中的任务就是被更新的任务，刷新详情
+          if (selectedTask && selectedTask.task_id === data.task_id) {
+            fetchTaskFeedback(data.task_id)
+          }
+        }
+      } catch (err) {
+        console.error('[SSE] 解析事件失败:', err)
+      }
+    }
+
+    eventSource.onerror = (err) => {
+      console.error('[SSE] 连接错误:', err)
+    }
+
+    return () => {
+      eventSource.close()
+      console.log('[SSE] Manager 断开连接')
+    }
+  }, [currentUser?.user_id, selectedTask])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
@@ -78,6 +117,17 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
       setTasks(mockTasks)
     } finally {
       setLoading(prev => ({ ...prev, tasks: false }))
+    }
+  }
+
+  // 获取任务反馈详情
+  const fetchTaskFeedback = async (taskId) => {
+    try {
+      const response = await fetch(`${API_BASE}/feedback/${taskId}`)
+      const data = await response.json()
+      setTaskFeedback(data)
+    } catch (err) {
+      console.error('[ERROR] 获取任务反馈失败:', err)
     }
   }
 
@@ -516,6 +566,40 @@ function StaffWorkspace({ currentUser }) {
   }, [currentUser])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
+
+  // SSE 事件监听 - 实时接收新任务通知
+  useEffect(() => {
+    if (!currentUser?.user_id) return
+
+    const eventSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log('[SSE Staff] 收到事件:', data.type, data)
+
+        if (data.type === 'new_task') {
+          // 收到新任务通知
+          console.log('[SSE Staff] 收到新任务:', data.task_id)
+          // 弹出通知
+          alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
+          // 刷新并初始化新任务对话
+          initConversation()
+        }
+      } catch (err) {
+        console.error('[SSE Staff] 解析事件失败:', err)
+      }
+    }
+
+    eventSource.onerror = (err) => {
+      console.error('[SSE Staff] 连接错误:', err)
+    }
+
+    return () => {
+      eventSource.close()
+      console.log('[SSE Staff] 断开连接')
+    }
+  }, [currentUser?.user_id])
 
   const initConversation = async () => {
     try {
