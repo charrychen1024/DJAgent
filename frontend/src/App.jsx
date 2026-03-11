@@ -19,6 +19,9 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  // 筛选相关状态
+  const [searchField, setSearchField] = useState('')
+  const [searchValue, setSearchValue] = useState('')
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const [leftWidth, setLeftWidth] = useState(35)
@@ -283,9 +286,31 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   }
 
   // 分页逻辑
-  const totalPages = Math.ceil(allRiskData.length / pageSize)
-  const currentPageData = allRiskData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  
+  const filteredRiskData = (() => {
+    if (!searchField || !searchValue.trim()) return allRiskData
+    return allRiskData.filter(row => {
+      const fieldValue = row[searchField]
+      if (fieldValue == null) return false
+      return String(fieldValue).toLowerCase().includes(searchValue.toLowerCase())
+    })
+  })()
+
+  const totalPages = Math.ceil(filteredRiskData.length / pageSize)
+  const currentPageData = filteredRiskData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  // 筛选处理函数
+  const handleSearch = () => {
+    setCurrentPage(1)  // 筛选时重置到第一页
+    setSelectedRows([]) // 清除选中项
+  }
+
+  const handleResetSearch = () => {
+    setSearchField('')
+    setSearchValue('')
+    setCurrentPage(1)
+    setSelectedRows([])
+  }
+
   // 重置分页到第一页当风险数据变化时
   useEffect(() => {
     setCurrentPage(1)
@@ -313,14 +338,37 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           <div className="section-header">
             <h3>📊 风险明细数据</h3>
             <div className="action-buttons">
-              <button 
-                className="action-btn" 
+              <button
+                className="action-btn"
                 onClick={handleAddSelectedToChat}
                 disabled={selectedRows.length === 0}
               >
                 📤 添加到对话 ({selectedRows.length})
               </button>
             </div>
+          </div>
+          {/* 筛选栏 */}
+          <div className="risk-filter-bar">
+            <select
+              value={searchField}
+              onChange={e => setSearchField(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">筛选字段</option>
+              {columns.map(col => (
+                <option key={col} value={col}>{col}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={searchValue}
+              onChange={e => setSearchValue(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              placeholder="输入关键词..."
+              className="filter-input"
+            />
+            <button onClick={handleSearch} className="filter-btn">搜索</button>
+            <button onClick={handleResetSearch} className="filter-btn reset">重置</button>
           </div>
           {loading.riskData ? (
             <div className="loading-tip">加载中...</div>
@@ -372,7 +420,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
               {/* 分页组件 */}
               <div className="pagination">
                 <div className="page-info">
-                  共 {allRiskData.length} 条数据，每页显示 
+                  共 {filteredRiskData.length} 条数据，每页显示 
                   <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))} className="page-size-select">
                     <option value={5}>5条</option>
                     <option value={10}>10条</option>
