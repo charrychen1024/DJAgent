@@ -4,6 +4,7 @@ MCP Server Server log - Enhanced with better logging
 
 import sys
 import logging
+import asyncio
 from pathlib import Path
 from typing import Any, Dict
 from claude_agent_sdk import tool, create_sdk_mcp_server
@@ -28,6 +29,15 @@ from tools import (
     save_uploaded_file_from_path,
     list_uploaded_files,
 )
+
+# Import SSE events
+try:
+    from sse_events import notify_task_created, notify_task_completed
+    SSE_AVAILABLE = True
+    logger.info("[MCP] SSE 事件模块导入成功")
+except ImportError as e:
+    SSE_AVAILABLE = False
+    logger.warning(f"[MCP] SSE 事件模块导入失败: {e}")
 
 # ============ Define MCP Tools ============
 
@@ -69,6 +79,17 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
 
     result = create_task(task_info)
     logger.info(f"[MCP-TOOL] create_task returned: {result.get('task_id', 'N/A')}")
+
+    # 推送 SSE 事件
+    if result.get("success") and SSE_AVAILABLE:
+        try:
+            task_id = result.get("task_id")
+            creator_id = task_info.get("creator_id", "")
+            await notify_task_created(creator_id, task_id, task_info)
+            logger.info(f"[MCP-TOOL] SSE 事件推送成功: {task_id}")
+        except Exception as e:
+            logger.error(f"[MCP-TOOL] SSE 事件推送失败: {e}")
+
     error_flag = "error" in result
     return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
 
@@ -145,6 +166,20 @@ async def tool_update_task_status(args: Dict[str, Any]) -> Dict[str, Any]:
     """Update task status tool"""
     logger.info(f"[MCP-TOOL] update_task_status called for task: {args.get('task_id')}")
     result = update_task_status(args["task_id"], args["status"])
+
+    # 推送 SSE 事件（当任务状态变为"反馈完成"时通知 Manager）
+    if result.get("success") and args.get("status") == "反馈完成" and SSE_AVAILABLE:
+        try:
+            task_id = args.get("task_id")
+            # 获取任务详情以获取 creator_id
+            task_detail = get_task_detail(task_id)
+            creator_id = task_detail.get("creator_id", "")
+            if creator_id:
+                await notify_task_completed(creator_id, task_id, task_detail)
+                logger.info(f"[MCP-TOOL] SSE 任务完成事件推送成功: {task_id}")
+        except Exception as e:
+            logger.error(f"[MCP-TOOL] SSE 事件推送失败: {e}")
+
     error_flag = "error" in result
     return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
 

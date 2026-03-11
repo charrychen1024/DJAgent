@@ -3,6 +3,7 @@ FastAPI 后端服务 - DJAgent 风控智能助手
 """
 
 import os
+import asyncio
 import csv
 import json
 from datetime import datetime
@@ -53,6 +54,9 @@ app.add_middleware(
 
 # 数据目录
 DATA_DIR = Path(__file__).parent.parent / "data"
+
+# 导入 SSE 事件管理器
+from agents.sse_events import sse_manager
 
 
 def read_csv_file(filename: str) -> List[Dict]:
@@ -577,6 +581,36 @@ async def shutdown_event():
 
     await close_all_agents()
     logger.info("[API] 已关闭所有会话")
+
+
+# ============ SSE 事件流端点 ============
+
+@app.get("/api/events/{user_id}")
+async def sse_events(user_id: str):
+    """
+    SSE 事件流端点，用于实时推送任务通知
+
+    推送的事件类型：
+    - task_created: Manager 创建了新任务
+    - new_task: 有新任务分配给当前用户（Staff）
+    - task_completed: 任务被标记为反馈完成
+    """
+    async def event_generator():
+        queue = asyncio.Queue()
+        sse_manager.subscribe(user_id, queue)
+
+        try:
+            while True:
+                message = await queue.get()
+                yield f"data: {message}\n\n"
+        except asyncio.CancelledError:
+            logger.info(f"[SSE] 用户 {user_id} 连接断开")
+        finally:
+            sse_manager.unsubscribe(user_id, queue)
+            logger.info(f"[SSE] 用户 {user_id} 取消订阅")
+
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/api/health")
