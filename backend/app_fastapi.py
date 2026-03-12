@@ -135,7 +135,9 @@ async def create_task(request: Request):
     data = await request.json()
     tasks = read_csv_file("tasks.csv")
 
-    max_id = max([int(t["task_id"].replace("TASK_", "")) for t in tasks], default=0)
+    # 修复：使用 set 去重后再计算最大 ID，避免重复的 task_id 导致编号错误
+    existing_ids = set(int(t["task_id"].replace("TASK_", "")) for t in tasks)
+    max_id = max(existing_ids) if existing_ids else 0
     new_task_id = f"TASK_{max_id + 1:03d}"
 
     new_task = {
@@ -157,6 +159,18 @@ async def create_task(request: Request):
     fieldnames = list(new_task.keys())
 
     if write_csv_file("tasks.csv", tasks, fieldnames):
+        # 发送 SSE 通知
+        try:
+            from agents.sse_events import notify_task_created
+            await notify_task_created(
+                new_task["creator_id"],
+                new_task_id,
+                new_task
+            )
+            logger.info(f"[API] 任务 {new_task_id} 创建成功，已发送 SSE 通知")
+        except Exception as e:
+            logger.error(f"[API] SSE 通知发送失败: {e}")
+
         return new_task
     raise HTTPException(status_code=500, detail="Failed to create task")
 
