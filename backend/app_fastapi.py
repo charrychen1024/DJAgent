@@ -193,8 +193,9 @@ async def chat(request: Request):
         saved_files = []
         for f in files:
             file_path = os.path.join(temp_dir, f.filename)
+            content = await f.read()
             with open(file_path, 'wb') as pf:
-                pf.write(f.read())
+                pf.write(content)
             saved_files.append(file_path)
             logger.info(f"[API] 文件已保存: {file_path}")
     else:
@@ -457,8 +458,9 @@ async def send_message(task_id: str, request: Request):
             saved_files = []
             for f in files:
                 file_path = os.path.join(temp_dir, f.filename)
+                content = await f.read()
                 with open(file_path, 'wb') as pf:
-                    pf.write(f.read())
+                    pf.write(content)
                 saved_files.append(file_path)
                 logger.info(f"[API] Staff 文件已保存: {file_path}")
         else:
