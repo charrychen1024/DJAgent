@@ -501,7 +501,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
                 <div key={task.task_id} className={`task-card ${selectedTask?.task_id === task.task_id ? 'selected' : ''}`} onClick={() => handleTaskClick(task)}>
                   <div className="task-header"><span className="task-id">{task.task_id}</span><span className={`task-status ${task.status}`}>{task.status}</span></div>
                   <div className="task-summary">{task.risk_summary}</div>
-                  <div className="task-info"><span>→ {task.assigned_to_name}</span><span>{task.created_time}</span></div>
+                  <div className="task-info"><span>创建: {task.creator_name || task.creator_id}</span><span>→ {task.assigned_to_name}</span></div>
                 </div>
               ))}
             </div>
