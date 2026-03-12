@@ -179,15 +179,11 @@ async def chat(request: Request):
         username = form.get("username", "业务负责人")
         task_id = form.get("task_id")
 
-        # 处理文件上传 - 键名是 "files"
-        files = []
-        for key in form.keys():
-            if key == "files":
-                file = form[key]
-                files.append(file)
-                logger.info(f"[API] 收到文件: {file.filename}")
-
+        # 处理文件上传 - 使用 getlist 获取所有同名文件
+        files = form.getlist("files")
         if files:
+            for f in files:
+                logger.info(f"[API] 收到文件: {f.filename}")
             logger.info(f"[API] 共收到 {len(files)} 个文件")
 
         # 保存文件到临时目录
@@ -451,6 +447,22 @@ async def send_message(task_id: str, request: Request):
         message = form.get("message", "")
         user_id = form.get("user_id")
         username = form.get("username", "")
+
+        # 处理文件上传
+        files = form.getlist("files")
+        if files:
+            import tempfile
+            import os
+            temp_dir = tempfile.mkdtemp()
+            saved_files = []
+            for f in files:
+                file_path = os.path.join(temp_dir, f.filename)
+                with open(file_path, 'wb') as pf:
+                    pf.write(f.read())
+                saved_files.append(file_path)
+                logger.info(f"[API] Staff 文件已保存: {file_path}")
+        else:
+            saved_files = []
     else:
         try:
             data = await request.json()
@@ -461,6 +473,7 @@ async def send_message(task_id: str, request: Request):
             message = ""
             user_id = None
             username = ""
+        saved_files = []
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -477,7 +490,7 @@ async def send_message(task_id: str, request: Request):
         try:
             agent = await get_or_create_staff_agent(user_id, username)
             agent.current_task_id = task_id
-            ai_response = await agent.chat(message)
+            ai_response = await agent.chat(message, files=saved_files if saved_files else None)
         except Exception as e:
             logger.error(f"[ERROR] Agent调用失败: {str(e)}")
             ai_response = "好的，请继续。"
