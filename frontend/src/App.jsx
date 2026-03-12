@@ -112,7 +112,11 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const fetchTasks = async () => {
     setLoading(prev => ({ ...prev, tasks: true }))
     try {
-      const response = await fetch(`${API_BASE}/tasks`)
+      // 根据用户角色过滤任务：业务负责人看自己创建的，一线人员看分配给自己的
+      const url = currentUser?.user_id
+        ? `${API_BASE}/tasks?user_id=${currentUser.user_id}`
+        : `${API_BASE}/tasks`
+      const response = await fetch(url)
       const data = await response.json()
       setTasks(data.length > 0 ? data : mockTasks)
     } catch (err) {
