@@ -135,10 +135,11 @@ async def create_task(request: Request):
     data = await request.json()
     tasks = read_csv_file("tasks.csv")
 
-    # 修复：使用 set 去重后再计算最大 ID，避免重复的 task_id 导致编号错误
-    existing_ids = set(int(t["task_id"].replace("TASK_", "")) for t in tasks)
-    max_id = max(existing_ids) if existing_ids else 0
-    new_task_id = f"TASK_{max_id + 1:03d}"
+    # 使用创建人ID + 时间戳（精确到毫秒）作为任务ID，确保唯一性
+    # 格式: 001-20260312112289456
+    creator_id = data.get("creator_id", "000")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]  # 精确到毫秒
+    new_task_id = f"{creator_id}-{timestamp}"
 
     new_task = {
         "task_id": new_task_id,
