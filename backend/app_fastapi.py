@@ -135,11 +135,20 @@ async def create_task(request: Request):
     data = await request.json()
     tasks = read_csv_file("tasks.csv")
 
-    # 使用创建人ID + 时间戳（精确到毫秒）作为任务ID，确保唯一性
-    # 格式: 001-20260312112289456
+    # 使用创建人ID + 时间戳（精确到毫秒）+ 序号作为任务ID，确保唯一性
+    # 格式: 001-20260312112289456 (首个任务)
+    #       001-20260312112289456-1 (同时间第2个任务)
+    #       001-20260312112289456-2 (同时间第3个任务)
     creator_id = data.get("creator_id", "000")
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]  # 精确到毫秒
-    new_task_id = f"{creator_id}-{timestamp}"
+    base_task_id = f"{creator_id}-{timestamp}"
+
+    # 检查是否有相同 base_task_id 的任务，如果有则加序号
+    existing_count = sum(1 for t in tasks if t["task_id"].startswith(base_task_id))
+    if existing_count > 0:
+        new_task_id = f"{base_task_id}-{existing_count}"
+    else:
+        new_task_id = base_task_id
 
     new_task = {
         "task_id": new_task_id,
