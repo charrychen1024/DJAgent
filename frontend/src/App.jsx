@@ -124,6 +124,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [rightWidth, setRightWidth] = useState(25)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
+  const [tasksCollapsed, setTasksCollapsed] = useState(false)
 
   useEffect(() => {
     fetchTasks()
@@ -612,19 +613,28 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
             <div className="empty-tip">暂无风险数据</div>
           )}
         </div>
-        <div className="task-list-section">
-          <h3>📋 下发任务</h3>
-          {loading.tasks ? <div className="loading-tip">加载中...</div> : tasks.length > 0 ? (
-            <div className="task-list">
-              {tasks.map(task => (
-                <div key={task.task_id} className={`task-card ${selectedTask?.task_id === task.task_id ? 'selected' : ''}`} onClick={() => handleTaskClick(task)}>
-                  <div className="task-header"><span className="task-id">{task.task_id}</span><span className={`task-status ${task.status}`}>{task.status}</span></div>
-                  <div className="task-summary">{task.risk_summary}</div>
-                  <div className="task-info"><span>创建: {task.creator_name || task.creator_id}</span><span>→ {task.assigned_to_name}</span></div>
+        <div className={`task-list-section ${tasksCollapsed ? 'collapsed' : ''}`}>
+          <div className="task-list-header">
+            <h3>📋 下发任务</h3>
+            <button className="collapse-btn" onClick={() => setTasksCollapsed(!tasksCollapsed)}>
+              {tasksCollapsed ? '▼ 展开' : '▲ 折叠'}
+            </button>
+          </div>
+          {!tasksCollapsed && (
+            <>
+              {loading.tasks ? <div className="loading-tip">加载中...</div> : tasks.length > 0 ? (
+                <div className="task-list">
+                  {tasks.map(task => (
+                    <div key={task.task_id} className={`task-card ${selectedTask?.task_id === task.task_id ? 'selected' : ''}`} onClick={() => handleTaskClick(task)}>
+                      <div className="task-header"><span className="task-id">{task.task_id}</span><span className={`task-status ${task.status}`}>{task.status}</span></div>
+                      <div className="task-summary">{task.risk_summary}</div>
+                      <div className="task-info"><span>创建: {task.creator_name || task.creator_id}</span><span>→ {task.assigned_to_name}</span></div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : <div className="empty-tip">暂无任务</div>}
+              ) : <div className="empty-tip">暂无任务</div>}
+            </>
+          )}
         </div>
       </div>
       <div className="resize-handle" onMouseDown={() => setIsDraggingLeft(true)} />
