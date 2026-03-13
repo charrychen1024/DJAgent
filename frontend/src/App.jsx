@@ -1009,22 +1009,40 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
   
-  // 从URL参数读取用户ID
+  // 从URL参数读取用户ID或sessionStorage
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const presetUserId = params.get('user_id')
     
     fetch(`${API_BASE}/users`).then(r => r.json()).then(usersData => {
       setUsers(usersData)
+      // 优先从URL参数读取，其次从sessionStorage恢复
       if (presetUserId) {
         const user = usersData.find(u => u.user_id === presetUserId)
-        if (user) setCurrentUser(user)
+        if (user) {
+          setCurrentUser(user)
+          sessionStorage.setItem('currentUser', JSON.stringify(user))
+        }
+      } else {
+        // 尝试从sessionStorage恢复
+        const savedUser = sessionStorage.getItem('currentUser')
+        if (savedUser) {
+          try {
+            const user = JSON.parse(savedUser)
+            // 验证用户是否仍然存在
+            const exists = usersData.find(u => u.user_id === user.user_id)
+            if (exists) setCurrentUser(user)
+          } catch (e) {
+            sessionStorage.removeItem('currentUser')
+          }
+        }
       }
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
   const handleLogin = (user) => {
     setCurrentUser(user)
+    sessionStorage.setItem('currentUser', JSON.stringify(user))
   }
 
   const handleUserChange = (e) => {
@@ -1032,13 +1050,66 @@ function App() {
     if (userId) {
       const user = users.find(u => u.user_id === userId)
       setCurrentUser(user)
+      sessionStorage.setItem('currentUser', JSON.stringify(user))
     } else {
       setCurrentUser(null)
     }
   }
 
+  // 切换用户模式（不带角色卡片，直接选用户）
+  const [switchingMode, setSwitchingMode] = useState(false)
+
+  // 简化的用户选择组件
+  const SimpleUserSelect = () => (
+    <div className="App login-page">
+      <div className="login-container">
+        <div className="login-brand">
+          <div className="login-logo">🛡️</div>
+        </div>
+        <h1>切换用户</h1>
+        <p className="subtitle">请选择要切换的用户</p>
+        <select 
+          className="user-select"
+          onChange={(e) => {
+            const user = users.find(u => u.user_id === e.target.value)
+            if (user) {
+              setCurrentUser(user)
+              sessionStorage.setItem('currentUser', JSON.stringify(user))
+              setSwitchingMode(false)
+            }
+          }}
+          defaultValue=""
+        >
+          <option value="" disabled>选择用户...</option>
+          {users.map(user => (
+            <option key={user.user_id} value={user.user_id}>
+              {user.username} ({user.role})
+            </option>
+          ))}
+        </select>
+        <button 
+          className="login-btn"
+          onClick={() => setSwitchingMode(false)}
+          style={{marginTop: '1rem', background: '#6b7280'}}
+        >
+          取消
+        </button>
+      </div>
+    </div>
+  )
+
   // 登录页面
-  if (loading || !currentUser) {
+  if (loading) {
+    return <LoginPage users={users} onLogin={handleLogin} loading={loading} />
+  }
+  
+  // 切换用户模式 - 显示简化选择
+  if (switchingMode) {
+    return <SimpleUserSelect />
+  }
+  
+  // 未登录 - 显示登录页
+  if (!currentUser) {
     return <LoginPage users={users} onLogin={handleLogin} loading={loading} />
   }
 
@@ -1055,7 +1126,7 @@ function App() {
               <option key={user.user_id} value={user.user_id}>{user.username}</option>
             ))}
           </select>
-          <button className="logout-btn" onClick={() => setCurrentUser(null)}>切换用户</button>
+          <button className="logout-btn" onClick={() => setSwitchingMode(true)}>切换用户</button>
         </div>
       </header>
       {isManager ? <ManagerWorkspace currentUser={currentUser} /> : <StaffWorkspace currentUser={currentUser} />}
