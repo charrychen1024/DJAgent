@@ -5,6 +5,102 @@ import './App.css'
 
 const API_BASE = 'http://127.0.0.1:5005/api'
 
+// 登录页面组件 - 带角色卡片
+function LoginPage({ users, onLogin, loading }) {
+  const [selectedRole, setSelectedRole] = useState(null)
+  const [selectedUserId, setSelectedUserId] = useState('')
+
+  const filteredUsers = selectedRole 
+    ? users.filter(u => selectedRole === 'manager' 
+        ? u.role === '业务负责人' || u.role === '普通分析人员'
+        : u.role === '一线员工')
+    : []
+
+  const handleLogin = () => {
+    if (selectedUserId) {
+      const user = users.find(u => u.user_id === selectedUserId)
+      if (user) onLogin(user)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="App login-page">
+        <div className="login-container">
+          <div className="login-brand">
+            <div className="login-logo">🛡️</div>
+          </div>
+          <h1>风控数字员工</h1>
+          <p className="subtitle">加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="App login-page">
+      <div className="login-container">
+        <div className="login-brand">
+          <div className="login-logo">🛡️</div>
+        </div>
+        <h1>风控数字员工</h1>
+        <p className="subtitle">请选择您的身份开始使用</p>
+        
+        {/* 角色选择卡片 */}
+        <div className="role-cards">
+          <div 
+            className={`role-card manager ${selectedRole === 'manager' ? 'selected' : ''}`}
+            onClick={() => { setSelectedRole('manager'); setSelectedUserId('') }}
+          >
+            <div className="role-icon">👔</div>
+            <div className="role-info">
+              <div className="role-name">业务负责人</div>
+              <div className="role-desc">数据分析 · 任务管理 · 决策支持</div>
+            </div>
+            <div className="role-check">{selectedRole === 'manager' ? '✓' : ''}</div>
+          </div>
+          
+          <div 
+            className={`role-card staff ${selectedRole === 'staff' ? 'selected' : ''}`}
+            onClick={() => { setSelectedRole('staff'); setSelectedUserId('') }}
+          >
+            <div className="role-icon">👥</div>
+            <div className="role-info">
+              <div className="role-name">一线员工</div>
+              <div className="role-desc">任务执行 · 信息反馈 · 协作沟通</div>
+            </div>
+            <div className="role-check">{selectedRole === 'staff' ? '✓' : ''}</div>
+          </div>
+        </div>
+
+        {/* 用户下拉选择 */}
+        {selectedRole && (
+          <select 
+            className="user-select"
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+          >
+            <option value="" disabled>选择用户...</option>
+            {filteredUsers.map(user => (
+              <option key={user.user_id} value={user.user_id}>
+                {user.username} ({user.department})
+              </option>
+            ))}
+          </select>
+        )}
+
+        <button 
+          className="login-btn"
+          onClick={handleLogin}
+          disabled={!selectedUserId}
+        >
+          登录
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // 业务负责人工作区
 function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [tasks, setTasks] = useState([])
@@ -335,10 +431,33 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
 
   const columns = getAllColumns()
 
+  // 计算风险统计
+  const riskStats = {
+    high: allRiskData.filter(d => d['风险等级'] === '高').length,
+    medium: allRiskData.filter(d => d['风险等级'] === '中').length,
+    low: allRiskData.filter(d => d['风险等级'] === '低').length,
+  }
+
   return (
     <div className="workspace manager-workspace">
       <div className="sidebar left" style={{ width: `${leftWidth}%` }}>
         <div className="risk-data-section">
+          {/* 风险统计看板 */}
+          <div className="risk-stats">
+            <div className="stat-card high">
+              <div className="stat-value">{riskStats.high}</div>
+              <div className="stat-label">高风险</div>
+            </div>
+            <div className="stat-card medium">
+              <div className="stat-value">{riskStats.medium}</div>
+              <div className="stat-label">中风险</div>
+            </div>
+            <div className="stat-card low">
+              <div className="stat-value">{riskStats.low}</div>
+              <div className="stat-label">低风险</div>
+            </div>
+          </div>
+          
           <div className="section-header">
             <h3>📊 风险明细数据</h3>
             <div className="action-buttons">
@@ -801,27 +920,63 @@ function StaffWorkspace({ currentUser }) {
     )
   }
 
+  // 按时间分组消息
+  const groupMessagesByTime = (messages) => {
+    const groups = []
+    let lastTime = null
+    
+    messages.forEach((msg, i) => {
+      const msgDate = new Date(msg.timestamp)
+      const timeStr = msgDate.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+      
+      if (timeStr !== lastTime) {
+        groups.push({ type: 'time', time: timeStr })
+        lastTime = timeStr
+      }
+      groups.push({ type: 'message', data: msg, index: i })
+    })
+    
+    return groups
+  }
+
+  const messageGroups = groupMessagesByTime(chatMessages)
+
   return (
     <div className="workspace staff-workspace" style={{ height: '100vh' }}>
       {/* 纯聊天界面，无左侧任务列表，无确认按钮 */}
       <div className="staff-main" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div className="chat-header">
+        <div className="chat-header im-header">
           <h3>💬 风险核查助手</h3>
         </div>
         <div className="chat-messages im-style">
           {chatMessages.length === 0 && !loading.chat && <div className="welcome-message"><p>👋 您好！智能体正在准备任务信息...</p></div>}
-          {chatMessages.map((msg, i) => (
-            <div key={i} className={`message ${msg.sender}`}>
-              <div className="message-content">
-                {msg.sender === 'user' ? (
-                  msg.message
-                ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
-                )}
+          {messageGroups.map((item, i) => {
+            if (item.type === 'time') {
+              return (
+                <div key={`time-${i}`} className="time-divider">
+                  <span>{item.time}</span>
+                </div>
+              )
+            }
+            const msg = item.data
+            return (
+              <div key={item.index} className={`message ${msg.sender}`}>
+                <div className="message-avatar">
+                  {msg.sender === 'user' ? '👤' : '🤖'}
+                </div>
+                <div className="message-bubble">
+                  {msg.sender === 'user' ? (
+                    msg.message
+                  ) : (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
+                  )}
+                </div>
+                <div className="message-time">
+                  {new Date(msg.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
-              <div className="message-time">{msg.timestamp}</div>
-            </div>
-          ))}
+            )
+          })}
           {loading.chat && <div className="message agent loading"><div className="message-content">正在思考...</div></div>}
           <div ref={messagesEndRef} />
         </div>
@@ -868,6 +1023,10 @@ function App() {
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
+  const handleLogin = (user) => {
+    setCurrentUser(user)
+  }
+
   const handleUserChange = (e) => {
     const userId = e.target.value
     if (userId) {
@@ -878,34 +1037,9 @@ function App() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="App login-page">
-        <div className="login-container">
-          <h1>🛡️ 风控数字员工</h1>
-          <p>加载中...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!currentUser) {
-    return (
-      <div className="App login-page">
-        <div className="login-container">
-          <h1>🛡️ 风控数字员工</h1>
-          <p className="subtitle">请选择您的身份</p>
-          <select onChange={handleUserChange} defaultValue="" className="user-select">
-            <option value="" disabled>选择用户...</option>
-            {users.map(user => (
-              <option key={user.user_id} value={user.user_id}>
-                {user.username} - {user.role} ({user.department})
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-    )
+  // 登录页面
+  if (loading || !currentUser) {
+    return <LoginPage users={users} onLogin={handleLogin} loading={loading} />
   }
 
   const isManager = currentUser.role === '业务负责人' || currentUser.role === '普通分析人员'
