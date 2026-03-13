@@ -104,6 +104,80 @@
   background: rgba(255,255,255,0.3);
 }
 
+/* ========== 个人中心下拉菜单 ========== */
+.profile-menu {
+  position: relative;
+}
+
+.profile-btn {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 0.3rem 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-btn:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 220px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.profile-info {
+  padding: var(--spacing-lg);
+  text-align: center;
+}
+
+.profile-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.profile-detail {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 4px 0;
+}
+
+.profile-divider {
+  height: 1px;
+  background: var(--border-color);
+}
+
+.profile-dropdown .logout-btn {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: #fff;
+  color: #ff4d4f;
+  border: none;
+  border-radius: 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.profile-dropdown .logout-btn:hover {
+  background: #fff1f0;
+}
+
 /* ========== 登录页面优化 ========== */
 .login-page {
   display: flex;

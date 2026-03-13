@@ -127,9 +127,11 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [tasksCollapsed, setTasksCollapsed] = useState(false)
 
   useEffect(() => {
-    fetchTasks()
-    fetchAllRiskData()
-  }, [])
+    if (currentUser?.user_id) {
+      fetchTasks()
+      fetchAllRiskData()
+    }
+  }, [currentUser?.user_id])
 
   // SSE 事件监听 - 实时接收任务通知
   useEffect(() => {
@@ -207,18 +209,21 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   ]
 
   const fetchTasks = async () => {
+    // 没有用户时不获取任务
+    if (!currentUser?.user_id) {
+      setTasks([])
+      return
+    }
     setLoading(prev => ({ ...prev, tasks: true }))
     try {
       // 根据用户角色过滤任务：业务负责人看自己创建的，一线人员看分配给自己的
-      const url = currentUser?.user_id
-        ? `${API_BASE}/tasks?user_id=${currentUser.user_id}`
-        : `${API_BASE}/tasks`
+      const url = `${API_BASE}/tasks?user_id=${currentUser.user_id}`
       const response = await fetch(url)
       const data = await response.json()
-      setTasks(data.length > 0 ? data : mockTasks)
+      setTasks(data.length > 0 ? data : [])
     } catch (err) {
       console.error('[ERROR] 获取任务失败:', err)
-      setTasks(mockTasks)
+      setTasks([])
     } finally {
       setLoading(prev => ({ ...prev, tasks: false }))
     }
@@ -1066,56 +1071,30 @@ function App() {
     }
   }
 
-  // 切换用户模式（不带角色卡片，直接选用户）
-  const [switchingMode, setSwitchingMode] = useState(false)
+  // 个人中心下拉菜单状态
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
 
-  // 简化的用户选择组件
-  const SimpleUserSelect = () => (
-    <div className="App login-page">
-      <div className="login-container">
-        <div className="login-brand">
-          <div className="login-logo">🛡️</div>
-        </div>
-        <h1>切换用户</h1>
-        <p className="subtitle">请选择要切换的用户</p>
-        <select 
-          className="user-select"
-          onChange={(e) => {
-            const user = users.find(u => u.user_id === e.target.value)
-            if (user) {
-              setCurrentUser(user)
-              sessionStorage.setItem('currentUser', JSON.stringify(user))
-              setSwitchingMode(false)
-            }
-          }}
-          defaultValue=""
-        >
-          <option value="" disabled>选择用户...</option>
-          {users.map(user => (
-            <option key={user.user_id} value={user.user_id}>
-              {user.username} ({user.role})
-            </option>
-          ))}
-        </select>
-        <button 
-          className="login-btn"
-          onClick={() => setSwitchingMode(false)}
-          style={{marginTop: '1rem', background: '#6b7280'}}
-        >
-          取消
-        </button>
-      </div>
-    </div>
-  )
+  // 退出登录
+  const handleLogout = () => {
+    sessionStorage.removeItem('currentUser')
+    setCurrentUser(null)
+    setShowProfileMenu(false)
+  }
+
+  // 点击其他地方关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showProfileMenu && !e.target.closest('.profile-menu')) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [showProfileMenu])
 
   // 登录页面
   if (loading) {
     return <LoginPage users={users} onLogin={handleLogin} loading={loading} />
-  }
-  
-  // 切换用户模式 - 显示简化选择
-  if (switchingMode) {
-    return <SimpleUserSelect />
   }
   
   // 未登录 - 显示登录页
@@ -1130,13 +1109,24 @@ function App() {
       <header className="App-header">
         <h1>🛡️ 风控数字员工</h1>
         <div className="header-right">
-          <span className="user-info">{currentUser.username} ({currentUser.role})</span>
-          <select value={currentUser.user_id} onChange={handleUserChange} className="user-switch">
-            {users.map(user => (
-              <option key={user.user_id} value={user.user_id}>{user.username}</option>
-            ))}
-          </select>
-          <button className="logout-btn" onClick={() => setSwitchingMode(true)}>切换用户</button>
+          {/* 个人中心下拉菜单 */}
+          <div className="profile-menu">
+            <button className="profile-btn" onClick={(e) => { e.stopPropagation(); setShowProfileMenu(!showProfileMenu); }}>
+              👤 个人中心
+            </button>
+            {showProfileMenu && (
+              <div className="profile-dropdown">
+                <div className="profile-info">
+                  <div className="profile-name">{currentUser.username}</div>
+                  <div className="profile-detail">工号: {currentUser.employee_id || currentUser.user_id}</div>
+                  <div className="profile-detail">角色: {currentUser.role}</div>
+                  <div className="profile-detail">部门: {currentUser.department}</div>
+                </div>
+                <div className="profile-divider"></div>
+                <button className="logout-btn" onClick={handleLogout}>退出登录</button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
       {isManager ? <ManagerWorkspace currentUser={currentUser} /> : <StaffWorkspace currentUser={currentUser} />}
