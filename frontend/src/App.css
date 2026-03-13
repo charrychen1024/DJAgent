@@ -323,10 +323,10 @@
   flex: 1;
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--border-color);
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
-  min-height: 280px;
+  min-height: 350px;
 }
 
 /* 统计卡片区域 */
@@ -568,22 +568,56 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 200px;
+  max-height: 180px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
-.task-list-section h3 {
-  font-size: 1rem;
-  color: var(--text-primary);
+.task-list-section.collapsed {
+  max-height: 48px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+.task-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: var(--spacing-md);
-  font-weight: 600;
   flex-shrink: 0;
 }
 
+.task-list-section.collapsed .task-list-header {
+  margin-bottom: 0;
+}
+
+.task-list-header h3 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 0;
+}
+
+.collapse-btn {
+  background: var(--bg-gray);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.collapse-btn:hover {
+  background: #e8e8e8;
+  color: var(--text-primary);
+}
+
 .task-list-section .task-list {
-  flex: 1;
   overflow-y: auto;
   margin: 0;
   padding-right: var(--spacing-xs);
+  max-height: 110px;
 }
 
 .task-card {
