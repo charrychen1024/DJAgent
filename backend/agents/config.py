@@ -75,7 +75,7 @@ class AgentConfig:
     def _build_tools_config(self) -> Dict[str, Any]:
         """构建工具配置"""
         config = {
-            "thinking": {"type": "enabled", "budget_tokens": 20000},
+            "thinking": {"type": "disabled", "budget_tokens": 20000},
         }
 
         # Manager 模式：使用 MCP 服务器

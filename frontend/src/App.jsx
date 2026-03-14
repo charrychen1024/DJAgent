@@ -668,7 +668,16 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
               <div className="message-header"><span className="sender">{msg.sender === 'user' ? '👤 我' : '🤖 Agent'}</span><span className="timestamp">{msg.timestamp}</span></div>
               <div className="message-content">
                 {msg.sender === 'user' ? (
-                  msg.message
+                  <>
+                    {msg.files && msg.files.length > 0 && (
+                      <div className="msg-files">
+                        {msg.files.map((f, idx) => (
+                          <div key={idx} className="msg-file">📄 {f.name}</div>
+                        ))}
+                      </div>
+                    )}
+                    {msg.message}
+                  </>
                 ) : (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
                 )}
@@ -840,11 +849,12 @@ function StaffWorkspace({ currentUser }) {
         const historyData = await historyRes.json()
         
         if (Array.isArray(historyData) && historyData.length > 0) {
-          setChatMessages(historyData.map(msg => ({ 
-            sender: msg.sender === 'Agent' ? 'agent' : 'user', 
-            message: msg.message, 
-            timestamp: msg.timestamp, 
-            messageType: msg.message_type 
+          setChatMessages(historyData.map(msg => ({
+            sender: msg.sender === 'Agent' ? 'agent' : 'user',
+            message: msg.message,
+            timestamp: msg.timestamp,
+            messageType: msg.message_type,
+            files: msg.files
           })))
         } else {
           // 如果没有对话历史，发送初始消息让智能体推送任务
@@ -1020,7 +1030,16 @@ function StaffWorkspace({ currentUser }) {
                 </div>
                 <div className="message-bubble">
                   {msg.sender === 'user' ? (
-                    msg.message
+                    <>
+                      {msg.files && msg.files.length > 0 && (
+                        <div className="msg-files">
+                          {msg.files.map((f, i) => (
+                            <div key={i} className="msg-file">📄 {f.name}</div>
+                          ))}
+                        </div>
+                      )}
+                      {msg.message}
+                    </>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
                   )}

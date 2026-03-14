@@ -1391,6 +1391,7 @@
 .chat-messages.im-style {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background: transparent;
   padding: 16px 14px;
   scroll-behavior: smooth;
@@ -1411,10 +1412,16 @@
 .chat-messages.im-style .message {
   display: flex;
   flex-direction: row;
-  max-width: 78%;
+  max-width: 85%;
   margin-bottom: 8px;
   animation: messageSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   align-items: flex-start;
+}
+
+.chat-messages.im-style .message-bubble {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .chat-messages.im-style .message.user {
@@ -1477,6 +1484,22 @@
 
 .chat-messages.im-style .message.agent .message-time {
   order: 2;
+}
+
+/* 消息附件显示 */
+.msg-files {
+  margin-bottom: 6px;
+}
+
+.msg-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  margin-bottom: 4px;
 }
 
 /* 消息内容气泡 - 无边框+阴影 */
