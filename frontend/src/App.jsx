@@ -13,7 +13,7 @@ function LoginPage({ users, onLogin, loading }) {
   const filteredUsers = selectedRole 
     ? users.filter(u => selectedRole === 'manager' 
         ? u.role === '业务负责人' || u.role === '普通分析人员'
-        : u.role === '一线员工')
+        : u.role === '一线操作人员')
     : []
 
   const handleLogin = () => {
@@ -125,6 +125,8 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
   const [tasksCollapsed, setTasksCollapsed] = useState(false)
+  // 添加右侧面板展开状态
+  const [rightPanelOpen, setRightPanelOpen] = useState(false)
 
   useEffect(() => {
     if (currentUser?.user_id) {
@@ -303,6 +305,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   const handleTaskClick = async (task) => {
     // 只更新任务详情和反馈，不刷新聊天记录
     setSelectedTask(task)
+    setRightPanelOpen(true)
     setTaskFeedback(null)
     try {
       // 只获取反馈信息，不影响聊天历史
@@ -621,8 +624,14 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
         <div className={`task-list-section ${tasksCollapsed ? 'collapsed' : ''}`}>
           <div className="task-list-header">
             <h3>📋 下发任务</h3>
-            <button className="collapse-btn" onClick={() => setTasksCollapsed(!tasksCollapsed)}>
-              {tasksCollapsed ? '▼ 展开' : '▲ 折叠'}
+            <button 
+              className="collapse-btn icon-only" 
+              onClick={() => setTasksCollapsed(!tasksCollapsed)}
+              title={tasksCollapsed ? '展开' : '折叠'}
+            >
+              <span className={`collapse-icon ${tasksCollapsed ? 'collapsed' : ''}`}>
+                ▼
+              </span>
             </button>
           </div>
           {!tasksCollapsed && (
@@ -682,53 +691,80 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
               ))}
             </div>
           )}
-          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
-          <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
-          <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)}>发送</button>
+          {/* 输入框行 */}
+          <div className="input-row">
+            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
+            <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
+            <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
+            <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)} className="send-btn">➤</button>
+          </div>
         </div>
       </div>
       <div className="resize-handle" onMouseDown={() => setIsDraggingRight(true)} />
-      <div className="sidebar right" style={{ width: `${rightWidth}%` }}>
-        <h3>📋 详情信息</h3>
-        {selectedTask ? (
-          <div className="task-detail">
-            <h4>任务详情</h4>
-            <p><strong>任务ID:</strong> {selectedTask.task_id}</p>
-            <p><strong>风险简述:</strong> {selectedTask.risk_summary}</p>
-            <p><strong>状态:</strong> <span className={`status-tag ${selectedTask.status}`}>{selectedTask.status}</span></p>
-            <p><strong>创建人:</strong> {selectedTask.creator_name}</p>
-            <p><strong>执行人:</strong> {selectedTask.assigned_to_name}</p>
-            <p><strong>创建时间:</strong> {selectedTask.created_time}</p>
-            {selectedTask.completed_time && <p><strong>完成时间:</strong> {selectedTask.completed_time}</p>}
-            
-            <div className="feedback-section">
-              <h5>📝 反馈详情</h5>
-              {taskFeedback?.feedback_summary ? (
-                <div className="feedback-summary">
-                  <p>{taskFeedback.feedback_summary}</p>
-                </div>
-              ) : (
-                <div className="empty-tip">暂无反馈总结</div>
-              )}
+      <div
+        className={`sidebar right ${rightPanelOpen ? 'open' : 'collapsed'}`}
+        style={rightPanelOpen ? { width: `${rightWidth}%` } : {}}
+      >
+        {rightPanelOpen ? (
+          <>
+            <div className="right-panel-header">
+              <h3>📋 详情信息</h3>
+              <button 
+                className="toggle-panel-btn" 
+                onClick={() => setRightPanelOpen(false)}
+                title="收起"
+              >
+                <span className="toggle-icon">▶</span>
+              </button>
             </div>
-            
-            <div className="files-section">
-              <h5>📎 上传文件</h5>
-              {taskFeedback?.uploaded_files && taskFeedback.uploaded_files.length > 0 ? (
-                <div className="file-list">
-                  {taskFeedback.uploaded_files.map((file, i) => (
-                    <div key={i} className="file-item">
-                      <span>📄 {file.filename}</span>
+            {selectedTask ? (
+              <div className="task-detail">
+                <h4>任务详情</h4>
+                <p><strong>任务ID:</strong> {selectedTask.task_id}</p>
+                <p><strong>风险简述:</strong> {selectedTask.risk_summary}</p>
+                <p><strong>状态:</strong> <span className={`status-tag ${selectedTask.status}`}>{selectedTask.status}</span></p>
+                <p><strong>创建人:</strong> {selectedTask.creator_name}</p>
+                <p><strong>执行人:</strong> {selectedTask.assigned_to_name}</p>
+                <p><strong>创建时间:</strong> {selectedTask.created_time}</p>
+                {selectedTask.completed_time && <p><strong>完成时间:</strong> {selectedTask.completed_time}</p>}
+                
+                <div className="feedback-section">
+                  <h5>📝 反馈详情</h5>
+                  {taskFeedback?.feedback_summary ? (
+                    <div className="feedback-summary">
+                      <p>{taskFeedback.feedback_summary}</p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="empty-tip">暂无反馈总结</div>
+                  )}
                 </div>
-              ) : (
-                <div className="empty-tip">暂无上传文件</div>
-              )}
-            </div>
-          </div>
-        ) : <div className="placeholder">点击左侧任务查看详情</div>}
+                
+                <div className="files-section">
+                  <h5>📎 上传文件</h5>
+                  {taskFeedback?.uploaded_files && taskFeedback.uploaded_files.length > 0 ? (
+                    <div className="file-list">
+                      {taskFeedback.uploaded_files.map((file, i) => (
+                        <div key={i} className="file-item">
+                          <span>📄 {file.filename}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-tip">暂无上传文件</div>
+                  )}
+                </div>
+              </div>
+            ) : <div className="placeholder">点击左侧任务查看详情</div>}
+          </>
+        ) : (
+          <button
+            className="expand-panel-btn"
+            onClick={() => setRightPanelOpen(true)}
+            title="展开详情"
+          >
+            <span className="expand-icon">◀</span>
+          </button>
+        )}
       </div>
     </div>
   )
@@ -880,7 +916,6 @@ function StaffWorkspace({ currentUser }) {
         body: formData
       })
       const data = await response.json()
-      if (data.user_message) setChatMessages(prev => [...prev, { sender: 'user', message: data.user_message.message, timestamp: data.user_message.timestamp }])
       if (data.agent_reply) setChatMessages(prev => [...prev, { sender: 'agent', message: data.agent_reply.message, timestamp: data.agent_reply.timestamp }])
     } catch (err) { console.error('[ERROR] 发送消息失败:', err) }
     finally { setLoading(prev => ({ ...prev, chat: false })) }
@@ -957,13 +992,17 @@ function StaffWorkspace({ currentUser }) {
   const messageGroups = groupMessagesByTime(chatMessages)
 
   return (
-    <div className="workspace staff-workspace" style={{ height: '100vh' }}>
-      {/* 纯聊天界面，无左侧任务列表，无确认按钮 */}
-      <div className="staff-main" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <div className="workspace staff-workspace">
+      {/* 手机模拟器容器 */}
+      <div className="phone-container">
+        {/* 手机顶部导航栏 */}
         <div className="chat-header im-header">
-          <h3>💬 风险核查助手</h3>
+          <div className="back-btn">←</div>
+          <h3>风险核查助手</h3>
+          <div className="more-btn">⋮</div>
         </div>
-        <div className="chat-messages im-style">
+        <div className="staff-main">
+          <div className="chat-messages im-style">
           {chatMessages.length === 0 && !loading.chat && <div className="welcome-message"><p>👋 您好！智能体正在准备任务信息...</p></div>}
           {messageGroups.map((item, i) => {
             if (item.type === 'time') {
@@ -1008,10 +1047,14 @@ function StaffWorkspace({ currentUser }) {
               ))}
             </div>
           )}
-          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
-          <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-          <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" disabled={loading.chat} rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
-          <button onClick={handleSendMessage} disabled={loading.chat || !inputMessage.trim()}>发送</button>
+          {/* 输入框行 */}
+          <div className="input-row">
+            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
+            <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
+            <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
+            <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)} className="send-btn">➤</button>
+          </div>
+        </div>
         </div>
       </div>
     </div>
