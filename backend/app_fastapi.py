@@ -477,15 +477,22 @@ async def send_message(task_id: str, request: Request):
             import os
             temp_dir = tempfile.mkdtemp()
             saved_files = []
+            file_info_list = []  # 保存文件名和类型信息
             for f in files:
                 file_path = os.path.join(temp_dir, f.filename)
                 content = await f.read()
                 with open(file_path, 'wb') as pf:
                     pf.write(content)
                 saved_files.append(file_path)
+                # 保存文件信息
+                file_info_list.append({
+                    "name": f.filename,
+                    "type": f.content_type or "application/octet-stream"
+                })
                 logger.info(f"[API] Staff 文件已保存: {file_path}")
         else:
             saved_files = []
+            file_info_list = []
     else:
         try:
             data = await request.json()
@@ -497,6 +504,7 @@ async def send_message(task_id: str, request: Request):
             user_id = None
             username = ""
         saved_files = []
+        file_info_list = []
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -505,6 +513,7 @@ async def send_message(task_id: str, request: Request):
         "sender": username,
         "message": message,
         "message_type": "text",
+        "files": file_info_list if file_info_list else None,
     }
 
     if not HAS_AGENT_SDK:
