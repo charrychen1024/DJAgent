@@ -5,29 +5,36 @@
 }
 
 :root {
-  /* 统一设计变量 */
+  /* 统一主色调 - 蓝色系 */
   --primary-color: #1890ff;
   --primary-dark: #096dd9;
+  --primary-light: #e6f7ff;
+  
+  /* 状态色 */
   --success-color: #52c41a;
   --warning-color: #faad14;
   --danger-color: #ff4d4f;
+  
+  /* 文字色 */
   --text-primary: #262626;
   --text-secondary: #8c8c8c;
+  --text-disabled: #bfbfbf;
+  
+  /* 背景色 */
   --bg-gray: #f5f5f5;
   --bg-white: #ffffff;
+  --bg-primary-light: #e6f7ff;
+  
+  /* 边框色 */
   --border-color: #e8e8e8;
+  --border-focus: var(--primary-color);
   
-  /* 微信风格配色 */
-  --wechat-green: #07c160;
-  --wechat-bg: #f5f5f5;
-  --wecom-blue: #208ee6;
-  
-  /* 间距 */
+  /* 间距 - 统一为 8px 基准网格 */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 24px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
   
   /* 圆角 - 加大以获得更柔和的效果 */
   --radius-sm: 8px;
@@ -46,13 +53,14 @@
   min-height: 100vh;
   background: linear-gradient(145deg, #f0f2f5 0%, #e8eaed 50%, #dcdfe3 100%);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  border: none;
 }
 
 /* Header */
 .App-header {
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
   color: white;
-  padding: 0.8rem 1.5rem;
+  padding: 0.4rem 1.0rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -60,7 +68,7 @@
 }
 
 .App-header h1 {
-  font-size: 1.3rem;
+  font-size: 1.0rem;
   font-weight: 600;
 }
 
@@ -114,10 +122,10 @@
   background: rgba(255,255,255,0.2);
   color: white;
   border: 1px solid rgba(255,255,255,0.3);
-  padding: 0.3rem 0.8rem;
+  padding: 0.25rem 0.6rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -184,15 +192,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  background: var(--primary-color);
   min-height: 100vh;
-  padding: 20px;
+  padding: var(--spacing-lg);
 }
 
 .login-container {
   background: white;
-  padding: 2.5rem 2rem;
-  border-radius: 20px;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  border-radius: var(--radius-xl);
   box-shadow: 0 20px 60px rgba(0,0,0,0.25);
   text-align: center;
   width: 100%;
@@ -242,26 +250,25 @@
   display: flex;
   align-items: center;
   padding: 20px 24px;
-  border: none;
+  border: 2px solid transparent;
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
   text-align: left;
   background: #ffffff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .role-card:hover {
-  border: none;
   background: #ffffff;
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-color);
 }
 
 .role-card.selected {
-  border: none;
-  background: linear-gradient(135deg, #e6f7ff 0%, #f0f7ff 100%);
-  box-shadow: 0 4px 20px rgba(24, 144, 255, 0.2);
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
 }
 
 .role-icon {
@@ -277,11 +284,11 @@
 }
 
 .role-card.manager .role-icon {
-  background: linear-gradient(135deg, #1890ff 0%, #722ed1 100%);
+  background: var(--primary-color);
 }
 
 .role-card.staff .role-icon {
-  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  background: var(--success-color);
 }
 
 .role-info {
@@ -342,29 +349,30 @@
 .login-btn {
   width: 100%;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  background: var(--primary-color);
   color: white;
   border: none;
   border-radius: var(--radius-lg);
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 14px rgba(24, 144, 255, 0.35);
+  transition: all 0.2s;
+  box-shadow: var(--shadow-md);
 }
 
 .login-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(24, 144, 255, 0.45);
+  background: var(--primary-dark);
+  box-shadow: var(--shadow-lg);
 }
 
 .login-btn:active {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+  transform: scale(0.98);
+  box-shadow: var(--shadow-sm);
 }
 
-.login-btn:active {
-  transform: translateY(0);
+.login-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.3);
 }
 
 /* ========== 工作区布局 ========== */
@@ -373,6 +381,8 @@
   height: calc(100vh - 52px);
   padding: 0;
   gap: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .manager-workspace .sidebar {
@@ -381,30 +391,59 @@
   padding: 0;
   overflow: hidden;
   background: var(--bg-white);
+  border: none;
 }
 
 /* 调整条 */
 .resize-handle {
   width: 6px;
-  background: #e8e8e8;
+  background: transparent;
   cursor: col-resize;
   transition: background 0.2s;
   flex-shrink: 0;
+  position: relative;
+  border: none;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 32px;
+  background: #ccc;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
 .resize-handle:hover {
-  background: var(--primary-color);
+  background: #e8e8e8;
+}
+
+.resize-handle:hover::after {
+  opacity: 1;
+  background: white;
+}
+
+.resize-handle.dragging {
+  background: #e8e8e8;
+  width: 8px;
 }
 
 /* ========== 左侧栏 - 风险看板优化 ========== */
 .sidebar.left {
   height: 100%;
+  border: none;
+  box-shadow: none;
 }
 
 .risk-data-section {
   flex: 2;
   padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--border-color);
+  border: none;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -428,17 +467,17 @@
 }
 
 .stat-card.high {
-  background: linear-gradient(135deg, #fff2f0 0%, #ffebe8 100%);
+  background: #fff1f0;
   border: 1px solid #ffccc7;
 }
 
 .stat-card.medium {
-  background: linear-gradient(135deg, #fffbe6 0%, #fff1b8 100%);
+  background: #fffbe6;
   border: 1px solid #ffe58f;
 }
 
 .stat-card.low {
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+  background: #f6ffed;
   border: 1px solid #b7eb8f;
 }
 
@@ -742,7 +781,7 @@
 
 .task-card.selected {
   border-color: var(--primary-color);
-  background: linear-gradient(135deg, #e6f7ff 0%, #f0f7ff 100%);
+  background: var(--primary-light);
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
 }
 
@@ -793,6 +832,8 @@
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .chat-header {
@@ -845,7 +886,7 @@
 .welcome-message .tip {
   margin-top: 1.5rem;
   padding: 1rem;
-  background: linear-gradient(135deg, #e6f7ff 0%, #f0f7ff 100%);
+  background: var(--primary-light);
   border-radius: var(--radius-md);
   font-size: 0.9rem;
   color: var(--primary-color);
@@ -1012,7 +1053,7 @@
 
 .chat-input button:not(.upload-btn) {
   padding: 0 1.5rem;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  background: var(--primary-color);
   color: white;
   border: none;
   border-radius: var(--radius-lg);
@@ -1084,8 +1125,9 @@
   overflow-y: auto;
   background: white;
   transition: all 0.3s ease;
-  border-left: 1px solid var(--border-color);
   position: relative;
+  border: none;
+  box-shadow: none;
 }
 
 /* 折叠状态 - 默认完全隐藏 */
@@ -1106,6 +1148,7 @@
   opacity: 1;
   padding: var(--spacing-lg);
   flex-shrink: 0;
+  border: none;
 }
 
 .right-panel-header {
@@ -1825,36 +1868,286 @@
 }
 
 /* ========== 响应式优化 ========== */
+
+/* 大屏幕 - 1400px+ */
+@media (min-width: 1400px) {
+  .workspace {
+    max-width: 1800px;
+    margin: 0 auto;
+  }
+  
+  .risk-table {
+    font-size: 0.8rem;
+  }
+}
+
+/* 平板横屏 - 1200px */
 @media (max-width: 1200px) {
   .risk-stats {
     flex-wrap: wrap;
   }
   
   .stat-card {
-    min-width: calc(33.33% - 8px);
+    min-width: calc(33.33% - var(--spacing-sm));
+  }
+  
+  .sidebar.left {
+    min-width: 280px;
   }
 }
 
-@media (max-width: 768px) {
-  .login-container {
-    padding: 1.5rem;
+/* 平板竖屏 - 992px */
+@media (max-width: 992px) {
+  .manager-workspace .workspace {
+    flex-wrap: wrap;
   }
   
+  .sidebar.left {
+    width: 100% !important;
+    height: auto;
+    max-height: 40vh;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .main-content {
+    width: 100% !important;
+    min-height: 50vh;
+  }
+  
+  .sidebar.right {
+    position: fixed;
+    right: 0;
+    top: 52px;
+    height: calc(100vh - 52px);
+    z-index: 100;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+  }
+  
+  .resize-handle {
+    display: none;
+  }
+}
+
+/* 手机横屏 - 768px */
+@media (max-width: 768px) {
+  /* 登录页 */
+  .login-container {
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+  }
+  
+  .login-logo {
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+  }
+  
+  .login-container h1 {
+    font-size: 1.3rem;
+  }
+  
+  /* 角色卡片 */
   .role-card {
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-md);
   }
   
   .role-icon {
     width: 40px;
     height: 40px;
     font-size: 1.2rem;
+    margin-right: 12px;
+  }
+  
+  .role-name {
+    font-size: 0.9rem;
+  }
+  
+  .role-desc {
+    font-size: 0.75rem;
+  }
+  
+  /* 用户选择 */
+  .user-select {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  /* 登录按钮 */
+  .login-btn {
+    padding: 12px;
+    font-size: 15px;
+  }
+  
+  /* 风险看板 */
+  .risk-data-section {
+    padding: var(--spacing-md);
+  }
+  
+  .risk-stats {
+    gap: var(--spacing-sm);
+  }
+  
+  .stat-card {
+    padding: var(--spacing-sm);
+  }
+  
+  .stat-value {
+    font-size: 1.2rem;
+  }
+  
+  /* 筛选栏 */
+  .risk-filter-bar {
+    flex-direction: column;
+  }
+  
+  .filter-select,
+  .filter-input {
+    width: 100%;
+  }
+  
+  .filter-btn {
+    width: 100%;
+  }
+  
+  /* 任务列表 */
+  .task-list-section {
+    padding: var(--spacing-md);
+  }
+  
+  /* 聊天区域 */
+  .chat-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  .chat-messages {
+    padding: var(--spacing-md);
   }
   
   .message {
     max-width: 85%;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  .message-content {
+    font-size: 0.85rem;
+  }
+  
+  /* 输入框 */
+  .chat-input {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  /* 分页 */
+  .pagination {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    justify-content: center;
+  }
+  
+  .page-info {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* 手机竖屏 - 480px */
+@media (max-width: 480px) {
+  /* Header */
+  .App-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  .App-header h1 {
+    font-size: 1rem;
+  }
+  
+  /* 统计卡片 */
+  .risk-stats {
+    flex-direction: column;
+  }
+  
+  .stat-card {
+    flex-direction: row;
+    justify-content: space-between;
+    min-width: 100%;
+  }
+  
+  /* 表格 */
+  .risk-table-wrapper {
+    font-size: 0.7rem;
+  }
+  
+  .risk-table th,
+  .risk-table td {
+    padding: var(--spacing-xs);
+  }
+  
+  /* 任务卡片 */
+  .task-card {
+    padding: var(--spacing-sm);
+  }
+  
+  .task-summary {
+    font-size: 0.8rem;
+  }
+  
+  /* 消息 */
+  .message {
+    max-width: 90%;
+  }
+  
+  /* IM 风格 */
+  .phone-container {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
   }
   
   .chat-messages.im-style .message {
     max-width: 85%;
+  }
+  
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  
+  .message-bubble {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.85rem;
+  }
+  
+  /* 个人中心 */
+  .profile-dropdown {
+    min-width: 200px;
+    right: -10px;
+  }
+  
+  /* 右侧面板 */
+  .sidebar.right.open {
+    width: 85% !important;
+  }
+}
+
+/* 超小屏幕 - 320px */
+@media (max-width: 320px) {
+  .login-container {
+    padding: var(--spacing-md);
+  }
+  
+  .login-logo {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .login-container h1 {
+    font-size: 1.1rem;
+  }
+  
+  .role-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
   }
 }
