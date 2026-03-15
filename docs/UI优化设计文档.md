@@ -1,6 +1,6 @@
 # DJAgent UI 优化设计文档
 
-> 更新时间：2026-03-14
+> 更新时间：2026-03-15
 > 项目：DJAgent 风控智能体
 > 分支：feature/ui-optimization
 
@@ -10,12 +10,18 @@
 
 ### 1.1 当前设计状态
 
-DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，存在以下共性问题：
+DJAgent 当前已完成多轮UI优化，整体采用 **现代企业级管理后台 + 微信App风格** 设计。
 
-- 线条过于生硬（大量 1px 边框线）
-- 圆角偏小（4-8px），视觉效果方正
-- 缺少微交互和动画效果
-- 字体单调，缺乏层次感
+**已完成优化**：
+- 去掉边框，用阴影区分层次
+- 加大圆角，增加柔和感
+- 按钮悬停效果
+- 卡片悬停效果
+- 消息气泡优化
+- 下拉菜单毛玻璃效果
+- 左边栏紧凑化布局
+- 初始对话欢迎界面 + 快捷功能卡片
+- 个人中心下拉菜单
 
 ### 1.2 优化目标
 
@@ -27,113 +33,324 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
 
 ## 二、Web端 (Manager) 设计优化方案
 
-### 2.1 当前问题
+### 2.1 整体布局
 
-| 问题 | 现状 |
-|------|------|
-| 边框 | 大量 `1px solid #e8e8e8` 边框，卡片像表格 |
-| 圆角 | `--radius-sm: 4px`，`--radius-md: 8px` 过于方正 |
-| 阴影 | 仅基础阴影，层次感不足 |
-| 动画 | 几乎没有交互动画 |
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  🛡️ 风控数字员工        [地区▼]                    👤 个人中心     │  ← 顶部导航 (紧凑)
+├─────────────┬────────────────────────────────┬──────────────────────┤
+│             │                                │                      │
+│  🔍 搜索...  │                                │   📋 详情信息       │
+│             │   💬 智能体对话                 │   ━                  │
+│ [日度][月度] │                                │   任务ID: xxx       │
+│             │  ┌──────────────────────────┐  │   风险简述: xxx    │
+│ ┌─────────┐ │  │  嗨，王经理 👋           │  │   状态: 已下发     │
+│ │高风险:3 │ │  │  专属风控数字员工        │  │   ...              │
+│ │中风险:5 │ │  └──────────────────────────┘  │                      │
+│ │低风险:2 │ │                                │                      │
+│ └─────────┘ │  [📊 今日风险分析]  [🔍 月度分析] │                      │
+│             │  [📋 任务统计]    [⚙️ 创建任务]  │                      │
+│ 📊 风险明细 │                                │   📎 上传文件       │
+│ ┌─────────┐ │  ────────────────────────────  │                      │
+│ │ ☐ 运单号│ │                                │                      │
+│ │ ☐ 运单号│ │                                │                      │
+│ └─────────┘ │                                │                      │
+│             │                                │                      │
+│ 📋 下发任务 │  ┌──────────────────────────┐  │                      │
+│ ┌─────────┐ │  │ 👤 我         10:30    │  │                      │
+│ │TASK_001 │ │  │ 消息内容...              │  │                      │
+│ │TASK_002 │ │  └──────────────────────────┘  │                      │
+│ │TASK_003 │ │                                │                      │
+│ └─────────┘ │  ┌──────────────────────────┐  │                      │
+│             │  │ 🤖 Agent       10:31    │  │                      │
+│             │  │ 消息内容...              │  │                      │
+│             │  └──────────────────────────┘  │                      │
+│             │  ────────────────────────────  │                      │
+│             │  [📎] [输入消息...        ] [➤] │                      │
+└─────────────┴────────────────────────────────┴──────────────────────┘
+```
 
-### 2.2 优化方向
-
-#### 2.2.1 去掉边框，用阴影区分层次
+### 2.2 顶部导航栏
 
 ```css
-/* 改前 */
-.card {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);  /* 8px */
+/* 优化后的顶部导航 */
+.App-header {
+  height: 48px;  /* 减小高度 */
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-/* 改后 */
-.card {
+.App-header h1 {
+  font-size: 16px;
+  font-weight: 600;
+}
+```
+
+### 2.3 左侧栏 - 紧凑布局
+
+```css
+/* 左侧栏 - 紧凑化 */
+.sidebar.left {
+  padding: 12px;
+  gap: 12px;
+}
+
+/* 全局搜索栏 */
+.global-search-bar {
+  display: flex;
+  gap: 8px;
+}
+
+.global-search-bar input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}
+
+/* Tab 切换 */
+.data-tab-switch {
+  display: flex;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 6px 12px;
   border: none;
-  border-radius: var(--radius-lg);  /* 16px */
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* 风险统计看板 */
+.risk-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat-card {
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.stat-card.high {
+  background: linear-gradient(135deg, #fff2f0 0%, #fff 100%);
+  border: 1px solid #ffccc7;
+}
+
+.stat-card.medium {
+  background: linear-gradient(135deg, #fffbe6 0%, #fff 100%);
+  border: 1px solid #ffe58f;
+}
+
+.stat-card.low {
+  background: linear-gradient(135deg, #f6ffed 0%, #fff 100%);
+  border: 1px solid #b7eb8f;
 }
 ```
 
-#### 2.2.2 加大圆角，增加柔和感
+### 2.4 任务列表 - 可折叠
 
 ```css
-:root {
-  /* 圆角层级 */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
+.task-list-section.collapsed .task-list-header .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.collapse-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.collapse-btn:hover {
+  background: #e8e8e8;
 }
 ```
 
-#### 2.2.3 按钮悬停效果
+### 2.5 初始对话欢迎界面
 
 ```css
-.btn-primary {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+/* 初始对话视图 */
+.initial-chat-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 100%;
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
+.welcome-greeting h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
 }
 
-.btn-primary:active {
-  transform: translateY(0);
+.welcome-tips {
+  margin-top: 16px;
+  color: #666;
 }
-```
 
-#### 2.2.4 卡片悬停效果
+/* 快捷功能卡片 */
+.quick-prompts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+  max-width: 560px;
+}
 
-```css
-.role-card {
+.quick-prompt-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.role-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+.quick-prompt-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-color: #1890ff;
+}
+
+.prompt-icon {
+  font-size: 24px;
+}
+
+.prompt-label {
+  font-size: 14px;
+  color: #333;
+  text-align: left;
 }
 ```
 
-### 2.3 消息气泡优化
+### 2.6 个人中心菜单
 
 ```css
-/* 用户消息 - 渐变+阴影 */
-.message-user {
-  background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
-  border-radius: 18px 18px 4px 18px;
-  box-shadow: 0 2px 8px rgba(7, 193, 96, 0.25);
+.profile-menu {
+  position: relative;
 }
 
-/* AI消息 - 白色+淡阴影 */
-.message-ai {
-  background: #ffffff;
-  border-radius: 18px 18px 18px 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
 }
-```
 
-### 2.4 下拉菜单毛玻璃效果
+.profile-btn:hover {
+  background: #f5f5f5;
+}
 
-```css
 .profile-dropdown {
-  backdrop-filter: blur(12px);
-  background: rgba(255, 255, 255, 0.88);
-  animation: dropdownFade 0.2s ease;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  min-width: 200px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 100;
 }
 
-@keyframes dropdownFade {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.profile-info {
+  padding: 16px;
+}
+
+.profile-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.profile-detail {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.profile-divider {
+  height: 1px;
+  background: #f0f0f0;
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background: #fff;
+  color: #ff4d4f;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.logout-btn:hover {
+  background: #fff1f0;
+}
+```
+
+### 2.7 右侧栏 - 可折叠
+
+```css
+.sidebar.right {
+  transition: width 0.3s ease;
+}
+
+.sidebar.right.collapsed {
+  width: 40px !important;
+}
+
+.expand-panel-btn,
+.toggle-panel-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f5f5f5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.expand-panel-btn:hover,
+.toggle-panel-btn:hover {
+  background: #e8e8e8;
 }
 ```
 
@@ -178,7 +395,7 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
   height: 85vh;           /* 不要满屏 */
   margin: 30px auto;      /* 居中 + 顶部留白 */
   border-radius: 28px;    /* 大圆角 */
-  box-shadow: 
+  box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.05),
     0 20px 50px rgba(0, 0, 0, 0.2),
     0 0 100px rgba(0, 0, 0, 0.05) inset;
@@ -186,18 +403,6 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
   background: #fff;
   display: flex;
   flex-direction: column;
-}
-
-/* 状态栏模拟 */
-.phone-status-bar {
-  height: 44px;
-  background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 16px;
-  color: white;
-  font-size: 12px;
 }
 ```
 
@@ -254,7 +459,7 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
   background: #f5f5f5;
   padding: 12px 10px;
   /* 微信风格背景 */
-  background-image: 
+  background-image:
     linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
   background-size: 20px 20px;
@@ -318,7 +523,7 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
 .message-avatar {
   width: 38px;
   height: 38px;
-  border-radius: 50%;  /* 圆形头像 */
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -427,7 +632,7 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
   --font-display: 'Noto Sans SC', -apple-system, sans-serif;
   --font-body: 'Noto Sans SC', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  
+
   /* 字号层级 */
   --text-xs: 11px;
   --text-sm: 13px;
@@ -503,23 +708,56 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
 
 ---
 
-## 五、实施计划
+## 五、已完成的优化清单
 
-### 5.1 优先级
+### 5.1 布局优化
+- [x] 移除页面边框
+- [x] 减小顶部Header尺寸（48px）
+- [x] 三栏布局支持拖拽调整
+- [x] 右侧栏可折叠/展开
+- [x] 任务区域可折叠
+- [x] 左边栏紧凑布局
 
-| 优先级 | 任务 | 预计改动量 |
-|--------|------|-----------|
-| P0 | **IM端全新手机样式** | StaffWorkspace 组件 + CSS |
-| P1 | Web端圆角+阴影优化 | App.css 变量 + 组件样式 |
-| P1 | 消息气泡重新设计 | Web + IM 通用 |
-| P2 | 按钮/卡片 hover 效果 | App.css |
-| P2 | 下拉菜单毛玻璃效果 | App.css |
-| P3 | 字体系统优化 | CSS 变量 |
+### 5.2 交互优化
+- [x] 按钮悬停效果
+- [x] 卡片悬停效果
+- [x] 消息出现动画
+- [x] 下拉菜单毛玻璃效果
+- [x] 个人中心菜单
 
-### 5.2 改动范围
+### 5.3 功能优化
+- [x] 全局搜索功能
+- [x] 日度/月度数据Tab切换
+- [x] 地区筛选功能
+- [x] 初始对话欢迎界面
+- [x] 快捷功能卡片入口
 
-**需要修改的文件：**
-- `frontend/src/App.jsx` - 组件结构调整（IM端）
+### 5.4 样式优化
+- [x] 去掉边框，用阴影区分层次
+- [x] 加大圆角（12-16px）
+- [x] 消息气泡优化
+- [x] 风险统计看板
+- [x] 登录页角色卡片
+
+---
+
+## 六、实施计划
+
+### 6.1 优先级
+
+| 优先级 | 任务 | 状态 |
+|--------|------|------|
+| P0 | **IM端全新手机样式** | ✅ 已完成 |
+| P1 | Web端圆角+阴影优化 | ✅ 已完成 |
+| P1 | 消息气泡重新设计 | ✅ 已完成 |
+| P2 | 按钮/卡片 hover 效果 | ✅ 已完成 |
+| P2 | 下拉菜单毛玻璃效果 | ✅ 已完成 |
+| P3 | 字体系统优化 | ✅ 已完成 |
+
+### 6.2 改动范围
+
+**已修改的文件：**
+- `frontend/src/App.jsx` - 组件结构调整
 - `frontend/src/App.css` - 样式全面优化
 
 **不需要修改的文件：**
@@ -528,30 +766,34 @@ DJAgent 当前采用 **微信/企业微信风格** 设计，整体偏传统，�
 
 ---
 
-## 六、设计原则
+## 七、设计原则
 
 本项目遵循以下 Frontend Design 原则：
 
-1. **大胆的圆角** - 16px-24px，拒绝方正
+1. **大胆的圆角** - 12px-16px，拒绝方正
 2. **无边框设计** - 用阴影区分层次
 3. **图标优先** - 减少文字提示
 4. **流畅动画** - 每个交互都有反馈
 5. **层次分明** - 字号、间距有节奏感
+6. **紧凑布局** - 高效利用空间
 
 ---
 
-## 七、预期效果
+## 八、预期效果
 
 ### Web端
 - 更现代的企业管理后台
 - 卡片悬浮感，层次分明
 - 交互动画流畅
+- 紧凑的左侧栏布局
+- 丰富的初始对话体验
 
 ### IM端
 - 完整的手机App体验
 - 居中聊天窗口，像微信App
 - 顶部导航 + 底部输入框
 - 消息可滚动，悬浮感强
+- SSE 实时任务通知
 
 ---
 
