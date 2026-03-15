@@ -78,6 +78,32 @@
   gap: 1rem;
 }
 
+/* 地区选择器样式 */
+.region-selector {
+  display: flex;
+  align-items: center;
+}
+
+.region-select {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.1);
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.region-select:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.region-select option {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
 .user-info {
   font-size: 0.9rem;
   opacity: 0.9;

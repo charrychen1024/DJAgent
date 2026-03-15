@@ -51,5 +51,6 @@
       "message": "任务已下发给黄强快递，等待其完成核查。",
       "message_type": "text"
     }
-  ]
+  ],
+  "region": "上海区"
 }
