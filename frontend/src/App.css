@@ -508,6 +508,40 @@
   cursor: pointer;
 }
 
+/* Tab切换样式 */
+.data-tab-switch {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  padding: 4px;
+  background: var(--bg-gray);
+  border-radius: var(--radius-md);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tab-btn.active {
+  background: white;
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
 /* 统计卡片区域 */
 .risk-stats {
   display: flex;
@@ -916,6 +950,109 @@
   padding: var(--spacing-lg);
   overflow-y: auto;
   background-color: var(--bg-gray);
+}
+
+/* 初始对话视图 - 居中样式 */
+.initial-chat-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.welcome-greeting {
+  margin-bottom: 2rem;
+}
+
+.welcome-greeting h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.welcome-greeting p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+
+.welcome-tips {
+  margin-bottom: 2rem;
+}
+
+.welcome-tips p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.8rem;
+}
+
+.welcome-tips ul {
+  text-align: left;
+  display: inline-block;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.welcome-tips li {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.welcome-tips .tip {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--primary-light);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  color: var(--primary-color);
+}
+
+/* 功能卡片 */
+.quick-prompts {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  max-width: 700px;
+}
+
+.quick-prompt-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  min-width: 0;
+}
+
+.quick-prompt-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.prompt-icon {
+  font-size: 1.25rem;
+}
+
+.prompt-label {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .welcome-message {

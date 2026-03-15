@@ -112,6 +112,15 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const [inputMessage, setInputMessage] = useState('')
   const [pendingFiles, setPendingFiles] = useState([]) // 待发送的文件列表
   const [loading, setLoading] = useState({ tasks: false, riskData: false, chat: false })
+  // 是否处于初始对话状态（无消息时显示居中样式）
+  const [isInitialChat, setIsInitialChat] = useState(true)
+  // 功能卡片预设消息
+  const quickPrompts = [
+    { id: 1, icon: '📊', text: '请帮我分析今天的风险运单明细数据，对这些数据进行各个维度的分析', label: '今日风险分析' },
+    { id: 2, icon: '🔍', text: '请帮我分析本月重点关注的客户、风险运单、风险项和风险指标', label: '月度重点风险分析' },
+    { id: 3, icon: '📋', text: '请帮我统计本月下发的任务情况，分析各状态任务数量、类型分布，以及存在风险的任务', label: '任务下发统计' },
+    { id: 4, icon: '⚙️', text: '我想创建一个自定义任务/工作流，请引导我描述分析思路、分析数据、下发类型和执行人，我将常用的工作流程创建为自动化任务', label: '创建自定义任务' },
+  ]
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -125,6 +134,11 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const [rightWidth, setRightWidth] = useState(25)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
+
+  // Tab切换状态：每日/每月
+  const [dataTab, setDataTab] = useState('daily')
+  // 月度风险数据
+  const [allMonthlyRiskData, setAllMonthlyRiskData] = useState([])
   const [tasksCollapsed, setTasksCollapsed] = useState(false)
   // 添加右侧面板展开状态
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
@@ -219,8 +233,9 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     }
     setLoading(prev => ({ ...prev, tasks: true }))
     try {
-      // 根据用户角色过滤任务：业务负责人看自己创建的，一线人员看分配给自己的
-      const url = `${API_BASE}/tasks?user_id=${currentUser.user_id}`
+      // 根据当前Tab获取对应类型的任务（日度/月度）
+      const taskType = dataTab === 'daily' ? '日度' : '月度'
+      const url = `${API_BASE}/tasks?user_id=${currentUser.user_id}&task_type=${taskType}`
       const response = await fetch(url)
       const data = await response.json()
       setTasks(data.length > 0 ? data : [])
@@ -263,6 +278,39 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     setAllRiskData(allData)
     setLoading(prev => ({ ...prev, riskData: false }))
   }
+
+  // 获取月度风险数据
+  const fetchMonthlyRiskData = async () => {
+    setLoading(prev => ({ ...prev, riskData: true }))
+    const allData = []
+    try {
+      const response = await fetch(`${API_BASE}/risk-data/monthly`)
+      if (response.ok) {
+        const files = await response.json()
+        for (const file of files) {
+          if (file.data && file.data.length > 0) {
+            allData.push(...file.data.map(d => ({ ...d, source: file.filename, month: file.month })))
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[ERROR] 获取月度风险数据失败:', e)
+    }
+    console.log(`[INFO] 加载了 ${allData.length} 条月度风险数据`)
+    setAllMonthlyRiskData(allData)
+    setLoading(prev => ({ ...prev, riskData: false }))
+  }
+
+  // Tab切换时加载数据和任务
+  useEffect(() => {
+    if (dataTab === 'daily') {
+      fetchAllRiskData()
+    } else {
+      fetchMonthlyRiskData()
+    }
+    // 切换Tab时也重新获取对应类型的任务
+    fetchTasks()
+  }, [dataTab])
 
   // 获取所有字段名
   const getAllColumns = () => {
@@ -358,6 +406,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       files: pendingFiles.map(f => ({ name: f.name, type: f.type }))
     }
     setChatMessages(prev => [...prev, userMessage])
+    setIsInitialChat(false) // 发送消息后退出初始状态
 
     const messageToSend = inputMessage
     setInputMessage('')
@@ -395,12 +444,15 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     }
   }
 
+  // 当前显示的数据源（根据Tab）
+  const currentRiskData = dataTab === 'daily' ? allRiskData : allMonthlyRiskData
+
   // 分页逻辑
   const filteredRiskData = (() => {
     // 先按地区筛选
     let data = selectedRegion 
-      ? allRiskData.filter(d => d.region === selectedRegion)
-      : allRiskData
+      ? currentRiskData.filter(d => d.region === selectedRegion)
+      : currentRiskData
     // 全局搜索
     if (globalSearch.trim()) {
       const searchTerm = globalSearch.toLowerCase()
@@ -505,6 +557,22 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
               placeholder="搜索风险明细和任务..."
             />
             <button onClick={handleGlobalSearch}>搜索</button>
+          </div>
+
+          {/* Tab切换：每日/每月 */}
+          <div className="data-tab-switch">
+            <button 
+              className={`tab-btn ${dataTab === 'daily' ? 'active' : ''}`}
+              onClick={() => setDataTab('daily')}
+            >
+              日度数据
+            </button>
+            <button 
+              className={`tab-btn ${dataTab === 'monthly' ? 'active' : ''}`}
+              onClick={() => setDataTab('monthly')}
+            >
+              月度数据
+            </button>
           </div>
 
           {/* 风险统计看板 */}
@@ -692,14 +760,55 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       <div className="main-content">
         <div className="chat-header"><h3>💬 智能体对话</h3></div>
         <div className="chat-messages">
-          {chatMessages.length === 0 && (
+          {isInitialChat ? (
+            <div className="initial-chat-view">
+              {/* 欢迎语 */}
+              <div className="welcome-greeting">
+                <h2>嗨，{currentUser?.username || '用户'} 👋</h2>
+                <p>我是您的专属风控数字员工</p>
+              </div>
+              
+              {/* 提示语 */}
+              <div className="welcome-tips">
+                <p>通过对话我可以帮您：</p>
+                <ul>
+                  <li>📊 分析风险数据</li>
+                  <li>📝 创建和下发任务</li>
+                  <li>📋 查看任务状态</li>
+                  <li>💡 获取风险建议</li>
+                </ul>
+                <p className="tip">⚡ 所有操作都通过对话完成，无需手动创建任务</p>
+              </div>
+
+              {/* 功能卡片 */}
+              <div className="quick-prompts">
+                {quickPrompts.map(prompt => (
+                  <button 
+                    key={prompt.id}
+                    className="quick-prompt-card"
+                    onClick={() => {
+                      setInputMessage(prompt.text)
+                      // 自动发送
+                      setTimeout(() => {
+                        const sendBtn = document.querySelector('.send-btn')
+                        if (sendBtn) sendBtn.click()
+                      }, 100)
+                    }}
+                  >
+                    <span className="prompt-icon">{prompt.icon}</span>
+                    <span className="prompt-label">{prompt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : chatMessages.length === 0 ? (
             <div className="welcome-message">
               <p>👋 欢迎使用风控Agent助手！</p>
               <p>通过对话我可以帮您：</p>
               <ul><li>分析风险数据</li><li>创建和下发任务</li><li>查看任务状态</li><li>获取风险建议</li></ul>
               <p className="tip">⚡ 所有操作都通过对话完成，无需手动创建任务</p>
             </div>
-          )}
+          ) : null}
           {chatMessages.map((msg, i) => (
             <div key={i} className={`message ${msg.sender}`}>
               <div className="message-header"><span className="sender">{msg.sender === 'user' ? '👤 我' : '🤖 Agent'}</span><span className="timestamp">{msg.timestamp}</span></div>

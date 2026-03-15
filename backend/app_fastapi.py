@@ -105,8 +105,12 @@ async def get_user(user_id: str):
 
 
 @app.get("/api/tasks")
-async def get_tasks(user_id: Optional[str] = None):
+async def get_tasks(user_id: Optional[str] = None, task_type: Optional[str] = None):
     tasks = read_csv_file("tasks.csv")
+
+    # 按任务类型过滤（日度/月度）
+    if task_type:
+        tasks = [t for t in tasks if t.get("task_type") == task_type]
 
     if user_id:
         users = read_csv_file("users.csv")
@@ -266,6 +270,9 @@ async def get_all_risk_data():
     risk_files = []
 
     for file_path in DATA_DIR.glob("risk_data_*.csv"):
+        # 排除月度数据文件
+        if "monthly" in file_path.name:
+            continue
         try:
             data = read_csv_file(file_path.name)
             risk_files.append(
@@ -277,6 +284,25 @@ async def get_all_risk_data():
     return risk_files
 
 
+@app.get("/api/risk-data/monthly")
+async def get_monthly_risk_data():
+    """获取所有月度风险数据文件列表"""
+    risk_files = []
+
+    for file_path in sorted(DATA_DIR.glob("risk_data_monthly_*.csv")):
+        try:
+            data = read_csv_file(file_path.name)
+            # 从文件名提取月份
+            month = file_path.stem.replace("risk_data_monthly_", "")
+            risk_files.append(
+                {"filename": file_path.name, "month": month, "data": data, "count": len(data)}
+            )
+        except Exception as e:
+            logger.error(f"读取月度风险数据文件失败 {file_path}: {e}")
+
+    return risk_files
+
+
 @app.get("/api/risk-data/{identifier}")
 async def get_risk_data_file(identifier: str):
     """获取单个风险数据文件内容
@@ -284,11 +310,22 @@ async def get_risk_data_file(identifier: str):
     支持格式：
     - /api/risk-data/001  -> risk_data_001.csv
     - /api/risk-data/risk_data_001.csv -> 直接使用
+    - /api/risk-data/monthly_01 -> risk_data_monthly_01.csv (月度数据)
+    - /api/risk-data/monthly_1 -> risk_data_monthly_01.csv
     """
     try:
         import re
 
-        if identifier.isdigit():
+        # 处理月度数据标识
+        if identifier.startswith('monthly_'):
+            # monthly_01 或 monthly_1 -> risk_data_monthly_01.csv
+            month_part = identifier.replace('monthly_', '')
+            if month_part.isdigit():
+                month_num = int(month_part)
+                filename = f"risk_data_monthly_{month_num:02d}.csv"
+            else:
+                filename = f"risk_data_{identifier}.csv"
+        elif identifier.isdigit():
             num = int(identifier)
             filename = f"risk_data_{num:03d}.csv"
         elif identifier.startswith("risk_data_") and identifier.endswith(".csv"):
