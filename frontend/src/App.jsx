@@ -102,7 +102,7 @@ function LoginPage({ users, onLogin, loading }) {
 }
 
 // 业务负责人工作区
-function ManagerWorkspace({ currentUser, onAddToChat }) {
+function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const [tasks, setTasks] = useState([])
   const [allRiskData, setAllRiskData] = useState([])
   const [selectedRows, setSelectedRows] = useState([])
@@ -266,16 +266,16 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
 
   // 获取所有字段名
   const getAllColumns = () => {
-    if (allRiskData.length === 0) return []
-    return Object.keys(allRiskData[0]).filter(k => k !== 'source')
+    if (filteredRiskData.length === 0) return []
+    return Object.keys(filteredRiskData[0]).filter(k => k !== 'source')
   }
 
   // 全选/取消全选
   const handleSelectAll = () => {
-    if (selectedRows.length === allRiskData.length) {
+    if (selectedRows.length === filteredRiskData.length) {
       setSelectedRows([])
     } else {
-      setSelectedRows(allRiskData.map((_, i) => i));
+      setSelectedRows(filteredRiskData.map((_, i) => i));
     }
   }
 
@@ -291,7 +291,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   // 一键添加到聊天框
   const handleAddSelectedToChat = () => {
     if (selectedRows.length === 0) return
-    const selectedData = selectedRows.map(i => allRiskData[i])
+    const selectedData = selectedRows.map(i => filteredRiskData[i])
 
     // 显示所有字段（排除 source）
     const summary = selectedData.map(d => {
@@ -397,7 +397,10 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
 
   // 分页逻辑
   const filteredRiskData = (() => {
-    let data = allRiskData
+    // 先按地区筛选
+    let data = selectedRegion 
+      ? allRiskData.filter(d => d.region === selectedRegion)
+      : allRiskData
     // 全局搜索
     if (globalSearch.trim()) {
       const searchTerm = globalSearch.toLowerCase()
@@ -483,9 +486,9 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
 
   // 计算风险统计
   const riskStats = {
-    high: allRiskData.filter(d => d['风险等级'] === '高').length,
-    medium: allRiskData.filter(d => d['风险等级'] === '中').length,
-    low: allRiskData.filter(d => d['风险等级'] === '低').length,
+    high: filteredRiskData.filter(d => d['风险等级'] === '高').length,
+    medium: filteredRiskData.filter(d => d['风险等级'] === '中').length,
+    low: filteredRiskData.filter(d => d['风险等级'] === '低').length,
   }
 
   return (
@@ -534,7 +537,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           </div>
           {loading.riskData ? (
             <div className="loading-tip">加载中...</div>
-          ) : allRiskData.length > 0 ? (
+          ) : filteredRiskData.length > 0 ? (
             <div className="risk-data-container">
               <div className="risk-table-wrapper">
                 <table className="risk-table">
@@ -1170,6 +1173,20 @@ function App() {
   // 个人中心下拉菜单状态
   const [showProfileMenu, setShowProfileMenu] = useState(false)
 
+  // 地区下拉框状态
+  // 总部用户可以切换地区，地区用户只能看自己的地区（不可切换但仍显示下拉框）
+  const isHQUser = currentUser?.region === '总部'
+  const [selectedRegion, setSelectedRegion] = useState(() => {
+    // 总部用户初始为空（查看所有），地区用户初始为自己的地区
+    return currentUser?.region === '总部' ? '' : (currentUser?.region || '')
+  })
+  const [showRegionMenu, setShowRegionMenu] = useState(false)
+
+  // 地区选项（总部用户可选全部，地区用户只有自己的地区）
+  const regionOptions = isHQUser 
+    ? ['', '上海区', '北京区', '山西区', '浙北区']
+    : [currentUser?.region].filter(Boolean)
+
   // 退出登录
   const handleLogout = () => {
     sessionStorage.removeItem('currentUser')
@@ -1205,6 +1222,31 @@ function App() {
       <header className="App-header">
         <h1>🛡️ 风控数字员工</h1>
         <div className="header-right">
+          {/* 地区选择下拉框 - 所有用户都显示，地区用户不可切换 */}
+          <div className="region-selector">
+            <select 
+              value={selectedRegion} 
+              onChange={(e) => {
+                if (isHQUser) {
+                  setSelectedRegion(e.target.value)
+                }
+              }}
+              className="region-select"
+              disabled={!isHQUser}
+            >
+              {isHQUser ? (
+                <>
+                  <option value="">🌍 全地区</option>
+                  {regionOptions.filter(r => r).map(region => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
+                </>
+              ) : (
+                <option value={currentUser?.region}>{currentUser?.region}</option>
+              )}
+            </select>
+          </div>
+
           {/* 个人中心下拉菜单 */}
           <div className="profile-menu">
             <button className="profile-btn" onClick={(e) => { e.stopPropagation(); setShowProfileMenu(!showProfileMenu); }}>
@@ -1217,6 +1259,7 @@ function App() {
                   <div className="profile-detail">工号: {currentUser.employee_id || currentUser.user_id}</div>
                   <div className="profile-detail">角色: {currentUser.role}</div>
                   <div className="profile-detail">部门: {currentUser.department}</div>
+                  <div className="profile-detail">地区: {currentUser.region || '未设置'}</div>
                 </div>
                 <div className="profile-divider"></div>
                 <button className="logout-btn" onClick={handleLogout}>退出登录</button>
@@ -1225,7 +1268,7 @@ function App() {
           </div>
         </div>
       </header>
-      {isManager ? <ManagerWorkspace currentUser={currentUser} /> : <StaffWorkspace currentUser={currentUser} />}
+      {isManager ? <ManagerWorkspace currentUser={currentUser} selectedRegion={selectedRegion} /> : <StaffWorkspace currentUser={currentUser} />}
     </div>
   )
 }
