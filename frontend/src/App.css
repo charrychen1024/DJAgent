@@ -51,7 +51,7 @@
 
 .App {
   min-height: 100vh;
-  background: linear-gradient(145deg, #f0f2f5 0%, #e8eaed 50%, #dcdfe3 100%);
+  background: white;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   border: none;
 }
@@ -378,6 +378,7 @@
 /* ========== 工作区布局 ========== */
 .workspace {
   display: flex;
+  width: 100%;
   height: calc(100vh - 52px);
   padding: 0;
   gap: 0;
@@ -838,7 +839,6 @@
 
 .chat-header {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
   background-color: #fafafa;
   display: flex;
   justify-content: space-between;
@@ -890,7 +890,7 @@
   border-radius: var(--radius-md);
   font-size: 0.9rem;
   color: var(--primary-color);
-  border: 1px solid #91d5ff;
+  border: none;
 }
 
 /* 消息气泡样式 */
@@ -990,7 +990,6 @@
   display: flex;
   flex-direction: column;
   padding: 12px 16px;
-  border-top: 1px solid var(--border-color);
   gap: 8px;
   background: white;
   flex-shrink: 0;
@@ -1872,10 +1871,10 @@
 /* 大屏幕 - 1400px+ */
 @media (min-width: 1400px) {
   .workspace {
-    max-width: 1800px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: none;
   }
-  
+
   .risk-table {
     font-size: 0.8rem;
   }
@@ -1906,12 +1905,13 @@
     width: 100% !important;
     height: auto;
     max-height: 40vh;
-    border-bottom: 1px solid var(--border-color);
+    border: none;
   }
   
   .main-content {
     width: 100% !important;
     min-height: 50vh;
+    border: none;
   }
   
   .sidebar.right {
@@ -1921,6 +1921,7 @@
     height: calc(100vh - 52px);
     z-index: 100;
     box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+    border: none;
   }
   
   .resize-handle {
