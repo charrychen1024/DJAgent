@@ -118,6 +118,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
   // 筛选相关状态
   const [searchField, setSearchField] = useState('')
   const [searchValue, setSearchValue] = useState('')
+  const [globalSearch, setGlobalSearch] = useState('')
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const [leftWidth, setLeftWidth] = useState(35)
@@ -396,16 +397,43 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
 
   // 分页逻辑
   const filteredRiskData = (() => {
-    if (!searchField || !searchValue.trim()) return allRiskData
-    return allRiskData.filter(row => {
-      const fieldValue = row[searchField]
-      if (fieldValue == null) return false
-      return String(fieldValue).toLowerCase().includes(searchValue.toLowerCase())
-    })
+    let data = allRiskData
+    // 全局搜索
+    if (globalSearch.trim()) {
+      const searchTerm = globalSearch.toLowerCase()
+      data = data.filter(row => {
+        return Object.values(row).some(val => {
+          if (val == null) return false
+          return String(val).toLowerCase().includes(searchTerm)
+        })
+      })
+    }
+    // 字段筛选
+    if (searchField && searchValue.trim()) {
+      const searchVal = searchValue.toLowerCase()
+      data = data.filter(row => {
+        const fieldValue = row[searchField]
+        if (fieldValue == null) return false
+        return String(fieldValue).toLowerCase().includes(searchVal)
+      })
+    }
+    return data
   })()
 
   const totalPages = Math.ceil(filteredRiskData.length / pageSize)
   const currentPageData = filteredRiskData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  // 任务列表过滤逻辑
+  const filteredTasks = (() => {
+    if (!globalSearch.trim()) return tasks
+    const searchTerm = globalSearch.toLowerCase()
+    return tasks.filter(task => {
+      return Object.values(task).some(val => {
+        if (val == null) return false
+        return String(val).toLowerCase().includes(searchTerm)
+      })
+    })
+  })()
 
   // 筛选处理函数
   const handleSearch = () => {
@@ -418,6 +446,19 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
     setSearchValue('')
     setCurrentPage(1)
     setSelectedRows([])
+  }
+
+  // 全局搜索处理函数
+  const handleGlobalSearch = () => {
+    // 全局搜索会在filteredRiskData中过滤
+    setCurrentPage(1)
+    setSelectedRows([])
+  }
+
+  const handleGlobalSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleGlobalSearch()
+    }
   }
 
   // 重置分页到第一页当风险数据变化时
@@ -451,6 +492,18 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
     <div className="workspace manager-workspace">
       <div className="sidebar left" style={{ width: `${leftWidth}%` }}>
         <div className="risk-data-section">
+          {/* 全局搜索栏 */}
+          <div className="global-search-bar">
+            <input
+              type="text"
+              value={globalSearch}
+              onChange={e => setGlobalSearch(e.target.value)}
+              onKeyDown={handleGlobalSearchKeyDown}
+              placeholder="搜索风险明细和任务..."
+            />
+            <button onClick={handleGlobalSearch}>搜索</button>
+          </div>
+
           {/* 风险统计看板 */}
           <div className="risk-stats">
             <div className="stat-card high">
@@ -466,7 +519,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
               <div className="stat-label">低风险</div>
             </div>
           </div>
-          
+
           <div className="section-header">
             <h3>📊 风险明细数据</h3>
             <div className="action-buttons">
@@ -478,29 +531,6 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
                 📤 添加到对话 ({selectedRows.length})
               </button>
             </div>
-          </div>
-          {/* 筛选栏 */}
-          <div className="risk-filter-bar">
-            <select
-              value={searchField}
-              onChange={e => setSearchField(e.target.value)}
-              className="filter-select"
-            >
-              <option value="">筛选字段</option>
-              {columns.map(col => (
-                <option key={col} value={col}>{col}</option>
-              ))}
-            </select>
-            <input
-              type="text"
-              value={searchValue}
-              onChange={e => setSearchValue(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="输入关键词..."
-              className="filter-input"
-            />
-            <button onClick={handleSearch} className="filter-btn">搜索</button>
-            <button onClick={handleResetSearch} className="filter-btn reset">重置</button>
           </div>
           {loading.riskData ? (
             <div className="loading-tip">加载中...</div>
@@ -636,9 +666,13 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           </div>
           {!tasksCollapsed && (
             <>
-              {loading.tasks ? <div className="loading-tip">加载中...</div> : tasks.length > 0 ? (
+              {loading.tasks ? <div className="loading-tip">加载中...</div> : tasks.length === 0 ? (
+                <div className="empty-tip">暂无任务</div>
+              ) : filteredTasks.length === 0 ? (
+                <div className="empty-tip">无搜索结果</div>
+              ) : (
                 <div className="task-list">
-                  {tasks.map(task => (
+                  {filteredTasks.map(task => (
                     <div key={task.task_id} className={`task-card ${selectedTask?.task_id === task.task_id ? 'selected' : ''}`} onClick={() => handleTaskClick(task)}>
                       <div className="task-header"><span className="task-id">{task.task_id}</span><span className={`task-status ${task.status}`}>{task.status}</span></div>
                       <div className="task-summary">{task.risk_summary}</div>
@@ -646,7 +680,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
                     </div>
                   ))}
                 </div>
-              ) : <div className="empty-tip">暂无任务</div>}
+              )}
             </>
           )}
         </div>

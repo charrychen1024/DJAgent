@@ -443,7 +443,7 @@
 
 .risk-data-section {
   flex: 2;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   border: none;
   overflow: auto;
   display: flex;
@@ -451,18 +451,49 @@
   min-height: 200px;
 }
 
+/* 全局搜索栏 - 左边栏顶部 */
+.global-search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.global-search-bar input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+}
+
+.global-search-bar input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.global-search-bar button {
+  padding: 6px 12px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
 /* 统计卡片区域 */
 .risk-stats {
   display: flex;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
   flex-shrink: 0;
 }
 
 .stat-card {
   flex: 1;
-  padding: var(--spacing-md);
-  border-radius: var(--radius-md);
+  padding: 8px;
+  border-radius: var(--radius-sm);
   text-align: center;
   box-shadow: var(--shadow-sm);
 }
@@ -483,7 +514,7 @@
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -492,7 +523,7 @@
 .stat-card.low .stat-value { color: #389e0d; }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
   margin-top: 2px;
 }
@@ -501,12 +532,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   flex-shrink: 0;
 }
 
 .section-header h3 {
-  font-size: 1rem;
+  font-size: 0.85rem;
   color: var(--text-primary);
   font-weight: 600;
 }
@@ -575,8 +606,8 @@
 }
 
 .action-btn {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem;
+  padding: 4px 8px;
+  font-size: 0.7rem;
   background: var(--primary-color);
   color: white;
   border: none;
@@ -690,7 +721,7 @@
 
 /* ========== 任务列表区域 ========== */
 .task-list-section {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -702,14 +733,14 @@
 
 .task-list-section.collapsed {
   max-height: 40px;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
 }
 
 .task-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   flex-shrink: 0;
 }
 
@@ -718,7 +749,7 @@
 }
 
 .task-list-header h3 {
-  font-size: 1rem;
+  font-size: 0.85rem;
   color: var(--text-primary);
   font-weight: 600;
   margin: 0;
