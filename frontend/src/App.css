@@ -766,10 +766,10 @@
 }
 
 .task-card {
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  margin-bottom: 4px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
   background: white;
@@ -1154,9 +1154,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 2px solid var(--primary-color);
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: none;
 }
 
 .right-panel-header h3 {
@@ -1225,11 +1225,11 @@
 }
 
 .sidebar.right h3 {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-lg);
-  border-bottom: 2px solid var(--primary-color);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: none;
   font-weight: 600;
   position: sticky;
   top: 0;
@@ -1239,24 +1239,24 @@
 
 .task-detail {
   background-color: #fafafa;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
-  margin: 0 var(--spacing-lg);
+  margin: 0 var(--spacing-md);
 }
 
 .task-detail h4 {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   color: var(--primary-color);
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
 .task-detail p {
-  margin-bottom: var(--spacing-sm);
-  font-size: 0.9rem;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
   color: var(--text-primary);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .status-tag {
@@ -1272,15 +1272,15 @@
 .status-tag.已超期 { background: var(--danger-color); color: white; }
 
 .feedback-section, .files-section {
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
   border-top: 1px solid var(--border-color);
 }
 
 .feedback-section h5, .files-section h5 {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 4px;
   font-weight: 600;
 }
 
@@ -1288,8 +1288,8 @@
 .detail-actions {
   display: flex;
   gap: var(--spacing-sm);
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
   border-top: 1px solid var(--border-color);
 }
 
