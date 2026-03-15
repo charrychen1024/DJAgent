@@ -651,7 +651,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           )}
         </div>
       </div>
-      <div className="resize-handle" onMouseDown={() => setIsDraggingLeft(true)} />
+      <div className={`resize-handle ${isDraggingLeft ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingLeft(true)} />
       <div className="main-content">
         <div className="chat-header"><h3>💬 智能体对话</h3></div>
         <div className="chat-messages">
@@ -709,7 +709,7 @@ function ManagerWorkspace({ currentUser, onAddToChat }) {
           </div>
         </div>
       </div>
-      <div className="resize-handle" onMouseDown={() => setIsDraggingRight(true)} />
+      <div className={`resize-handle ${isDraggingRight ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingRight(true)} />
       <div
         className={`sidebar right ${rightPanelOpen ? 'open' : 'collapsed'}`}
         style={rightPanelOpen ? { width: `${rightWidth}%` } : {}}
