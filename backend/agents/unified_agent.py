@@ -272,6 +272,101 @@ class UnifiedAgent:
 
         return update_result
 
+    async def notify_new_task(self, task_id: str, task_info: dict) -> dict:
+        """
+        发送新任务通知给用户 - 核心功能
+
+        当Staff端收到新任务推送时，调用此方法让Agent主动发送消息引导用户
+
+        Args:
+            task_id: 任务ID
+            task_info: 任务信息
+
+        Returns:
+            发送结果
+        """
+        logger.info(f"[UnifiedAgent] >>> notify_new_task 开始: task_id={task_id}, user_id={self.config.user_id}")
+        logger.info(f"[UnifiedAgent] 任务信息: {task_info}")
+
+        try:
+            # 1. 先设置当前任务
+            self.current_task_id = task_id
+            logger.info(f"[UnifiedAgent] 已设置当前任务: {task_id}")
+
+            # 2. 构建通知提示词
+            risk_summary = task_info.get("risk_summary", "未知")
+            task_type = task_info.get("task_type", "日度")
+            creator_name = task_info.get("creator_name", "未知")
+
+            # 精心设计的提示词
+            notification_prompt = f"""【新任务通知】
+
+您有一个新的风险核查任务需要处理！
+
+📋 任务信息：
+- 任务编号：{task_id}
+- 任务类型：{task_type}
+- 创建人：{creator_name}
+- 风险摘要：{risk_summary}
+
+请主动发送一条友好的消息，告知用户有新的核查任务，引导用户开始工作。
+
+消息要求：
+1. 语气友好、主动
+2. 简洁明了地告知任务内容
+3. 引导用户开始核查或提问
+4. 适当使用emoji让消息更生动
+
+直接回复用户即可，不需要调用工具。"""
+
+            logger.info(f"[UnifiedAgent] 发送通知消息给用户...")
+            logger.info(f"[UnifiedAgent] 提示词: {notification_prompt[:200]}...")
+
+            # 3. 调用SDK发送消息
+            await self.client.query(notification_prompt)
+
+            # 4. 收集回复
+            responses = []
+            async for msg in self.client.receive_response():
+                if isinstance(msg, AssistantMessage):
+                    for block in msg.content:
+                        if isinstance(block, TextBlock):
+                            responses.append(block.text)
+                            logger.info(f"[UnifiedAgent] Agent回复(block): {block.text[:100]}...")
+                elif isinstance(msg, ResultMessage):
+                    logger.info(f"[UnifiedAgent] 请求完成: {msg.subtype}")
+
+            reply = "\n".join(responses) if responses else "您好！您有新任务需要核查，请告诉我开始工作。"
+
+            logger.info(f"[UnifiedAgent] >>> notify_new_task 完成: 回复={reply[:100]}...")
+
+            # 5. 保存聊天记录到数据库
+            try:
+                from .tools import save_chat_message
+                save_chat_message(
+                    task_id=task_id,
+                    sender="Agent",
+                    message=reply,
+                    message_type="text"
+                )
+                logger.info(f"[UnifiedAgent] 聊天记录已保存")
+            except Exception as e:
+                logger.error(f"[UnifiedAgent] 保存聊天记录失败: {e}")
+
+            return {
+                "success": True,
+                "message": reply,
+                "task_id": task_id
+            }
+
+        except Exception as e:
+            logger.error(f"[UnifiedAgent] >>> notify_new_task 失败: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "task_id": task_id
+            }
+
 
 async def create_unified_agent(
     config: AgentConfig, auto_start: bool = True

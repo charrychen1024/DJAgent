@@ -718,6 +718,81 @@ async def health_check():
     }
 
 
+
+# ============ Staff任务通知API ============
+
+@app.post("/api/tasks/{task_id}/notify-staff")
+async def notify_staff_task(task_id: str, request: Request):
+    """
+    触发Staff端任务通知 - 方案A核心API
+
+    当Staff端收到SSE新任务事件后，前端调用此API
+    后端会调用Staff Agent发送引导消息给用户
+
+    Args:
+        task_id: 任务ID
+
+    Returns:
+        Agent发送的消息
+    """
+    from agents.session_manager import get_or_create_staff_agent
+
+    logger.info(f"[API] >>> notify-staff 开始: task_id={task_id}")
+
+    try:
+        # 1. 获取请求体中的用户信息
+        body = await request.json()
+        user_id = body.get("user_id")
+        username = body.get("username")
+
+        logger.info(f"[API] 请求用户: user_id={user_id}, username={username}")
+
+        if not user_id or not username:
+            raise HTTPException(status_code=400, detail="缺少user_id或username")
+
+        # 2. 获取任务信息
+        from .tasks import read_csv_file
+        tasks = read_csv_file("tasks.csv")
+        task_info = next((t for t in tasks if t.get("task_id") == task_id), None)
+
+        if not task_info:
+            logger.error(f"[API] 任务不存在: {task_id}")
+            raise HTTPException(status_code=404, detail="任务不存在")
+
+        logger.info(f"[API] 任务信息: {task_info}")
+
+        # 3. 验证用户是否是任务的执行人
+        assigned_to_id = task_info.get("assigned_to_id")
+        if assigned_to_id != user_id:
+            logger.warning(f"[API] ⚠️ 用户不匹配: 请求user_id={user_id}, 任务assigned_to_id={assigned_to_id}")
+            # 仍然允许发送，但记录警告
+
+        # 4. 获取或创建Staff Agent
+        logger.info(f"[API] 获取Staff Agent: user_id={user_id}")
+        agent = await get_or_create_staff_agent(user_id, username)
+
+        # 5. 调用Agent发送通知
+        logger.info(f"[API] 调用Agent发送通知...")
+        result = await agent.notify_new_task(task_id, task_info)
+
+        if result.get("success"):
+            logger.info(f"[API] >>> notify-staff 成功: {result.get('message')[:100]}...")
+            return {
+                "success": True,
+                "message": result.get("message"),
+                "task_id": task_id
+            }
+        else:
+            logger.error(f"[API] >>> notify-staff 失败: {result.get('error')}")
+            raise HTTPException(status_code=500, detail=result.get("error", "发送失败"))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] >>> notify-staff 异常: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============ 启动 ============
 
 if __name__ == "__main__":
