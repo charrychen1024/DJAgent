@@ -958,10 +958,34 @@ function StaffWorkspace({ currentUser }) {
         if (data.type === 'new_task') {
           // 收到新任务通知
           console.log('[SSE Staff] 收到新任务:', data.task_id)
-          // 弹出通知
-          alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
-          // 刷新并初始化新任务对话
-          initConversation()
+
+          // 方案A：调用后端API触发Staff Agent发送消息
+          console.log('[SSE Staff] 调用notify-staff API...')
+          fetch(`${API_BASE}/tasks/${data.task_id}/notify-staff`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: currentUser.user_id,
+              username: currentUser.username
+            })
+          })
+            .then(res => res.json())
+            .then(result => {
+              console.log('[SSE Staff] notify-staff 结果:', result)
+              if (result.success) {
+                // 刷新对话以显示新消息
+                initConversation()
+              } else {
+                console.error('[SSE Staff] notify-staff 失败:', result)
+                // 即使失败也弹出提示
+                alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
+              }
+            })
+            .catch(err => {
+              console.error('[SSE Staff] notify-staff 异常:', err)
+              // 网络错误时也弹出提示
+              alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
+            })
         }
       } catch (err) {
         console.error('[SSE Staff] 解析事件失败:', err)
