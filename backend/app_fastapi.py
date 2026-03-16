@@ -139,17 +139,24 @@ async def create_task(request: Request):
     data = await request.json()
     tasks = read_csv_file("tasks.csv")
 
-    # 使用创建人ID + 时间戳（精确到毫秒）+ 序号作为任务ID，确保唯一性
-    # 格式: 001-20260312112289456-1 (首个任务)
-    #       001-20260312112289456-2 (同时间第2个任务)
-    #       001-20260312112289456-3 (同时间第3个任务)
-    creator_id = data.get("creator_id", "000")
+    # 使用员工编号 + 时间戳（精确到毫秒）+ 序号作为任务ID
+    # 格式: 001-20260312112289456-001 (首个任务)
+    #       001-20260312112289456-002 (同时间第2个任务)
+    # 员工编号：去掉了 "EMP_" 或 "EMP" 前缀
+    creator_id_raw = data.get("creator_id", "000")
+    employee_no = creator_id_raw.replace("EMP_", "").replace("EMP", "")
+    
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]  # 精确到毫秒
-    base_task_id = f"{creator_id}-{timestamp}"
+    base_task_id = f"{employee_no}-{timestamp}"
 
-    # 检查是否有相同 base_task_id 的任务，序号从1开始递增
+    # 检查是否有相同 base_task_id 的任务，序号从1开始递增（3位数）
     existing_count = sum(1 for t in tasks if t["task_id"].startswith(base_task_id))
-    new_task_id = f"{base_task_id}-{existing_count + 1}"
+    new_task_id = f"{base_task_id}-{existing_count + 1:03d}"
+
+    # Task Type：用户没指定就默认"日度"
+    task_type = data.get("task_type", "日度")
+    if task_type not in ["日度", "月度"]:
+        task_type = "日度"
 
     new_task = {
         "task_id": new_task_id,
@@ -164,6 +171,8 @@ async def create_task(request: Request):
         "suggested_receiver_id": data.get("assigned_to_id"),
         "confirmed_receiver_id": data.get("assigned_to_id"),
         "completed_time": "",
+        "region": data.get("region", ""),
+        "task_type": task_type,
     }
 
     tasks.append(new_task)
