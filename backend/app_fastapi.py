@@ -751,7 +751,6 @@ async def notify_staff_task(task_id: str, request: Request):
             raise HTTPException(status_code=400, detail="缺少user_id或username")
 
         # 2. 获取任务信息
-        from .tasks import read_csv_file
         tasks = read_csv_file("tasks.csv")
         task_info = next((t for t in tasks if t.get("task_id") == task_id), None)
 
