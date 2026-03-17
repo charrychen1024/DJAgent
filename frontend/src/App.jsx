@@ -941,12 +941,30 @@ function StaffWorkspace({ currentUser }) {
   const [inputMessage, setInputMessage] = useState('')
   const [pendingFiles, setPendingFiles] = useState([]) // 待发送的文件列表
   const [loading, setLoading] = useState({ chat: false, init: true })
+  const [tasks, setTasks] = useState([])
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  // 获取任务列表
+  const fetchTasks = async () => {
+    if (!currentUser?.user_id) {
+      setTasks([])
+      return
+    }
+    try {
+      const response = await fetch(`${API_BASE}/tasks?user_id=${currentUser.user_id}`)
+      const data = await response.json()
+      setTasks(data.length > 0 ? data : [])
+    } catch (err) {
+      console.error('[ERROR] 获取任务失败:', err)
+      setTasks([])
+    }
+  }
 
   // 页面加载时自动获取任务并发起对话
   useEffect(() => {
     if (currentUser?.user_id) {
+      fetchTasks()
       initConversation()
     }
   }, [currentUser])
