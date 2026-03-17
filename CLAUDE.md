@@ -103,3 +103,64 @@ Backend (FastAPI)
 - `main` - Production branch
 - `feature/ui-optimization` - UI improvements (current)
 - `feature/skill-based-agent` - Skill-based agent implementation
+
+## 任务自动通知方案（经验总结）
+
+### 问题背景
+Manager 创建任务后，需要自动通知 Staff（一线人员）有新任务需要核查。
+
+### 问题1：Staff 收不到消息
+**原因**：原方案依赖前端 SSE 连接推送消息，但 SSE 连接不稳定，导致消息无法送达。
+
+**解决方案**：后端自动触发
+1. Manager 创建任务时，在 `mcp_server.py` 的 `tool_create_task` 函数中
+2. 任务创建成功后，自动获取 StaffAgent
+3. 调用 `staff_agent.notify_new_task()` 发送引导消息
+4. 推送 SSE 事件通知前端刷新
+
+**关键代码** (`backend/agents/mcp_server.py`):
+```python
+if result.get("success"):
+    task_id = result.get("task_id")
+    assigned_to_id = task_info.get("assigned_to_id")
+    assigned_to_name = task_info.get("assigned_to_name")
+
+    if assigned_to_id and assigned_to_name:
+        from .session_manager import get_or_create_staff_agent
+        staff_agent = await get_or_create_staff_agent(assigned_to_id, assigned_to_name)
+        notify_result = await staff_agent.notify_new_task(task_id, task_info)
+
+        # 推送 SSE 事件通知前端
+        if SSE_AVAILABLE:
+            await sse_manager.publish_to_staff(
+                assigned_to_id,
+                "task_message_received",
+                {"task_id": task_id, "task_info": task_info, "message": notify_result.get("message", "")}
+            )
+```
+
+### 问题2：前端 SSE 连接频繁断开
+**原因**：
+1. Uvicorn 热重载时断开所有连接
+2. 前端 useEffect 重新执行导致重新连接
+
+**解决方案**：前端添加自动重连机制
+```javascript
+eventSource.onerror = (err) => {
+  eventSource.close()
+  setTimeout(() => {
+    const newSource = new EventSource(`${API_BASE}/events/${user_id}`)
+  }, 3000)
+}
+```
+
+### 问题3：组件缺少函数定义
+**原因**：StaffWorkspace 组件没有自己的 `fetchTasks` 函数
+
+**解决方案**：在 StaffWorkspace 组件中添加 `fetchTasks` 函数和 `tasks` 状态
+
+### SSE 推送事件类型
+- `task_created`: Manager 创建新任务
+- `new_task`: 有新任务分配给 Staff（原始事件）
+- `task_message_received`: StaffAgent 自动发送消息后推送（新增）
+- `task_completed`: 任务反馈完成

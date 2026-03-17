@@ -1113,9 +1113,48 @@ async def chat(self, message: str, context: Optional[Dict] = None) -> str:
 
 ---
 
-## 七、总结
+## 七、任务自动通知架构（实践经验）
 
-### 7.1 核心原则
+### 7.1 问题背景
+Manager 创建任务后，需要自动通知 Staff（一线人员）有新任务需要核查。
+
+### 7.2 问题与解决方案
+
+#### 问题1：Staff 收不到消息
+**原因**：原方案依赖前端 SSE 连接推送消息，但 SSE 连接不稳定，导致消息无法送达。
+
+**解决方案**：后端自动触发
+```
+Manager创建任务 → MCP tool_create_task → 创建StaffAgent → 调用notify_new_task → 推送SSE事件 → 前端刷新
+```
+
+#### 问题2：SSE 连接频繁断开
+**原因**：Uvicorn 热重载、前端 useEffect 重新执行
+
+**解决方案**：前端添加自动重连机制（3秒后重连）
+
+#### 问题3：前端组件缺少函数
+**原因**：StaffWorkspace 组件没有自己的 fetchTasks 函数
+
+**解决方案**：在组件内添加独立的状态和函数
+
+### 7.3 SSE 事件类型
+| 事件类型 | 说明 |
+|---------|------|
+| task_created | Manager 创建新任务 |
+| new_task | 有新任务分配给 Staff（原始事件） |
+| task_message_received | StaffAgent 自动发送消息后推送 |
+| task_completed | 任务反馈完成 |
+
+### 7.4 关键代码位置
+- 后端触发：`backend/agents/mcp_server.py` - `tool_create_task` 函数
+- 前端监听：`frontend/src/App.jsx` - StaffWorkspace 组件的 useEffect
+
+---
+
+## 八、总结
+
+### 8.1 核心原则
 
 1. **全面拥抱 SDK**：利用 SDK 的 ToolDefinition 和 ToolUse 机制
 2. **动态 Skill 加载**：自动扫描和注册，零配置

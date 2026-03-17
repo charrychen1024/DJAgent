@@ -1,8 +1,15 @@
 {
   "task_id": "TASK_1773578305151",
-  "assigned_to_id": "012",
-  "assigned_to_name": "陈娜销售",
-  "chat_history": [],
+  "assigned_to_id": "009",
+  "assigned_to_name": "赵芳快递",
+  "chat_history": [
+    {
+      "timestamp": "2026-03-17 23:13:13",
+      "sender": "Agent",
+      "sender_type": "agent",
+      "message": "您好，赵芳快递！👋\n\n您有新的风险核查任务需要处理啦！\n\n**📋 任务概览**\n- 任务编号：TASK_1773578305151\n- 类型：日度核查\n- 运单号：WLYD3460430\n\n我可以帮您：\n- 查看任务详细信息\n- 指导您完成核查流程\n- 分析风险数据\n- 生成核查报告\n\n请告诉我您想从哪里开始？或者您对这个任务有什么疑问吗？😊"
+    }
+  ],
   "uploaded_files": [],
   "feedback_summary": "",
   "status": "已创建"
