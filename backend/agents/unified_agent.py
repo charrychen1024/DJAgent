@@ -322,21 +322,36 @@ class UnifiedAgent:
             logger.info(f"[UnifiedAgent] 发送通知消息给用户...")
             logger.info(f"[UnifiedAgent] 提示词: {notification_prompt[:200]}...")
 
-            # 3. 调用SDK发送消息
-            await self.client.query(notification_prompt)
+            # 3. 调用SDK发送消息（增加超时和错误处理）
+            try:
+                await self.client.query(notification_prompt)
 
-            # 4. 收集回复
-            responses = []
-            async for msg in self.client.receive_response():
-                if isinstance(msg, AssistantMessage):
-                    for block in msg.content:
-                        if isinstance(block, TextBlock):
-                            responses.append(block.text)
-                            logger.info(f"[UnifiedAgent] Agent回复(block): {block.text[:100]}...")
-                elif isinstance(msg, ResultMessage):
-                    logger.info(f"[UnifiedAgent] 请求完成: {msg.subtype}")
+                # 4. 收集回复
+                responses = []
+                async for msg in self.client.receive_response():
+                    if isinstance(msg, AssistantMessage):
+                        for block in msg.content:
+                            if isinstance(block, TextBlock):
+                                responses.append(block.text)
+                                logger.info(f"[UnifiedAgent] Agent回复(block): {block.text[:100]}...")
+                    elif isinstance(msg, ResultMessage):
+                        logger.info(f"[UnifiedAgent] 请求完成: {msg.subtype}")
 
-            reply = "\n".join(responses) if responses else "您好！您有新任务需要核查，请告诉我开始工作。"
+                reply = "\n".join(responses) if responses else ""
+            except Exception as e:
+                logger.error(f"[UnifiedAgent] LLM 调用失败: {e}")
+                reply = ""
+
+            # 如果没有获取到回复，使用默认消息
+            if not reply:
+                reply = f"""您好！您有新任务需要处理！
+
+📋 任务编号：{task_id}
+📝 风险摘要：{task_info.get('risk_summary', '无')}
+👤 创建人：{task_info.get('creator_name', '未知')}
+
+请开始核查工作，如有疑问，随时问我！"""
+                logger.info(f"[UnifiedAgent] 使用默认消息")
 
             logger.info(f"[UnifiedAgent] >>> notify_new_task 完成: 回复={reply[:100]}...")
 
@@ -347,7 +362,7 @@ class UnifiedAgent:
                     task_id=task_id,
                     sender="Agent",
                     message=reply,
-                    message_type="text"
+                    sender_type="agent"
                 )
                 logger.info(f"[UnifiedAgent] 聊天记录已保存")
             except Exception as e:

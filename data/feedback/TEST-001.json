@@ -1,0 +1,10 @@
+{
+  "chat_history": [
+    {
+      "timestamp": "2026-03-17 17:25:02",
+      "sender": "Agent",
+      "sender_type": "agent",
+      "message": "【测试】这是一个测试消息，收到请回复！"
+    }
+  ]
+}

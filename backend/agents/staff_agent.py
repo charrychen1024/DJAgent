@@ -349,7 +349,7 @@ class StaffAgent:
                     task_id=task_id,
                     sender="Agent",
                     message=reply,
-                    message_type="text"
+                    sender_type="agent"
                 )
                 logger.info(f"[StaffAgent] 聊天记录已保存")
             except Exception as e:

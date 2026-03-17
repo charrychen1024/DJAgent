@@ -1020,25 +1020,43 @@ function StaffWorkspace({ currentUser }) {
           // 刷新任务列表
           fetchTasks()
 
-          // 切换到对应任务并获取聊天记录
+          // 获取新消息内容
           const taskId = data.task_id
-          fetch(`${API_BASE}/tasks/${taskId}/chat-history`)
-            .then(res => res.json())
-            .then(historyData => {
-              if (Array.isArray(historyData) && historyData.length > 0) {
-                setSelectedTask({ task_id: taskId, ...data.task_info })
-                setChatMessages(historyData.map(msg => ({
-                  sender: msg.sender === 'Agent' ? 'agent' : 'user',
-                  message: msg.message,
-                  timestamp: msg.timestamp,
-                  messageType: msg.message_type,
-                  files: msg.files
-                })))
-              }
-            })
-            .catch(err => {
-              console.error('[SSE Staff] 获取聊天记录失败:', err)
-            })
+          const newMessage = data.message
+
+          // 检查是否是当前正在查看的任务
+          if (selectedTask && selectedTask.task_id === taskId) {
+            // 当前任务：追加新消息，不覆盖历史
+            if (newMessage) {
+              setChatMessages(prev => [...prev, {
+                sender: 'agent',
+                message: newMessage,
+                timestamp: new Date().toLocaleString(),
+                messageType: 'text'
+              }])
+              console.log('[SSE Staff] 追加新消息到当前任务')
+            }
+          } else {
+            // 不是当前任务：只切换任务并加载历史记录
+            console.log('[SSE Staff] 切换到新任务:', taskId)
+            fetch(`${API_BASE}/tasks/${taskId}/chat-history`)
+              .then(res => res.json())
+              .then(historyData => {
+                if (Array.isArray(historyData) && historyData.length > 0) {
+                  setSelectedTask({ task_id: taskId, ...data.task_info })
+                  setChatMessages(historyData.map(msg => ({
+                    sender: msg.sender === 'Agent' ? 'agent' : 'user',
+                    message: msg.message,
+                    timestamp: msg.timestamp,
+                    messageType: msg.message_type,
+                    files: msg.files
+                  })))
+                }
+              })
+              .catch(err => {
+                console.error('[SSE Staff] 获取聊天记录失败:', err)
+              })
+          }
         }
       } catch (err) {
         console.error('[SSE Staff] 解析事件失败:', err)
