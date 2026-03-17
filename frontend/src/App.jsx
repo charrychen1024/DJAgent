@@ -1014,48 +1014,19 @@ function StaffWorkspace({ currentUser }) {
               alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
             })
         } else if (data.type === 'task_message_received') {
-          // 后端自动触发StaffAgent发送消息后，推送此事件通知前端刷新
+          // 后端自动触发StaffAgent发送消息后，推送此事件通知前端
           console.log('[SSE Staff] 收到新消息通知:', data.task_id)
 
-          // 刷新任务列表
-          fetchTasks()
-
-          // 获取新消息内容
-          const taskId = data.task_id
+          // 直接追加新消息到当前对话，不获取历史记录（IM端是持续会话）
           const newMessage = data.message
-
-          // 检查是否是当前正在查看的任务
-          if (selectedTask && selectedTask.task_id === taskId) {
-            // 当前任务：追加新消息，不覆盖历史
-            if (newMessage) {
-              setChatMessages(prev => [...prev, {
-                sender: 'agent',
-                message: newMessage,
-                timestamp: new Date().toLocaleString(),
-                messageType: 'text'
-              }])
-              console.log('[SSE Staff] 追加新消息到当前任务')
-            }
-          } else {
-            // 不是当前任务：只切换任务并加载历史记录
-            console.log('[SSE Staff] 切换到新任务:', taskId)
-            fetch(`${API_BASE}/tasks/${taskId}/chat-history`)
-              .then(res => res.json())
-              .then(historyData => {
-                if (Array.isArray(historyData) && historyData.length > 0) {
-                  setSelectedTask({ task_id: taskId, ...data.task_info })
-                  setChatMessages(historyData.map(msg => ({
-                    sender: msg.sender === 'Agent' ? 'agent' : 'user',
-                    message: msg.message,
-                    timestamp: msg.timestamp,
-                    messageType: msg.message_type,
-                    files: msg.files
-                  })))
-                }
-              })
-              .catch(err => {
-                console.error('[SSE Staff] 获取聊天记录失败:', err)
-              })
+          if (newMessage) {
+            setChatMessages(prev => [...prev, {
+              sender: 'agent',
+              message: newMessage,
+              timestamp: new Date().toLocaleString(),
+              messageType: 'text'
+            }])
+            console.log('[SSE Staff] 追加新消息到对话')
           }
         }
       } catch (err) {
