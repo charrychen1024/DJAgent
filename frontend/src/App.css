@@ -1528,7 +1528,7 @@
 
 /* 手机模拟器容器 - 高度撑满，宽度适中 */
 .phone-container {
-  width: 400px;
+  width: 600px;
   max-width: 95vw;
   height: 100vh;
   margin: 0 auto;
