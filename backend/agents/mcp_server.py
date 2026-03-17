@@ -93,8 +93,25 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 from .session_manager import get_or_create_staff_agent
                 staff_agent = await get_or_create_staff_agent(assigned_to_id, assigned_to_name)
-                await staff_agent.notify_new_task(task_id, task_info)
+                notify_result = await staff_agent.notify_new_task(task_id, task_info)
                 logger.info(f"[MCP-TOOL] StaffAgent 通知已发送: {assigned_to_name} (ID: {assigned_to_id})")
+
+                # 推送 SSE 事件通知 IM 端有新消息（即使没有订阅者也尝试推送）
+                if SSE_AVAILABLE:
+                    try:
+                        from .sse_events import sse_manager
+                        await sse_manager.publish_to_staff(
+                            assigned_to_id,
+                            "task_message_received",
+                            {
+                                "task_id": task_id,
+                                "task_info": task_info,
+                                "message": notify_result.get("message", "") if isinstance(notify_result, dict) else ""
+                            }
+                        )
+                        logger.info(f"[MCP-TOOL] SSE task_message_received 推送成功: {task_id}")
+                    except Exception as e:
+                        logger.warning(f"[MCP-TOOL] SSE 推送失败（不影响主流程）: {e}")
             except Exception as e:
                 logger.error(f"[MCP-TOOL] StaffAgent 通知失败: {e}", exc_info=True)
 
