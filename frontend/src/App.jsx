@@ -130,6 +130,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const [globalSearch, setGlobalSearch] = useState('')
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+  const inputTextareaRef = useRef(null)
   const [leftWidth, setLeftWidth] = useState(35)
   const [rightWidth, setRightWidth] = useState(25)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
@@ -201,6 +202,17 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
+
+  // 自动调整输入框高度
+  useEffect(() => {
+    const textarea = inputTextareaRef.current
+    if (textarea) {
+      // 重置高度，然后设置 scrollHeight，实现自动增长
+      textarea.style.height = 'auto'
+      const newHeight = Math.min(textarea.scrollHeight, 150) // 最大高度 150px
+      textarea.style.height = newHeight + 'px'
+    }
+  }, [inputMessage])
 
   useEffect(() => {
     if (isDraggingLeft || isDraggingRight) {
@@ -859,7 +871,22 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
           <div className="input-row">
             <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
             <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-            <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
+            <textarea 
+              ref={inputTextareaRef}
+              value={inputMessage} 
+              onChange={e => setInputMessage(e.target.value)} 
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  if (!loading.chat && (inputMessage.trim() || pendingFiles.length > 0)) {
+                    handleSendMessage()
+                  }
+                }
+              }}
+              placeholder="输入消息... (Enter发送，Shift+Enter换行)" 
+              rows={1}
+              style={{ height: 'auto', minHeight: '44px' }}
+            />
             <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)} className="send-btn">➤</button>
           </div>
         </div>
@@ -944,6 +971,7 @@ function StaffWorkspace({ currentUser }) {
   const [tasks, setTasks] = useState([])
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+  const inputTextareaRef = useRef(null)
 
   // 获取任务列表
   const fetchTasks = async () => {
@@ -970,6 +998,16 @@ function StaffWorkspace({ currentUser }) {
   }, [currentUser])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
+
+  // 自动调整输入框高度
+  useEffect(() => {
+    const textarea = inputTextareaRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      const newHeight = Math.min(textarea.scrollHeight, 150)
+      textarea.style.height = newHeight + 'px'
+    }
+  }, [inputMessage])
 
   // SSE 事件监听 - 实时接收新任务通知
   useEffect(() => {
@@ -1291,7 +1329,22 @@ function StaffWorkspace({ currentUser }) {
           <div className="input-row">
             <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
             <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-            <textarea value={inputMessage} onChange={e => setInputMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); !loading.chat && handleSendMessage() } }} placeholder="输入消息... (Enter发送)" rows={inputMessage.split('\n').length > 3 ? 3 : 1} />
+            <textarea 
+              ref={inputTextareaRef}
+              value={inputMessage} 
+              onChange={e => setInputMessage(e.target.value)} 
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  if (!loading.chat && (inputMessage.trim() || pendingFiles.length > 0)) {
+                    handleSendMessage()
+                  }
+                }
+              }}
+              placeholder="输入消息... (Enter发送，Shift+Enter换行)" 
+              rows={1}
+              style={{ height: 'auto', minHeight: '44px' }}
+            />
             <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)} className="send-btn">➤</button>
           </div>
         </div>
