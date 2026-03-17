@@ -181,6 +181,15 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
     eventSource.onerror = (err) => {
       console.error('[SSE] 连接错误:', err)
+      // 自动重连
+      eventSource.close()
+      console.log('[SSE] 3秒后尝试重新连接...')
+      setTimeout(() => {
+        if (currentUser?.user_id) {
+          const newSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+          console.log('[SSE] 重新连接成功')
+        }
+      }, 3000)
     }
 
     return () => {
@@ -1020,6 +1029,15 @@ function StaffWorkspace({ currentUser }) {
 
     eventSource.onerror = (err) => {
       console.error('[SSE Staff] 连接错误:', err)
+      // 自动重连
+      eventSource.close()
+      console.log('[SSE Staff] 3秒后尝试重新连接...')
+      setTimeout(() => {
+        if (currentUser?.user_id) {
+          const newSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+          console.log('[SSE Staff] 重新连接成功')
+        }
+      }, 3000)
     }
 
     return () => {
