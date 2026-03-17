@@ -986,6 +986,32 @@ function StaffWorkspace({ currentUser }) {
               // 网络错误时也弹出提示
               alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
             })
+        } else if (data.type === 'task_message_received') {
+          // 后端自动触发StaffAgent发送消息后，推送此事件通知前端刷新
+          console.log('[SSE Staff] 收到新消息通知:', data.task_id)
+
+          // 刷新任务列表
+          fetchTasks()
+
+          // 切换到对应任务并获取聊天记录
+          const taskId = data.task_id
+          fetch(`${API_BASE}/tasks/${taskId}/chat-history`)
+            .then(res => res.json())
+            .then(historyData => {
+              if (Array.isArray(historyData) && historyData.length > 0) {
+                setSelectedTask({ task_id: taskId, ...data.task_info })
+                setChatMessages(historyData.map(msg => ({
+                  sender: msg.sender === 'Agent' ? 'agent' : 'user',
+                  message: msg.message,
+                  timestamp: msg.timestamp,
+                  messageType: msg.message_type,
+                  files: msg.files
+                })))
+              }
+            })
+            .catch(err => {
+              console.error('[SSE Staff] 获取聊天记录失败:', err)
+            })
         }
       } catch (err) {
         console.error('[SSE Staff] 解析事件失败:', err)
