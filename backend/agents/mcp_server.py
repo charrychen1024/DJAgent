@@ -33,6 +33,14 @@ from tools import (
     list_uploaded_files,
 )
 
+# Import data query tools
+from tools.data_query import (
+    list_tables,
+    describe_table,
+    query_data,
+    query_risk_data_by_criteria,
+)
+
 # Import SSE events
 try:
     from sse_events import notify_task_created, notify_task_completed
@@ -310,6 +318,69 @@ async def tool_parse_word(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
 
 
+# ============ Data Query Tools ============
+
+
+@tool(
+    name="list_tables",
+    description="List available data tables in the system. Use this when user wants to know what data is available.",
+    input_schema={},
+)
+async def tool_list_tables(args: Dict[str, Any]) -> Dict[str, Any]:
+    """List tables tool"""
+    logger.info(f"[MCP-TOOL] list_tables called")
+    result = list_tables()
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="describe_table",
+    description="Get table structure and sample data. Input: table_name (string).",
+    input_schema={"table_name": str},
+)
+async def tool_describe_table(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Describe table tool"""
+    logger.info(f"[MCP-TOOL] describe_table called: {args.get('table_name')}")
+    result = describe_table(args.get("table_name"))
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="query_data",
+    description="Query data using natural language. Input: query (string), table_name (string, optional), limit (int, default 100).",
+    input_schema={"query": str, "table_name": str, "limit": int},
+)
+async def tool_query_data(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Query data tool"""
+    logger.info(f"[MCP-TOOL] query_data called: {args.get('query')}")
+    result = query_data(
+        query=args.get("query"),
+        table_name=args.get("table_name"),
+        limit=args.get("limit", 100)
+    )
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
+@tool(
+    name="query_risk_data",
+    description="Query risk data by criteria. Input: criteria (string), filename (string, optional), limit (int, default 50).",
+    input_schema={"criteria": str, "filename": str, "limit": int},
+)
+async def tool_query_risk_data(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Query risk data by criteria tool"""
+    logger.info(f"[MCP-TOOL] query_risk_data called: {args.get('criteria')}")
+    result = query_risk_data_by_criteria(
+        criteria=args.get("criteria"),
+        filename=args.get("filename"),
+        limit=args.get("limit", 50)
+    )
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+
+
 # ============ Create MCP Server ============
 
 
@@ -330,6 +401,11 @@ def create_djagent_mcp_server():
         tool_save_chat_message,
         tool_save_uploaded_file,
         tool_list_uploaded_files,
+        # Data query tools
+        tool_list_tables,
+        tool_describe_table,
+        tool_query_data,
+        tool_query_risk_data,
     ]
 
     logger.info(f"[MCP-SERVER] Creating server with {len(all_tools)} tools")
