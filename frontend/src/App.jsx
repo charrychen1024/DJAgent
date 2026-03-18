@@ -1023,8 +1023,17 @@ function StaffWorkspace({ currentUser }) {
         if (data.type === 'new_task') {
           // 收到新任务通知
           console.log('[SSE Staff] 收到新任务:', data.task_id)
+          
+          // 自动切换到新任务
+          const newTaskId = data.task_id
+          
+          // 查找新任务的信息
+          const newTask = tasks.find(t => t.task_id === newTaskId)
+          if (newTask) {
+            setSelectedTask(newTask)
+          }
 
-          // 方案A：调用后端API触发Staff Agent发送消息
+          // 调用后端API触发Staff Agent发送消息
           console.log('[SSE Staff] 调用notify-staff API...')
           fetch(`${API_BASE}/tasks/${data.task_id}/notify-staff`, {
             method: 'POST',
@@ -1038,17 +1047,15 @@ function StaffWorkspace({ currentUser }) {
             .then(result => {
               console.log('[SSE Staff] notify-staff 结果:', result)
               if (result.success) {
-                // 刷新对话以显示新消息
-                initConversation()
+                // 获取新任务的聊天记录
+                initConversation(newTaskId)
               } else {
                 console.error('[SSE Staff] notify-staff 失败:', result)
-                // 即使失败也弹出提示
                 alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
               }
             })
             .catch(err => {
               console.error('[SSE Staff] notify-staff 异常:', err)
-              // 网络错误时也弹出提示
               alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
             })
         } else if (data.type === 'task_message_received') {
@@ -1091,20 +1098,30 @@ function StaffWorkspace({ currentUser }) {
     }
   }, [currentUser?.user_id])
 
-  const initConversation = async () => {
+  const initConversation = async (specificTaskId = null) => {
     try {
-      // 获取当前用户的待处理任务
+      // 获取当前用户的任务列表
       const response = await fetch(`${API_BASE}/tasks?user_id=${currentUser.user_id}`)
       const tasks = await response.json()
+      setTasks(tasks)
       
-      // 找到最新的待处理任务
-      const pendingTask = tasks.find(t => t.status !== '反馈完成') || tasks[0]
+      let targetTask = null
       
-      if (pendingTask) {
-        setSelectedTask(pendingTask)
+      // 如果指定了任务ID，直接使用该任务
+      if (specificTaskId) {
+        targetTask = tasks.find(t => t.task_id === specificTaskId)
+      }
+      
+      // 否则找最新的待处理任务
+      if (!targetTask) {
+        targetTask = tasks.find(t => t.status !== '反馈完成') || tasks[0]
+      }
+      
+      if (targetTask) {
+        setSelectedTask(targetTask)
         
         // 获取对话历史
-        const historyRes = await fetch(`${API_BASE}/tasks/${pendingTask.task_id}/chat-history`)
+        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history`)
         const historyData = await historyRes.json()
         
         if (Array.isArray(historyData) && historyData.length > 0) {
@@ -1117,7 +1134,7 @@ function StaffWorkspace({ currentUser }) {
           })))
         } else {
           // 如果没有对话历史，发送初始消息让智能体推送任务
-          const initResponse = await fetch(`${API_BASE}/tasks/${pendingTask.task_id}/message`, {
+          const initResponse = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/message`, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
