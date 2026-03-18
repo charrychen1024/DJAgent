@@ -49,6 +49,26 @@ try:
 except ImportError:
     pass
 
+# 导出 Skill 编排器
+try:
+    from .skill_orchestrator import (
+        SkillOrchestrator,
+        get_orchestrator,
+        detect_intent,
+        execute_skill,
+        execute_by_intent,
+    )
+
+    __all__ += [
+        "SkillOrchestrator",
+        "get_orchestrator",
+        "detect_intent",
+        "execute_skill",
+        "execute_by_intent",
+    ]
+except ImportError:
+    pass
+
 # 导出旧架构（向后兼容）
 try:
     from .manager_agent import ManagerAgent
