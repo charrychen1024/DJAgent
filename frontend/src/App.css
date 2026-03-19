@@ -1100,7 +1100,7 @@
 }
 
 .message-header {
-  font-size: 10px;
+  font-size: 9px;
   margin-bottom: 2px;
   opacity: 0.5;
   display: flex;
@@ -1108,7 +1108,7 @@
 }
 
 .message-content {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.2;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1174,9 +1174,9 @@
 
 .message.agent .message-content code {
   background: #f0f5ff;
-  padding: 2px 6px;
+  padding: 1px 4px;
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: 12px;
   color: #c41d7f;
 }
 
