@@ -935,6 +935,7 @@
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  position: relative;
 }
 
 .chat-header h3 {
@@ -2345,4 +2346,227 @@
     height: 36px;
     font-size: 1rem;
   }
+}
+
+/* ===== 历史对话列表弹窗 ===== */
+.chat-header-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.chat-action-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-action-btn:hover {
+  background: var(--bg-hover);
+}
+
+.chat-action-btn.primary {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.chat-action-btn.primary:hover {
+  background: var(--primary-hover);
+}
+
+/* 历史对话下拉列表 */
+.chat-list-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.chat-list-dropdown .chat-list {
+  padding: 8px;
+}
+
+.chat-list-dropdown .chat-list-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.chat-list-dropdown .chat-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.chat-list-dropdown .chat-list-item.active {
+  background: var(--primary-light);
+}
+
+.chat-list-dropdown .chat-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-list-dropdown .chat-item-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 弹窗遮罩 */
+.chat-list-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* 弹窗主体 */
+.chat-list-modal {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.chat-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chat-list-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.chat-list-header .close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 6px;
+  color: var(--text-secondary);
+}
+
+.chat-list-header .close-btn:hover {
+  background: var(--bg-hover);
+}
+
+.chat-list-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.chat-list-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.chat-list-empty button {
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chat-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chat-list-item {
+  padding: 14px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.2s;
+  border: 1px solid transparent;
+}
+
+.chat-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.chat-list-item.active {
+  background: var(--primary-light);
+  border-color: var(--primary-color);
+}
+
+.chat-item-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-item-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chat-list-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.chat-list-footer .new-chat-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chat-list-footer .new-chat-btn:hover {
+  background: var(--primary-hover);
 }
