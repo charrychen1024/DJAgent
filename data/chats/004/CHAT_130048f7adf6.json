@@ -1,0 +1,24 @@
+{
+  "chat_id": "CHAT_130048f7adf6",
+  "user_id": "004",
+  "username": "赵分析",
+  "title": "2",
+  "created_at": "2026-03-19 23:20:19",
+  "updated_at": "2026-03-19 23:20:27",
+  "messages": [
+    {
+      "timestamp": "2026-03-19 23:20:22",
+      "sender": "赵分析",
+      "message": "2",
+      "message_type": "text",
+      "sender_type": "user"
+    },
+    {
+      "timestamp": "2026-03-19 23:20:27",
+      "sender": "Agent",
+      "message": "你好，赵分析！\n\n我看到您输入了\"2\"，请问有什么我可以帮助您的？\n\n您可以告诉我具体的需求，比如：\n\n- **查询数据**：风险数据、任务状态、统计报表等\n- **任务管理**：创建任务、查看任务、分配任务等\n- **文件解析**：上传文件进行分析\n\n请描述一下您想要完成的任务，我来为您处理。",
+      "message_type": "text",
+      "sender_type": "agent"
+    }
+  ]
+}

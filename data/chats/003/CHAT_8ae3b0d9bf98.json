@@ -1,0 +1,24 @@
+{
+  "chat_id": "CHAT_8ae3b0d9bf98",
+  "user_id": "003",
+  "username": "张分析",
+  "title": "1",
+  "created_at": "2026-03-19 22:29:57",
+  "updated_at": "2026-03-19 22:30:10",
+  "messages": [
+    {
+      "timestamp": "2026-03-19 22:29:59",
+      "sender": "张分析",
+      "message": "1",
+      "message_type": "text",
+      "sender_type": "user"
+    },
+    {
+      "timestamp": "2026-03-19 22:30:10",
+      "sender": "Agent",
+      "message": "您好！您发送了\"1\"，请问您需要我帮您做什么呢？例如：\n\n1. **查看1条具体的任务详情**\n2. **分析1个特定区域/供应商的风险数据**\n3. **创建1个新任务**\n4. **查看1份具体的报告**\n\n请告诉我您的具体需求，我将立即为您处理！",
+      "message_type": "text",
+      "sender_type": "agent"
+    }
+  ]
+}
