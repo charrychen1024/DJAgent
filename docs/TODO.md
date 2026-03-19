@@ -33,7 +33,7 @@
 
 ---
 
-## 问题3：Web端新建对话没有完全重新开始 ❌ (已定位)
+## 问题3：Web端新建对话没有完全重新开始 ❌ (已修复 ✅)
 
 **现象**：
 - 新建对话后，智能体还能读到历史记录
@@ -41,21 +41,13 @@
 **根因**：
 - `session_manager` 按 `user_id` 存储 Agent 会话，不是按 `chat_id`
 - 同一个用户的所有对话共享同一个 Agent 实例
-- 切换对话时，上下文没有被清除
 
 **解决方案**：
-- ~~创建新对话时，关闭旧的 Agent 会话~~（方案A）
-- 每个对话应有独立的 Session ID（方案B，更推荐）
+- 创建新对话时，调用 cleanup 接口关闭旧的 Agent 会话
+- 这样新对话就会有全新的上下文
 
-**推荐方案**：
-- 每个对话（chat_id）对应一个独立的 Agent Session
-- session_manager 按 `user_id + chat_id` 或单独的 session_id 存储
-- 新建对话时，创建新的 Agent Session
-- 切换对话时，加载对应的 Session
-
-**待修改文件**：
-- `backend/agents/session_manager.py` - 修改会话存储逻辑
-- `backend/app_fastapi.py` - 传递 session_id 参数
+**修改文件**：
+- `frontend/src/App.jsx` - handleNewChat 函数中先调用 cleanup
 
 ---
 
