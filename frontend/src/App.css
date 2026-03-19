@@ -1114,7 +1114,7 @@
   word-break: break-word;
 }
 
-/* 处理连续换行导致的额外空行 */
+/* 处理换行导致的额外空行 */
 .message-content p:empty {
   display: none;
 }
@@ -1122,6 +1122,52 @@
 .message-content p + p {
   margin-top: 0;
 }
+
+/* 处理 br 换行符导致的间距 - 连续换行只显示一个 */
+.message-content br {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.message-content br + br {
+  display: none;
+}
+
+/* 表格紧凑样式 */
+.message-content table {
+  border-collapse: collapse;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.message-content table td,
+.message-content table th {
+  padding: 2px 6px;
+  border: 1px solid #ddd;
+}
+
+/* 处理 Markdown --- 分割线 */
+.message-content hr {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid #eee;
+}
+
+/* 标题紧凑样式 */
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+  margin: 2px 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.message-content h1 { font-size: 15px; }
+.message-content h2 { font-size: 14px; }
+.message-content h3 { font-size: 13px; }
+.message-content h4 { font-size: 12px; }
 
 /* 用户消息 - 蓝色渐变 */
 .message.user {
