@@ -147,7 +147,10 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   // 对话相关状态（Web端 Manager 独立存储）
   const [chatList, setChatList] = useState([])  // 对话列表
   const [currentChatId, setCurrentChatId] = useState(null)  // 当前对话ID
-  const [showChatList, setShowChatList] = useState(false)  // 是否显示历史对话列表
+  const [showSidebar, setShowSidebar] = useState(false)  // 是否显示历史对话列表（弹窗）
+  // 对话左侧边栏状态
+  const [chatSidebarOpen, setChatSidebarOpen] = useState(false)  // 是否展开对话左侧栏
+  const [chatSidebarWidth, setChatSidebarWidth] = useState(280)  // 对话左侧栏宽度
 
   useEffect(() => {
     if (currentUser?.user_id) {
@@ -432,6 +435,13 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   // 创建新对话
   const handleNewChat = async () => {
     try {
+      // 先关闭旧的Agent会话（让新对话完全重新开始）
+      await fetch(`${API_BASE}/session/cleanup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_ids: [currentUser.user_id] })
+      })
+      
       const response = await fetch(`${API_BASE}/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -451,6 +461,29 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     } catch (err) {
       console.error('[ERROR] 创建对话失败:', err)
     }
+  }
+
+  // 删除对话
+  const handleDeleteChat = async (chatId) => {
+    try {
+      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${currentUser.user_id}`, {
+        method: 'DELETE'
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        // 如果删除的是当前对话，清空当前对话
+        if (currentChatId === chatId) {
+          setCurrentChatId(null)
+          setChatMessages([])
+          setIsInitialChat(true)
+        }
+        // 刷新列表
+        fetchChatList()
+      }
+    } catch (err) {
+      console.error('[ERROR] 删除对话失败:', err)
+    }
+    setDeleteConfirm(null)
   }
 
   // 获取对话列表
@@ -481,7 +514,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
         }))
         setChatMessages(messages)
         setIsInitialChat(messages.length === 0)
-        setShowChatList(false)
+        setShowSidebar(false)
       } else {
         // 对话不存在
         console.warn('[WARN] 对话不存在:', data.message)
@@ -898,20 +931,55 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
         </div>
       </div>
       <div className={`resize-handle ${isDraggingLeft ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingLeft(true)} />
-      <div className="main-content">
+      
+      {/* 对话左侧栏 - 可折叠 */}
+      <div className={`chat-sidebar ${chatSidebarOpen ? 'open' : 'collapsed'}`} style={{ width: chatSidebarOpen ? chatSidebarWidth : 0 }}>
+        <div className="sidebar-header">
+          <h3>📋 历史对话</h3>
+          <button className="new-chat-btn" onClick={() => { handleNewChat(); setChatSidebarOpen(false); }}>
+            ➕ 新建对话
+          </button>
+        </div>
+        <div className="sidebar-content">
+          {chatList.length === 0 ? (
+            <p className="no-chats">暂无历史对话</p>
+          ) : (
+            <ul className="chat-list">
+              {chatList.map(chat => (
+                <li 
+                  key={chat.chat_id} 
+                  className={`chat-list-item ${currentChatId === chat.chat_id ? 'active' : ''}`}
+                  onClick={() => { loadChat(chat.chat_id); setChatSidebarOpen(false); }}
+                >
+                  <div className="chat-item-title">{chat.title}</div>
+                  <div className="chat-item-meta">{chat.created_at}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <div className="main-content" style={{ marginLeft: chatSidebarOpen ? 0 : 0 }}>
         <div className="chat-header">
-          <h3>💬 智能体对话</h3>
-          <div className="chat-header-actions">
-            <button className="chat-action-btn" onClick={() => setShowChatList(!showChatList)} title="历史对话">
-              🕐
+          <div className="chat-header-left">
+            <button 
+              className={`sidebar-toggle-btn ${chatSidebarOpen ? 'active' : ''}`} 
+              onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
+              title={chatSidebarOpen ? "收起侧边栏" : "展开侧边栏"}
+            >
+              {chatSidebarOpen ? '◀' : '▶'}
             </button>
+            <h3>💬 智能体对话</h3>
+          </div>
+          <div className="chat-header-actions">
             <button className="chat-action-btn primary" onClick={handleNewChat} title="新建对话">
               ➕
             </button>
           </div>
         </div>
-        {/* 历史对话小列表 */}
-        {showChatList && chatList.length > 0 && (
+        {/* 保留原来的弹窗式历史列表作为备用（可以删除） */}
+        {showSidebar && chatList.length > 0 && (
           <div className="chat-list-dropdown">
             <ul className="chat-list">
               {chatList.map(chat => (
@@ -1039,18 +1107,18 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
         </div>
 
         {/* 历史对话列表弹窗 */}
-        {showChatList && (
-          <div className="chat-list-overlay" onClick={() => setShowChatList(false)}>
+        {showSidebar && (
+          <div className="chat-list-overlay" onClick={() => setShowSidebar(false)}>
             <div className="chat-list-modal" onClick={e => e.stopPropagation()}>
               <div className="chat-list-header">
                 <h3>📋 历史对话</h3>
-                <button className="close-btn" onClick={() => setShowChatList(false)}>×</button>
+                <button className="close-btn" onClick={() => setShowSidebar(false)}>×</button>
               </div>
               <div className="chat-list-content">
                 {chatList.length === 0 ? (
                   <div className="chat-list-empty">
                     <p>暂无历史对话</p>
-                    <button onClick={() => { handleNewChat(); setShowChatList(false); }}>创建新对话</button>
+                    <button onClick={() => { handleNewChat(); setShowSidebar(false); }}>创建新对话</button>
                   </div>
                 ) : (
                   <ul className="chat-list">
@@ -1070,7 +1138,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                 )}
               </div>
               <div className="chat-list-footer">
-                <button className="new-chat-btn" onClick={() => { handleNewChat(); setShowChatList(false); }}>
+                <button className="new-chat-btn" onClick={() => { handleNewChat(); setShowSidebar(false); }}>
                   ➕ 新建对话
                 </button>
               </div>

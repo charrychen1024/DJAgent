@@ -2625,3 +2625,211 @@
 .chat-list-footer .new-chat-btn:hover {
   background: var(--primary-hover);
 }
+
+/* ===== 左侧历史对话侧边栏 ===== */
+.chat-sidebar {
+  width: 260px;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease, margin-left 0.3s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chat-sidebar.collapsed {
+  width: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+.sidebar-header {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header .new-chat-btn {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-header .new-chat-btn:hover {
+  background: var(--primary-hover);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.sidebar-content .chat-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-content .chat-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: background 0.2s;
+}
+
+.sidebar-content .chat-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.sidebar-content .chat-list-item.active {
+  background: var(--primary-light);
+}
+
+.sidebar-content .chat-item-title {
+  flex: 1;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+}
+
+.sidebar-content .chat-item-delete {
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-content .chat-list-item:hover .chat-item-delete {
+  opacity: 1;
+}
+
+.sidebar-content .chat-item-delete:hover {
+  background: rgba(255, 0, 0, 0.1);
+  color: red;
+}
+
+/* 删除确认弹窗 */
+.delete-confirm-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.delete-confirm-modal {
+  background: var(--bg-primary);
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.delete-confirm-modal p {
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+.delete-confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.delete-confirm-buttons button {
+  padding: 8px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.delete-confirm-buttons button.confirm {
+  background: #ff4d4f;
+  color: white;
+  border-color: #ff4d4f;
+}
+
+.delete-confirm-buttons button.confirm:hover {
+  background: #ff7875;
+}
+
+/* 侧边栏切换按钮 */
+.sidebar-toggle {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-right: 8px;
+  border-radius: 4px;
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-hover);
+}
+
+/* 对话区域左侧栏按钮 */
+.chat-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-toggle-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-right: 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-toggle-btn.active {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+/* 对话区域没有左侧栏时样式 */
+.main-content {
+  transition: margin-left 0.3s ease;
+}
