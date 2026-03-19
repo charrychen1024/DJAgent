@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import './App.css'
 
-const API_BASE = 'http://127.0.0.1:5005/api'
+const API_BASE = '/api'
 
 // 登录页面组件 - 带角色卡片
 function LoginPage({ users, onLogin, loading }) {
@@ -143,13 +143,30 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const [tasksCollapsed, setTasksCollapsed] = useState(false)
   // 添加右侧面板展开状态
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
+  
+  // 对话相关状态（Web端 Manager 独立存储）
+  const [chatList, setChatList] = useState([])  // 对话列表
+  const [currentChatId, setCurrentChatId] = useState(null)  // 当前对话ID
+  const [showChatList, setShowChatList] = useState(false)  // 是否显示历史对话列表
 
   useEffect(() => {
     if (currentUser?.user_id) {
       fetchTasks()
       fetchAllRiskData()
+      fetchChatList()  // 获取对话列表
     }
   }, [currentUser?.user_id])
+
+  // 当对话列表加载完成后，自动加载最近一个有消息的对话
+  useEffect(() => {
+    if (chatList.length > 0 && !currentChatId) {
+      const latestChat = chatList[0]
+      // 只加载有消息的对话
+      if (latestChat.messages && latestChat.messages.length > 0) {
+        loadChat(latestChat.chat_id, true)
+      }
+    }
+  }, [chatList])
 
   // SSE 事件监听 - 实时接收任务通知
   useEffect(() => {
@@ -412,50 +429,153 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   }
 
   // 发送消息（包含待发送的文件）
+  // 创建新对话
+  const handleNewChat = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.user_id,
+          username: currentUser.username
+        })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setCurrentChatId(data.chat.chat_id)
+        setChatMessages([])
+        setIsInitialChat(true)
+        // 刷新对话列表
+        fetchChatList()
+      }
+    } catch (err) {
+      console.error('[ERROR] 创建对话失败:', err)
+    }
+  }
+
+  // 获取对话列表
+  const fetchChatList = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/chats?user_id=${currentUser.user_id}`)
+      const chats = await response.json()
+      setChatList(chats)
+    } catch (err) {
+      console.error('[ERROR] 获取对话列表失败:', err)
+    }
+  }
+
+  // 加载指定对话
+  // 添加 isAutoLoad 参数区分自动加载和手动点击加载
+  const loadChat = async (chatId, isAutoLoad = false) => {
+    try {
+      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${currentUser.user_id}`)
+      const data = await response.json()
+      if (data.status === 'success' && data.chat) {
+        setCurrentChatId(chatId)
+        // 转换消息格式
+        const messages = data.chat.messages.map(msg => ({
+          sender: msg.sender_type === 'user' ? 'user' : 'agent',
+          message: msg.message,
+          timestamp: msg.timestamp,
+          files: msg.files
+        }))
+        setChatMessages(messages)
+        setIsInitialChat(messages.length === 0)
+        setShowChatList(false)
+      } else {
+        // 对话不存在
+        console.warn('[WARN] 对话不存在:', data.message)
+        // 如果不是自动加载模式，显示提示
+        if (!isAutoLoad) {
+          alert('对话已失效，请选择其他对话')
+          // 刷新对话列表
+          fetchChatList()
+        }
+        // 清除无效的 chatId
+        setCurrentChatId(null)
+        setChatMessages([])
+      }
+    } catch (err) {
+      console.error('[ERROR] 加载对话失败:', err)
+    }
+  }
+
+  // 发送消息
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && pendingFiles.length === 0) return
 
-    // 先将用户消息和文件显示在对话框
-    const fileDesc = pendingFiles.length > 0
-      ? `\n[附件: ${pendingFiles.map(f => f.name).join(', ')}]`
+    // 如果没有当前对话，先创建一个
+    let activeChatId = currentChatId
+    if (!activeChatId) {
+      const response = await fetch(`${API_BASE}/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.user_id,
+          username: currentUser.username
+        })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        activeChatId = data.chat.chat_id
+        setCurrentChatId(activeChatId)
+        await fetchChatList()
+      } else {
+        console.error('[ERROR] 创建对话失败:', data.message)
+        return
+      }
+    }
+
+    const messageToSend = inputMessage
+    const filesToSend = [...pendingFiles]
+
+    // 先将用户消息显示在对话框（乐观更新）
+    const fileDesc = filesToSend.length > 0
+      ? `\n[附件: ${filesToSend.map(f => f.name).join(', ')}]`
       : ''
 
     const userMessage = {
       sender: 'user',
-      message: inputMessage + fileDesc,
+      message: messageToSend + fileDesc,
       timestamp: new Date().toLocaleString(),
-      files: pendingFiles.map(f => ({ name: f.name, type: f.type }))
+      files: filesToSend.map(f => ({ name: f.name, type: f.type }))
     }
     setChatMessages(prev => [...prev, userMessage])
-    setIsInitialChat(false) // 发送消息后退出初始状态
+    setIsInitialChat(false)
 
-    const messageToSend = inputMessage
     setInputMessage('')
-    setPendingFiles([]) // 清空待发送文件
+    setPendingFiles([])
     setLoading(prev => ({ ...prev, chat: true }))
 
     try {
-      // 构建 FormData 发送消息和文件
+      // 构建 FormData 发送到对话 API
       const formData = new FormData()
       formData.append('message', messageToSend)
       formData.append('user_id', currentUser.user_id)
       formData.append('username', currentUser.username)
-      if (selectedTask) {
-        formData.append('task_id', selectedTask.task_id)
-      }
 
       // 添加文件
-      pendingFiles.forEach(f => {
+      filesToSend.forEach(f => {
         formData.append('files', f.file, f.name)
       })
 
-      const response = await fetch(`${API_BASE}/chat`, {
+      const response = await fetch(`${API_BASE}/chats/${activeChatId}/messages`, {
         method: 'POST',
         body: formData
       })
 
       const data = await response.json()
-      setChatMessages(prev => [...prev, { sender: 'agent', message: data.message, timestamp: data.timestamp }])
+      if (data.status === 'success') {
+        setChatMessages(prev => [...prev, { 
+          sender: 'agent', 
+          message: data.agent_reply.message, 
+          timestamp: data.agent_reply.timestamp 
+        }])
+        // 更新对话列表中的标题（第一条消息）
+        fetchChatList()
+      } else {
+        throw new Error(data.message || '发送失败')
+      }
       fetchTasks()
     } catch (err) {
       console.error('[ERROR] 发送消息失败:', err)
@@ -779,7 +899,34 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       </div>
       <div className={`resize-handle ${isDraggingLeft ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingLeft(true)} />
       <div className="main-content">
-        <div className="chat-header"><h3>💬 智能体对话</h3></div>
+        <div className="chat-header">
+          <h3>💬 智能体对话</h3>
+          <div className="chat-header-actions">
+            <button className="chat-action-btn" onClick={() => setShowChatList(!showChatList)} title="历史对话">
+              🕐
+            </button>
+            <button className="chat-action-btn primary" onClick={handleNewChat} title="新建对话">
+              ➕
+            </button>
+          </div>
+        </div>
+        {/* 历史对话小列表 */}
+        {showChatList && chatList.length > 0 && (
+          <div className="chat-list-dropdown">
+            <ul className="chat-list">
+              {chatList.map(chat => (
+                <li 
+                  key={chat.chat_id} 
+                  className={`chat-list-item ${currentChatId === chat.chat_id ? 'active' : ''}`}
+                  onClick={() => loadChat(chat.chat_id)}
+                >
+                  <div className="chat-item-title">{chat.title}</div>
+                  <div className="chat-item-meta">{chat.created_at}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="chat-messages">
           {isInitialChat ? (
             <div className="initial-chat-view">
@@ -890,6 +1037,46 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
             <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)} className="send-btn">➤</button>
           </div>
         </div>
+
+        {/* 历史对话列表弹窗 */}
+        {showChatList && (
+          <div className="chat-list-overlay" onClick={() => setShowChatList(false)}>
+            <div className="chat-list-modal" onClick={e => e.stopPropagation()}>
+              <div className="chat-list-header">
+                <h3>📋 历史对话</h3>
+                <button className="close-btn" onClick={() => setShowChatList(false)}>×</button>
+              </div>
+              <div className="chat-list-content">
+                {chatList.length === 0 ? (
+                  <div className="chat-list-empty">
+                    <p>暂无历史对话</p>
+                    <button onClick={() => { handleNewChat(); setShowChatList(false); }}>创建新对话</button>
+                  </div>
+                ) : (
+                  <ul className="chat-list">
+                    {chatList.map(chat => (
+                      <li 
+                        key={chat.chat_id} 
+                        className={`chat-list-item ${currentChatId === chat.chat_id ? 'active' : ''}`}
+                        onClick={() => loadChat(chat.chat_id)}
+                      >
+                        <div className="chat-item-title">{chat.title}</div>
+                        <div className="chat-item-meta">
+                          <span>{chat.created_at}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="chat-list-footer">
+                <button className="new-chat-btn" onClick={() => { handleNewChat(); setShowChatList(false); }}>
+                  ➕ 新建对话
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div className={`resize-handle ${isDraggingRight ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingRight(true)} />
       <div
@@ -989,7 +1176,7 @@ function StaffWorkspace({ currentUser }) {
     }
   }
 
-  // 页面加载时自动获取任务并发起对话
+  // 页面加载时初始化
   useEffect(() => {
     if (currentUser?.user_id) {
       fetchTasks()

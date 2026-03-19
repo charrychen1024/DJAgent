@@ -667,6 +667,251 @@ async def cleanup_sessions(request: Request):
         return {"status": "error", "message": str(e)}
 
 
+# ============ Manager 对话管理接口 ============
+
+CHATS_DIR = DATA_DIR / "chats"
+
+
+def get_user_chats_dir(user_id: str) -> Path:
+    """获取用户对话存储目录"""
+    user_dir = CHATS_DIR / user_id
+    user_dir.mkdir(parents=True, exist_ok=True)
+    return user_dir
+
+
+def list_chats(user_id: str) -> List[Dict]:
+    """获取用户的所有对话列表"""
+    user_dir = get_user_chats_dir(user_id)
+    chats = []
+    for f in user_dir.glob("*.json"):
+        try:
+            with open(f, "r", encoding="utf-8") as fp:
+                chat_data = json.load(fp)
+                # 返回简化信息
+                messages = chat_data.get("messages", [])
+                first_msg_time = messages[0].get("timestamp") if messages else chat_data.get("created_at")
+                chats.append({
+                    "chat_id": chat_data.get("chat_id"),
+                    "title": chat_data.get("title"),
+                    "created_at": first_msg_time,
+                    "messages": messages,  # 包含消息列表，用于前端判断是否有消息
+                })
+        except Exception as e:
+            logger.error(f"[ERROR] 读取对话失败: {f}, {e}")
+    # 按创建时间倒序
+    chats.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return chats
+
+
+def create_chat(user_id: str, username: str) -> Dict:
+    """创建新对话"""
+    import uuid
+    chat_id = f"CHAT_{uuid.uuid4().hex[:12]}"
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    chat_data = {
+        "chat_id": chat_id,
+        "user_id": user_id,
+        "username": username,
+        "title": "新对话",
+        "created_at": timestamp,
+        "updated_at": timestamp,
+        "messages": []
+    }
+    
+    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    with open(chat_path, "w", encoding="utf-8") as f:
+        json.dump(chat_data, f, ensure_ascii=False, indent=2)
+    
+    return chat_data
+
+
+def get_chat(chat_id: str, user_id: str) -> Optional[Dict]:
+    """获取对话详情"""
+    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    if not chat_path.exists():
+        return None
+    with open(chat_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def update_chat(chat_id: str, user_id: str, messages: List[Dict], title: str = None) -> bool:
+    """更新对话"""
+    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    if not chat_path.exists():
+        return False
+    
+    with open(chat_path, "r", encoding="utf-8") as f:
+        chat_data = json.load(f)
+    
+    chat_data["messages"] = messages
+    chat_data["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # 如果传入了新标题且消息列表不为空，更新标题为第一条消息
+    if title is None and messages:
+        # 使用第一条消息作为标题（截取前50字符）
+        first_msg = messages[0].get("message", "")
+        if first_msg:
+            chat_data["title"] = first_msg[:50] + ("..." if len(first_msg) > 50 else "")
+    elif title:
+        chat_data["title"] = title
+    
+    with open(chat_path, "w", encoding="utf-8") as f:
+        json.dump(chat_data, f, ensure_ascii=False, indent=2)
+    
+    return True
+
+
+def delete_chat(chat_id: str, user_id: str) -> bool:
+    """删除对话"""
+    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    if chat_path.exists():
+        chat_path.unlink()
+        return True
+    return False
+
+
+@app.get("/api/chats")
+async def get_user_chats(user_id: str):
+    """获取用户的所有对话列表"""
+    if not user_id:
+        return []
+    return list_chats(user_id)
+
+
+@app.post("/api/chats")
+async def create_new_chat(request: Request):
+    """创建新对话"""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        username = data.get("username", "用户")
+        
+        if not user_id:
+            return {"status": "error", "message": "缺少 user_id"}
+        
+        chat_data = create_chat(user_id, username)
+        return {"status": "success", "chat": chat_data}
+    except Exception as e:
+        logger.error(f"[ERROR] 创建对话失败: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/chats/{chat_id}")
+async def get_chat_detail(chat_id: str, user_id: str):
+    """获取对话详情"""
+    if not user_id:
+        return {"status": "error", "message": "缺少 user_id"}
+    
+    chat = get_chat(chat_id, user_id)
+    if not chat:
+        return {"status": "error", "message": "对话不存在"}
+    
+    return {"status": "success", "chat": chat}
+
+
+@app.delete("/api/chats/{chat_id}")
+async def delete_chat_by_id(chat_id: str, user_id: str):
+    """删除对话"""
+    if not user_id:
+        return {"status": "error", "message": "缺少 user_id"}
+    
+    success = delete_chat(chat_id, user_id)
+    if success:
+        return {"status": "success"}
+    return {"status": "error", "message": "对话不存在"}
+
+
+@app.post("/api/chats/{chat_id}/messages")
+async def send_chat_message(chat_id: str, request: Request):
+    """发送消息到对话"""
+    from agents.session_manager import get_or_create_manager_agent
+
+    content_type = request.headers.get("content-type", "")
+    
+    # 解析请求数据
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        message = form.get("message", "")
+        user_id = form.get("user_id")
+        username = form.get("username", "业务负责人")
+        
+        files = form.getlist("files")
+        import tempfile
+        import os
+        temp_dir = tempfile.mkdtemp()
+        saved_files = []
+        for f in files:
+            file_path = os.path.join(temp_dir, f.filename)
+            content = await f.read()
+            with open(file_path, 'wb') as pf:
+                pf.write(content)
+            saved_files.append(file_path)
+    else:
+        try:
+            data = await request.json()
+            message = data.get("message", "")
+            user_id = data.get("user_id")
+            username = data.get("username", "业务负责人")
+        except Exception:
+            return {"status": "error", "message": "请求解析失败"}
+        saved_files = []
+
+    if not user_id or not message:
+        return {"status": "error", "message": "缺少必要参数"}
+
+    # 获取或创建对话
+    chat = get_chat(chat_id, user_id)
+    if not chat:
+        return {"status": "error", "message": "对话不存在"}
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 构建用户消息
+    user_message = {
+        "timestamp": timestamp,
+        "sender": username,
+        "message": message,
+        "message_type": "text",
+        "sender_type": "user"
+    }
+    if saved_files:
+        user_message["files"] = [{"name": os.path.basename(f)} for f in saved_files]
+
+    # 调用 Agent 获取回复
+    response_text = ""
+    if HAS_AGENT_SDK:
+        try:
+            agent = await get_or_create_manager_agent(user_id, username)
+            response_text = await agent.chat(message, files=saved_files if saved_files else None)
+        except Exception as e:
+            logger.error(f"[ERROR] ManagerAgent 调用失败: {str(e)}")
+            response_text = "抱歉，我现在无法回答您的问题，请稍后再试。"
+    else:
+        response_text = f"收到您的消息：{message}\n\n（当前为简化模式，未连接 Agent SDK）"
+
+    # 构建 Agent 回复
+    agent_message = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "sender": "Agent",
+        "message": response_text,
+        "message_type": "text",
+        "sender_type": "agent"
+    }
+
+    # 更新对话
+    messages = chat.get("messages", [])
+    messages.append(user_message)
+    messages.append(agent_message)
+    update_chat(chat_id, user_id, messages)
+
+    return {
+        "status": "success",
+        "user_message": user_message,
+        "agent_reply": agent_message
+    }
+
+
 # ============ 健康检查 ============
 
 
