@@ -1,8 +1,15 @@
 {
   "task_id": "TASK_001",
-  "assigned_to_id": "009",
-  "assigned_to_name": "赵芳快递",
-  "chat_history": [],
+  "assigned_to_id": "EMP_ZHAOFANG",
+  "assigned_to_name": "赵芳",
+  "chat_history": [
+    {
+      "timestamp": "2026-03-20 22:11:09",
+      "sender": "Agent",
+      "sender_type": "agent",
+      "message": "您好！😊\n\n有新的风险核查任务需要您处理——\n\n---\n\n**📋 任务编号**：TASK_001  \n**⚠️ 风险类型**：高优先级 - 重量异常  \n**📦 运单号**：WLYD9585102  \n\n---\n\n**📎 请您提交以下材料：**\n\n1. **运单截图** — 含货物重量、计费重量等关键信息\n2. **签收单据** — 客户签收底单或签收记录\n3. **揽收现场照片** — 货物称重、包装情况\n4. **情况说明** — 简述该票货物的揽收经过，确认是否存在实际重量与系统录入不符的情况\n\n---\n\n您可以直接回复提交材料，如有疑问随时提问！🙋‍♀️"
+    }
+  ],
   "uploaded_files": [],
   "feedback_summary": "",
   "status": "已创建"
