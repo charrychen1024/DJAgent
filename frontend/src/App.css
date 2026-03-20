@@ -2833,3 +2833,47 @@
 .main-content {
   transition: margin-left 0.3s ease;
 }
+
+/* 三横线菜单图标 */
+.menu-lines {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 4px;
+  width: 18px;
+  height: 18px;
+}
+
+.menu-lines .line {
+  display: block;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  transition: all 0.2s ease;
+}
+
+.menu-lines .line-1 {
+  width: 18px;
+}
+
+.menu-lines .line-2 {
+  width: 14px;
+}
+
+.menu-lines .line-3 {
+  width: 10px;
+}
+
+/* 展开状态时图标变化 */
+.sidebar-toggle-btn.active .menu-lines .line-1 {
+  width: 10px;
+}
+
+.sidebar-toggle-btn.active .menu-lines .line-2 {
+  width: 14px;
+}
+
+.sidebar-toggle-btn.active .menu-lines .line-3 {
+  width: 18px;
+}

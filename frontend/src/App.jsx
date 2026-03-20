@@ -968,14 +968,13 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
               onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
               title={chatSidebarOpen ? "收起侧边栏" : "展开侧边栏"}
             >
-              {chatSidebarOpen ? '◀' : '▶'}
+              <span className="menu-lines">
+                <span className="line line-1"></span>
+                <span className="line line-2"></span>
+                <span className="line line-3"></span>
+              </span>
             </button>
             <h3>💬 智能体对话</h3>
-          </div>
-          <div className="chat-header-actions">
-            <button className="chat-action-btn primary" onClick={handleNewChat} title="新建对话">
-              ➕
-            </button>
           </div>
         </div>
         {/* 保留原来的弹窗式历史列表作为备用（可以删除） */}
