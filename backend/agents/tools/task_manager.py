@@ -34,24 +34,51 @@ def get_data_dir() -> Path:
     return DATA_DIR
 
 
-def _generate_task_id() -> str:
-    """生成新的任务ID"""
-    tasks_file = get_data_dir() / "tasks.csv"
-    task_id = "TASK_001"
+def _generate_task_id(creator_id: str = "") -> str:
+    """
+    生成新的任务ID
+    格式: 人工号-日期时间(毫秒)-序号, 如 001-20260301121159224-0001
+    """
+    # 提取人工号 (去掉 EMP_ 前缀)
+    employee_no = creator_id.replace("EMP_", "").replace("EMP", "")
+    if not employee_no:
+        employee_no = "000"
 
+    # 生成时间戳 (精确到毫秒)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]  # 取前15位(毫秒)
+
+    # 构建基础ID
+    base_task_id = f"{employee_no}-{timestamp}"
+
+    # 检查相同 base_task_id 的任务数，序号从1开始
+    tasks_file = get_data_dir() / "tasks.csv"
+    existing_count = 0
     if tasks_file.exists():
         try:
             with open(tasks_file, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                if len(lines) > 1:
-                    last_line = lines[-1]
-                    last_id = last_line.split(",")[0]
-                    num = int(last_id.split("_")[1]) + 1
-                    task_id = f"TASK_{num:03d}"
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("task_id", "").startswith(base_task_id):
+                        existing_count += 1
         except:
             pass
 
+    # 序号从001开始
+    task_id = f"{base_task_id}-{existing_count + 1:04d}"
     return task_id
+
+
+def _normalize_employee_id(employee_id: str) -> str:
+    """
+    标准化员工工号
+    - 去掉 EMP_ 前缀
+    - 转为大写
+    """
+    if not employee_id:
+        return ""
+    # 去掉 EMP_ 或 EMP 前缀
+    normalized = employee_id.replace("EMP_", "").replace("EMP", "")
+    return normalized.upper()
 
 
 def create_task(task_info: Dict) -> Dict[str, Any]:
@@ -66,6 +93,7 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             - assigned_to_name: 执行人名称
             - risk_summary: 风险简述
             - risk_data_url: 风险数据文件路径
+            - task_type: 任务类型 (日度/月度)，默认日度
 
     Returns:
         创建结果
@@ -76,18 +104,30 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
         data_dir = get_data_dir()
         tasks_file = data_dir / "tasks.csv"
 
+        # 获取 creator_id 用于生成任务ID
+        creator_id = task_info.get("creator_id", "")
+
         # 生成任务ID
-        task_id = _generate_task_id()
+        task_id = _generate_task_id(creator_id)
 
         # 创建时间
         created_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        # 标准化工号
+        assigned_to_id = _normalize_employee_id(task_info.get("assigned_to_id", ""))
+        creator_id_normalized = _normalize_employee_id(task_info.get("creator_id", ""))
+
+        # 处理 task_type 字段 (默认为日度)
+        task_type = task_info.get("task_type", "日度")
+        if task_type not in ["日度", "月度"]:
+            task_type = "日度"
+
         # 组装任务数据
         task_row = {
             "task_id": task_id,
-            "creator_id": task_info.get("creator_id", ""),
+            "creator_id": creator_id_normalized,
             "creator_name": task_info.get("creator_name", ""),
-            "assigned_to_id": task_info.get("assigned_to_id", ""),
+            "assigned_to_id": assigned_to_id,
             "assigned_to_name": task_info.get("assigned_to_name", ""),
             "status": "已创建",
             "created_time": created_time,
@@ -96,6 +136,7 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             "suggested_receiver_id": task_info.get("suggested_receiver_id", ""),
             "confirmed_receiver_id": task_info.get("confirmed_receiver_id", ""),
             "completed_time": "",
+            "task_type": task_type,  # 添加 task_type 字段
         }
 
         # 字段名
@@ -112,12 +153,13 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             "suggested_receiver_id",
             "confirmed_receiver_id",
             "completed_time",
+            "task_type",  # 添加 task_type 字段
         ]
 
-        # 写入CSV
+        # 写入CSV - 使用 QUOTE_ALL 确保包含逗号的字段被正确处理
         file_exists = tasks_file.exists()
         with open(tasks_file, "a", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
             if not file_exists:
                 writer.writeheader()
             writer.writerow(task_row)
@@ -129,12 +171,13 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
         feedback_file = feedback_dir / f"{task_id}.json"
         feedback_data = {
             "task_id": task_id,
-            "assigned_to_id": task_info.get("assigned_to_id", ""),
+            "assigned_to_id": assigned_to_id,  # 使用标准化后的工号
             "assigned_to_name": task_info.get("assigned_to_name", ""),
             "chat_history": [],
             "uploaded_files": [],
             "feedback_summary": "",
             "status": "已创建",
+            "task_type": task_type,  # 添加 task_type 字段
         }
 
         with open(feedback_file, "w", encoding="utf-8") as f:

@@ -47,8 +47,16 @@ CLAUDE_API_URL = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1/m
 CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
 
 
-def read_csv_file(filename: str) -> List[Dict]:
-    filepath = DATA_DIR / filename
+def read_csv_file(filename: str, data_dir: Path = None) -> List[Dict]:
+    """读取CSV文件
+
+    Args:
+        filename: 文件名
+        data_dir: 数据目录，默认使用 DATA_DIR
+    """
+    if data_dir is None:
+        data_dir = DATA_DIR
+    filepath = data_dir / filename
     if not filepath.exists():
         return []
     try:
@@ -184,11 +192,14 @@ async def chat(request: Request):
 async def get_risk_data():
     """获取所有风险数据文件列表和内容"""
     risk_files = []
-    
+
+    # 风险数据在 risk_data 子目录
+    risk_data_dir = DATA_DIR / "risk_data"
+
     # 查找所有风险数据文件
-    for file_path in DATA_DIR.glob("risk_data_*.csv"):
+    for file_path in risk_data_dir.glob("risk_data_*.csv"):
         try:
-            data = read_csv_file(file_path.name)
+            data = read_csv_file(file_path.name, risk_data_dir)
             risk_files.append({
                 "filename": file_path.name,
                 "data": data,
@@ -196,7 +207,7 @@ async def get_risk_data():
             })
         except Exception as e:
             logger.error(f"读取风险数据文件失败 {file_path}: {e}")
-    
+
     return risk_files
 
 
@@ -226,8 +237,10 @@ async def get_risk_data_file(identifier: str):
                 filename = f"risk_data_{num:03d}.csv"
             else:
                 filename = f"risk_data_{identifier}.csv"
-        
-        data = read_csv_file(filename)
+
+        # 风险数据在 risk_data 子目录
+        risk_data_dir = DATA_DIR / "risk_data"
+        data = read_csv_file(filename, risk_data_dir)
         
         if not data:
             raise HTTPException(status_code=404, detail=f"风险数据文件不存在或为空: {filename}")

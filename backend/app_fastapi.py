@@ -59,8 +59,16 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 from agents.sse_events import sse_manager
 
 
-def read_csv_file(filename: str) -> List[Dict]:
-    filepath = DATA_DIR / filename
+def read_csv_file(filename: str, data_dir: Path = None) -> List[Dict]:
+    """读取CSV文件
+
+    Args:
+        filename: 文件名
+        data_dir: 数据目录，默认使用 DATA_DIR
+    """
+    if data_dir is None:
+        data_dir = DATA_DIR
+    filepath = data_dir / filename
     if not filepath.exists():
         return []
     try:
@@ -278,12 +286,15 @@ async def get_all_risk_data():
     """获取所有风险数据文件列表和内容"""
     risk_files = []
 
-    for file_path in DATA_DIR.glob("risk_data_*.csv"):
+    # 风险数据在 risk_data 子目录
+    risk_data_dir = DATA_DIR / "risk_data"
+
+    for file_path in risk_data_dir.glob("risk_data_*.csv"):
         # 排除月度数据文件
         if "monthly" in file_path.name:
             continue
         try:
-            data = read_csv_file(file_path.name)
+            data = read_csv_file(file_path.name, risk_data_dir)
             risk_files.append(
                 {"filename": file_path.name, "data": data, "count": len(data)}
             )
@@ -298,9 +309,12 @@ async def get_monthly_risk_data():
     """获取所有月度风险数据文件列表"""
     risk_files = []
 
-    for file_path in sorted(DATA_DIR.glob("risk_data_monthly_*.csv")):
+    # 风险数据在 risk_data 子目录
+    risk_data_dir = DATA_DIR / "risk_data"
+
+    for file_path in sorted(risk_data_dir.glob("risk_data_monthly_*.csv")):
         try:
-            data = read_csv_file(file_path.name)
+            data = read_csv_file(file_path.name, risk_data_dir)
             # 从文件名提取月份
             month = file_path.stem.replace("risk_data_monthly_", "")
             risk_files.append(
@@ -347,7 +361,9 @@ async def get_risk_data_file(identifier: str):
             else:
                 filename = f"risk_data_{identifier}.csv"
 
-        data = read_csv_file(filename)
+        # 风险数据在 risk_data 子目录
+        risk_data_dir = DATA_DIR / "risk_data"
+        data = read_csv_file(filename, risk_data_dir)
 
         if not data:
             raise HTTPException(
