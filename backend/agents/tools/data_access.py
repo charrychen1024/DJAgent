@@ -91,9 +91,10 @@ def list_risk_data_files() -> Dict[str, Any]:
 
     try:
         data_dir = get_data_dir()
+        risk_data_dir = data_dir / "risk_data"  # 风险数据在子目录
         risk_files = []
 
-        for f in data_dir.glob("risk_data_*.csv"):
+        for f in risk_data_dir.glob("risk_data_*.csv"):
             risk_files.append(
                 {"filename": f.name, "path": str(f), "size": f.stat().st_size}
             )
@@ -114,12 +115,35 @@ def list_users(role: Optional[str] = None) -> Dict[str, Any]:
     列出用户/执行人员
 
     Args:
-        role: 角色筛选（业务负责人/一线操作人员/普通分析人员）
+        role: 角色筛选（业务负责人/一线操作人员/普通分析人员），支持别名：
+            - "executor" / "执行人" / "一线" / "一线人员" -> 一线操作人员
+            - "manager" / "负责人" / "业务" -> 业务负责人
 
     Returns:
         用户列表
     """
     logger.info(f"[工具] list_users 调用: role={role}")
+
+    # 角色别名映射
+    role_aliases = {
+        "executor": "一线操作人员",
+        "执行人": "一线操作人员",
+        "一线": "一线操作人员",
+        "一线人员": "一线操作人员",
+        "staff": "一线操作人员",
+        "manager": "业务负责人",
+        "负责人": "业务负责人",
+        "业务": "业务负责人",
+        "analyst": "普通分析人员",
+        "分析": "普通分析人员",
+    }
+
+    # 解析角色参数
+    if role:
+        role = role.strip()
+        normalized_role = role_aliases.get(role, role)
+    else:
+        normalized_role = None
 
     try:
         data_dir = get_data_dir()
@@ -132,7 +156,7 @@ def list_users(role: Optional[str] = None) -> Dict[str, Any]:
         with open(users_file, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if role is None or row.get("role") == role:
+                if normalized_role is None or row.get("role") == normalized_role:
                     users.append(
                         {
                             "user_id": row.get("user_id"),

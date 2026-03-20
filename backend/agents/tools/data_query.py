@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 # 数据目录
 DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
+# 风险数据目录
+RISK_DATA_DIR = DATA_DIR / "risk_data"
 
 
 def list_tables() -> Dict[str, Any]:
@@ -25,8 +27,8 @@ def list_tables() -> Dict[str, Any]:
     try:
         tables = []
 
-        # 风险数据表
-        risk_files = list(DATA_DIR.glob("risk_data_*.csv"))
+        # 风险数据表 (在 risk_data 子目录)
+        risk_files = list(RISK_DATA_DIR.glob("risk_data_*.csv"))
         for f in risk_files:
             tables.append({
                 "name": f.name,
@@ -34,8 +36,8 @@ def list_tables() -> Dict[str, Any]:
                 "description": f"风险数据表"
             })
 
-        # 月度风险数据表
-        monthly_files = list(DATA_DIR.glob("risk_data_monthly_*.csv"))
+        # 月度风险数据表 (在 risk_data 子目录)
+        monthly_files = list(RISK_DATA_DIR.glob("risk_data_monthly_*.csv"))
         for f in monthly_files:
             tables.append({
                 "name": f.name,
@@ -197,12 +199,12 @@ def query_risk_data_by_criteria(
         # 确定要查询的文件
         if not filename:
             # 默认查询最新的风险数据文件
-            files = sorted(DATA_DIR.glob("risk_data_*.csv"))
+            files = sorted(RISK_DATA_DIR.glob("risk_data_*.csv"))
             if not files:
                 return {"error": "没有找到风险数据文件"}
             filename = files[-1].name
 
-        file_path = DATA_DIR / filename
+        file_path = RISK_DATA_DIR / filename
         if not file_path.exists():
             return {"error": f"文件 {filename} 不存在"}
 

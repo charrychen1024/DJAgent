@@ -151,6 +151,8 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   // 对话左侧边栏状态
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)  // 是否展开对话左侧栏
   const [chatSidebarWidth, setChatSidebarWidth] = useState(280)  // 对话左侧栏宽度
+  // 删除对话确认
+  const [deleteConfirm, setDeleteConfirm] = useState(null)  // 要删除的对话ID
 
   useEffect(() => {
     if (currentUser?.user_id) {
@@ -766,7 +768,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
           </div>
 
           <div className="section-header">
-            <h3>📊 风险明细数据</h3>
+            <h3>风险明细数据</h3>
             <div className="action-buttons">
               <button
                 className="action-btn"
@@ -898,7 +900,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
         </div>
         <div className={`task-list-section ${tasksCollapsed ? 'collapsed' : ''}`}>
           <div className="task-list-header">
-            <h3>📋 下发任务</h3>
+            <h3>下发任务</h3>
             <button 
               className="collapse-btn icon-only" 
               onClick={() => setTasksCollapsed(!tasksCollapsed)}
@@ -935,11 +937,11 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       {/* 对话左侧栏 - 可折叠 */}
       <div className={`chat-sidebar ${chatSidebarOpen ? 'open' : 'collapsed'}`} style={{ width: chatSidebarOpen ? chatSidebarWidth : 0 }}>
         <div className="sidebar-header">
-          <h3>📋 历史对话</h3>
           <button className="new-chat-btn" onClick={() => { handleNewChat(); setChatSidebarOpen(false); }}>
-            ➕ 新建对话
+            <span className="btn-icon">+</span> 新建对话
           </button>
         </div>
+        <div className="sidebar-section-title">历史对话</div>
         <div className="sidebar-content">
           {chatList.length === 0 ? (
             <p className="no-chats">暂无历史对话</p>
@@ -951,14 +953,37 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                   className={`chat-list-item ${currentChatId === chat.chat_id ? 'active' : ''}`}
                   onClick={() => { loadChat(chat.chat_id); setChatSidebarOpen(false); }}
                 >
-                  <div className="chat-item-title">{chat.title}</div>
-                  <div className="chat-item-meta">{chat.created_at}</div>
+                  <div className="chat-item-info">
+                    <div className="chat-item-title">{chat.title.length > 15 ? chat.title.substring(0, 15) + '...' : chat.title}</div>
+                    <div className="chat-item-meta">{chat.created_at}</div>
+                  </div>
+                  <button 
+                    className="chat-item-delete" 
+                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(chat.chat_id); }}
+                    title="删除对话"
+                  >
+                    ×
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
       </div>
+
+      {/* 删除确认弹窗 */}
+      {deleteConfirm && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <h3>确认删除</h3>
+            <p>确定要删除这条历史对话吗？此操作不可恢复。</p>
+            <div className="confirm-actions">
+              <button className="cancel-btn" onClick={() => setDeleteConfirm(null)}>取消</button>
+              <button className="confirm-btn danger" onClick={() => handleDeleteChat(deleteConfirm)}>确认删除</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="main-content" style={{ marginLeft: chatSidebarOpen ? 0 : 0 }}>
         <div className="chat-header">
@@ -974,7 +999,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                 <span className="line line-3"></span>
               </span>
             </button>
-            <h3>💬 智能体对话</h3>
+            <h3>💬 盾仔</h3>
           </div>
         </div>
         {/* 保留原来的弹窗式历史列表作为备用（可以删除） */}
@@ -987,7 +1012,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                   className={`chat-list-item ${currentChatId === chat.chat_id ? 'active' : ''}`}
                   onClick={() => loadChat(chat.chat_id)}
                 >
-                  <div className="chat-item-title">{chat.title}</div>
+                  <div className="chat-item-title">{chat.title.length > 15 ? chat.title.substring(0, 15) + '...' : chat.title}</div>
                   <div className="chat-item-meta">{chat.created_at}</div>
                 </li>
               ))}
@@ -1007,10 +1032,10 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
               <div className="welcome-tips">
                 <p>通过对话我可以帮您：</p>
                 <ul>
-                  <li>📊 分析风险数据</li>
-                  <li>📝 创建和下发任务</li>
-                  <li>📋 查看任务状态</li>
-                  <li>💡 获取风险建议</li>
+                  <li>分析风险数据</li>
+                  <li>创建和下发任务</li>
+                  <li>查看任务状态</li>
+                  <li>获取风险建议</li>
                 </ul>
                 <p className="tip">⚡ 所有操作都通过对话完成，无需手动创建任务</p>
               </div>
@@ -1127,7 +1152,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                         className={`chat-list-item ${currentChatId === chat.chat_id ? 'active' : ''}`}
                         onClick={() => loadChat(chat.chat_id)}
                       >
-                        <div className="chat-item-title">{chat.title}</div>
+                        <div className="chat-item-title">{chat.title.length > 15 ? chat.title.substring(0, 15) + '...' : chat.title}</div>
                         <div className="chat-item-meta">
                           <span>{chat.created_at}</span>
                         </div>
