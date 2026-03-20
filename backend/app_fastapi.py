@@ -122,13 +122,18 @@ async def get_tasks(user_id: Optional[str] = None, task_type: Optional[str] = No
 
     if user_id:
         users = read_csv_file("users.csv")
-        user = next((u for u in users if u["user_id"] == user_id), None)
+        
+        # 支持 user_id 或 employee_id 匹配
+        user = next((u for u in users if u["user_id"] == user_id or u.get("employee_id") == user_id), None)
+        
         if user:
             role = user.get("role", "")
+            # 业务负责人/分析人员：查看自己创建的任务
             if role in ["业务负责人", "普通分析人员"]:
-                tasks = [t for t in tasks if t["creator_id"] == user_id]
+                tasks = [t for t in tasks if t["creator_id"] == user["user_id"]]
             else:
-                tasks = [t for t in tasks if t["assigned_to_id"] == user_id]
+                # 一线人员：查看分配给自己的任务（支持 employee_id 匹配）
+                tasks = [t for t in tasks if t["assigned_to_id"] == user["user_id"] or t.get("assigned_to_id") == user.get("employee_id")]
 
     return tasks
 
@@ -146,38 +151,78 @@ async def get_task(task_id: str):
 async def create_task(request: Request):
     data = await request.json()
     tasks = read_csv_file("tasks.csv")
+    users = read_csv_file("users.csv")
 
-    # 使用员工编号 + 时间戳（精确到毫秒）+ 序号作为任务ID
-    # 格式: 001-20260312112289456-001 (首个任务)
-    #       001-20260312112289456-002 (同时间第2个任务)
-    # 员工编号：去掉了 "EMP_" 或 "EMP" 前缀
-    creator_id_raw = data.get("creator_id", "000")
-    employee_no = creator_id_raw.replace("EMP_", "").replace("EMP", "")
+    # 解析 creator_id：支持 user_id、employee_id、姓名
+    creator_input = data.get("creator_id", "000")
+    creator_name_input = data.get("creator_name", "总部管理员")
     
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]  # 精确到毫秒
+    # 尝试从 users.csv 匹配正确的 user_id
+    creator_user = None
+    if creator_input.startswith("EMP_"):
+        # 员工编号格式，如 EMP_001
+        creator_user = next((u for u in users if u.get("employee_id") == creator_input), None)
+    elif creator_input.startswith("EMP"):
+        # 去掉 EMP 前缀
+        creator_user = next((u for u in users if u.get("employee_id") == f"EMP_{creator_input.replace('EMP', '')}"), None)
+    else:
+        # 尝试匹配 user_id 或 username
+        creator_user = next((u for u in users if u["user_id"] == creator_input or u["username"] == creator_name_input), None)
+    
+    # 确定最终的 creator_id
+    if creator_user:
+        creator_id = creator_user["user_id"]
+        creator_name = creator_user["username"]
+    else:
+        creator_id = creator_input if not creator_input.startswith("EMP") else "000"
+        creator_name = creator_name_input
+    
+    # 解析 assigned_to_id：支持 user_id、employee_id、姓名
+    assigned_input = data.get("assigned_to_id", "")
+    assigned_name_input = data.get("assigned_to_name", "")
+    
+    assigned_user = None
+    if assigned_input:
+        if assigned_input.startswith("EMP_"):
+            assigned_user = next((u for u in users if u.get("employee_id") == assigned_input), None)
+        elif assigned_input.startswith("EMP"):
+            assigned_user = next((u for u in users if u.get("employee_id") == f"EMP_{assigned_input.replace('EMP', '')}"), None)
+        else:
+            # 尝试匹配 user_id 或 username（优先匹配姓名）
+            assigned_user = next((u for u in users if u["user_id"] == assigned_input or u["username"] == assigned_name_input), None)
+    
+    # 确定最终的 assigned_to_id 和 assigned_to_name
+    if assigned_user:
+        assigned_to_id = assigned_user["user_id"]
+        assigned_to_name = assigned_user["username"]
+    else:
+        assigned_to_id = assigned_input if not assigned_input.startswith("EMP") else ""
+        assigned_to_name = assigned_name_input
+    
+    # 使用员工编号 + 时间戳（精确到毫秒）+ 序号作为任务ID
+    employee_no = creator_id.replace("EMP_", "").replace("EMP", "")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]
     base_task_id = f"{employee_no}-{timestamp}"
 
-    # 检查是否有相同 base_task_id 的任务，序号从1开始递增（3位数）
     existing_count = sum(1 for t in tasks if t["task_id"].startswith(base_task_id))
     new_task_id = f"{base_task_id}-{existing_count + 1:03d}"
 
-    # Task Type：用户没指定就默认"日度"
     task_type = data.get("task_type", "日度")
     if task_type not in ["日度", "月度"]:
         task_type = "日度"
 
     new_task = {
         "task_id": new_task_id,
-        "creator_id": data.get("creator_id"),
-        "creator_name": data.get("creator_name"),
-        "assigned_to_id": data.get("assigned_to_id"),
-        "assigned_to_name": data.get("assigned_to_name"),
+        "creator_id": creator_id,
+        "creator_name": creator_name,
+        "assigned_to_id": assigned_to_id,
+        "assigned_to_name": assigned_to_name,
         "status": "已创建",
         "created_time": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "risk_summary": data.get("risk_summary"),
         "risk_data_url": data.get("risk_data_url"),
-        "suggested_receiver_id": data.get("assigned_to_id"),
-        "confirmed_receiver_id": data.get("assigned_to_id"),
+        "suggested_receiver_id": assigned_to_id,
+        "confirmed_receiver_id": assigned_to_id,
         "completed_time": "",
         "region": data.get("region", ""),
         "task_type": task_type,
@@ -187,6 +232,8 @@ async def create_task(request: Request):
     fieldnames = list(new_task.keys())
 
     if write_csv_file("tasks.csv", tasks, fieldnames):
+        logger.info(f"[API] 创建任务: {new_task_id}, 创建人: {creator_id}({creator_name}), 接收人: {assigned_to_id}({assigned_to_name})")
+        
         # 发送 SSE 通知
         try:
             from agents.sse_events import notify_task_created
