@@ -166,7 +166,7 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
 
         # 初始化反馈文件
         feedback_dir = data_dir / "feedback"
-        feedback_dir.mkdir(exist_ok=True)
+        feedback_dir.mkdir(parents=True, exist_ok=True)
 
         feedback_file = feedback_dir / f"{task_id}.json"
         feedback_data = {

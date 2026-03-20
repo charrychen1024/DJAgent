@@ -1379,16 +1379,17 @@ function StaffWorkspace({ currentUser }) {
 
   const initConversation = async (specificTaskId = null) => {
     try {
-      // 获取当前用户的任务列表
-      const response = await fetch(`${API_BASE}/tasks?user_id=${currentUser.user_id}`)
+      // 获取当前用户的任务列表（强制刷新，加时间戳避免缓存）
+      const response = await fetch(`${API_BASE}/tasks?user_id=${currentUser.user_id}&_t=${Date.now()}`)
       const tasks = await response.json()
       setTasks(tasks)
       
       let targetTask = null
       
-      // 如果指定了任务ID，直接使用该任务
+      // 如果指定了任务ID，直接使用该任务（优先精确匹配）
       if (specificTaskId) {
         targetTask = tasks.find(t => t.task_id === specificTaskId)
+        console.log('[Staff] 查找指定任务:', specificTaskId, '结果:', targetTask ? '找到' : '未找到')
       }
       
       // 否则找最新的待处理任务
@@ -1396,11 +1397,13 @@ function StaffWorkspace({ currentUser }) {
         targetTask = tasks.find(t => t.status !== '反馈完成') || tasks[0]
       }
       
+      console.log('[Staff] 最终选中任务:', targetTask?.task_id)
+      
       if (targetTask) {
         setSelectedTask(targetTask)
         
         // 获取对话历史
-        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history`)
+        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history?user_id=${currentUser.user_id}`)
         const historyData = await historyRes.json()
         
         if (Array.isArray(historyData) && historyData.length > 0) {
@@ -1525,16 +1528,6 @@ function StaffWorkspace({ currentUser }) {
     )
   }
 
-  if (!selectedTask) {
-    return (
-      <div className="workspace staff-workspace">
-        <div className="staff-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="empty">暂无任务</div>
-        </div>
-      </div>
-    )
-  }
-
   // 按时间分组消息
   const groupMessagesByTime = (messages) => {
     const groups = []
@@ -1568,7 +1561,16 @@ function StaffWorkspace({ currentUser }) {
         </div>
         <div className="staff-main">
           <div className="chat-messages im-style">
-          {chatMessages.length === 0 && !loading.chat && <div className="welcome-message"><p>👋 您好！智能体正在准备任务信息...</p></div>}
+          {chatMessages.length === 0 && !loading.chat && (
+            <div className="welcome-message">
+              <p>👋 您好！欢迎使用风控核查助手</p>
+              {selectedTask ? (
+                <p>智能体正在准备任务信息...</p>
+              ) : (
+                <p>暂无任务，等待管理员下发...</p>
+              )}
+            </div>
+          )}
           {messageGroups.map((item, i) => {
             if (item.type === 'time') {
               return (
