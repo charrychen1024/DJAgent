@@ -18,7 +18,8 @@ function LoginPage({ users, onLogin, loading }) {
 
   const handleLogin = () => {
     if (selectedUserId) {
-      const user = users.find(u => u.user_id === selectedUserId)
+      // 支持 user_id 或 employee_id 匹配
+      const user = users.find(u => u.user_id === selectedUserId || (u.employee_id || u.user_id) === selectedUserId)
       if (user) onLogin(user)
     }
   }
@@ -82,8 +83,8 @@ function LoginPage({ users, onLogin, loading }) {
           >
             <option value="" disabled>选择用户...</option>
             {filteredUsers.map(user => (
-              <option key={user.user_id} value={user.user_id}>
-                {user.username} ({user.department})
+              <option key={user.user_id} value={user.employee_id || user.user_id}>
+                {user.username} - {user.employee_id || user.user_id}
               </option>
             ))}
           </select>
@@ -1697,7 +1698,8 @@ function App() {
   const handleUserChange = (e) => {
     const userId = e.target.value
     if (userId) {
-      const user = users.find(u => u.user_id === userId)
+      // 优先用 employee_id 匹配，否则用 user_id 匹配
+      const user = users.find(u => (u.employee_id || u.user_id) === userId) || users.find(u => u.user_id === userId)
       setCurrentUser(user)
       sessionStorage.setItem('currentUser', JSON.stringify(user))
     } else {
