@@ -282,7 +282,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     try {
       // 根据当前Tab获取对应类型的任务（日度/月度）
       const taskType = dataTab === 'daily' ? '日度' : '月度'
-      const url = `${API_BASE}/tasks?user_id=${userId}&task_type=${taskType}`
+      const url = `${API_BASE}/tasks?employee_id=${userId}&task_type=${taskType}`
       const response = await fetch(url)
       const data = await response.json()
       setTasks(data.length > 0 ? data : [])
@@ -313,7 +313,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       try {
         const filename = `00${i}`
         // 带上user_id参数，后端会根据用户地区过滤数据
-        const url = userId ? `${API_BASE}/risk-data/${filename}?user_id=${userId}` : `${API_BASE}/risk-data/${filename}`
+        const url = userId ? `${API_BASE}/risk-data/${filename}?employee_id=${userId}` : `${API_BASE}/risk-data/${filename}`
         const response = await fetch(url)
         if (response.ok) {
           const data = await response.json()
@@ -336,7 +336,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     const allData = []
     try {
       // 带上user_id参数，后端会根据用户地区过滤数据
-      const url = userId ? `${API_BASE}/risk-data/monthly?user_id=${userId}` : `${API_BASE}/risk-data/monthly`
+      const url = userId ? `${API_BASE}/risk-data/monthly?employee_id=${userId}` : `${API_BASE}/risk-data/monthly`
       const response = await fetch(url)
       if (response.ok) {
         const files = await response.json()
@@ -452,14 +452,14 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       await fetch(`${API_BASE}/session/cleanup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids: [userId] })
+        body: JSON.stringify({ employee_ids: [userId] })
       })
       
       const response = await fetch(`${API_BASE}/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          employee_id: userId,
           username: currentUser.username
         })
       })
@@ -480,7 +480,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const handleDeleteChat = async (chatId) => {
     const userId = currentUser?.employee_id || currentUser?.user_id
     try {
-      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${userId}`, {
+      const response = await fetch(`${API_BASE}/chats/${chatId}?employee_id=${userId}`, {
         method: 'DELETE'
       })
       const data = await response.json()
@@ -504,7 +504,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const fetchChatList = async () => {
     const userId = currentUser?.employee_id || currentUser?.user_id
     try {
-      const response = await fetch(`${API_BASE}/chats?user_id=${userId}`)
+      const response = await fetch(`${API_BASE}/chats?employee_id=${userId}`)
       const chats = await response.json()
       setChatList(chats)
     } catch (err) {
@@ -517,7 +517,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const loadChat = async (chatId, isAutoLoad = false) => {
     const userId = currentUser?.employee_id || currentUser?.user_id
     try {
-      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${userId}`)
+      const response = await fetch(`${API_BASE}/chats/${chatId}?employee_id=${userId}`)
       const data = await response.json()
       if (data.status === 'success' && data.chat) {
         setCurrentChatId(chatId)
@@ -561,7 +561,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userId,
+          employee_id: userId,
           username: currentUser.username
         })
       })
@@ -602,7 +602,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       const userId = currentUser?.employee_id || currentUser?.user_id
       const formData = new FormData()
       formData.append('message', messageToSend)
-      formData.append('user_id', userId)
+      formData.append('employee_id', userId)
       formData.append('username', currentUser.username)
 
       // 添加文件
@@ -1276,7 +1276,7 @@ function StaffWorkspace({ currentUser }) {
       return
     }
     try {
-      const response = await fetch(`${API_BASE}/tasks?user_id=${userId}`)
+      const response = await fetch(`${API_BASE}/tasks?employee_id=${userId}`)
       const data = await response.json()
       setTasks(data.length > 0 ? data : [])
     } catch (err) {
@@ -1337,7 +1337,7 @@ function StaffWorkspace({ currentUser }) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              user_id: userId,
+              employee_id: userId,
               username: currentUser.username
             })
           })
@@ -1401,7 +1401,7 @@ function StaffWorkspace({ currentUser }) {
     const userId = currentUser?.employee_id || currentUser?.user_id
     try {
       // 获取当前用户的任务列表（强制刷新，加时间戳避免缓存）
-      const response = await fetch(`${API_BASE}/tasks?user_id=${userId}&_t=${Date.now()}`)
+      const response = await fetch(`${API_BASE}/tasks?employee_id=${userId}&_t=${Date.now()}`)
       const tasks = await response.json()
       setTasks(tasks)
       
@@ -1424,7 +1424,7 @@ function StaffWorkspace({ currentUser }) {
         setSelectedTask(targetTask)
         
         // 获取对话历史
-        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history?user_id=${userId}`)
+        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history?employee_id=${userId}`)
         const historyData = await historyRes.json()
         
         if (Array.isArray(historyData) && historyData.length > 0) {
@@ -1442,7 +1442,7 @@ function StaffWorkspace({ currentUser }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               message: "你好，请告诉我当前有什么任务需要处理", 
-              user_id: userId, 
+              employee_id: userId, 
               username: currentUser.username 
             })
           })
@@ -1493,7 +1493,7 @@ function StaffWorkspace({ currentUser }) {
       // 构建 FormData 发送消息和文件
       const formData = new FormData()
       formData.append('message', messageToSend)
-      formData.append('user_id', userId)
+      formData.append('employee_id', userId)
       formData.append('username', currentUser.username)
 
       // 添加文件

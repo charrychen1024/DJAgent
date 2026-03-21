@@ -97,19 +97,25 @@ def write_csv_file(filename: str, data: List[Dict], fieldnames: List[str]) -> bo
 
 @app.get("/api/users")
 async def get_users():
-    return read_csv_file("users.csv")
+    """获取用户列表（不返回user_id字段）"""
+    users = read_csv_file("users.csv")
+    # 移除user_id字段
+    return [{k: v for k, v in u.items() if k != "user_id"} for u in users]
 
 
-@app.get("/api/users/{user_id}")
-async def get_user(user_id: str):
+@app.get("/api/users/{employee_id}")
+async def get_user(employee_id: str):
     """
     获取用户信息，支持 user_id 或 employee_id 查询
+    注意：不返回 user_id 字段，避免与 employee_id 混淆
     """
     users = read_csv_file("users.csv")
     # 支持 user_id 或 employee_id 匹配
-    user = next((u for u in users if u["user_id"] == user_id or u.get("employee_id") == user_id), None)
+    user = next((u for u in users if u["employee_id"] == employee_id or u.get("employee_id") == employee_id), None)
     if user:
-        return user
+        # 移除 user_id 字段，只返回其他信息
+        user_info = {k: v for k, v in user.items() if k != "user_id"}
+        return user_info
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -117,18 +123,18 @@ async def get_user(user_id: str):
 
 
 @app.get("/api/tasks")
-async def get_tasks(user_id: Optional[str] = None, task_type: Optional[str] = None):
+async def get_tasks(employee_id: Optional[str] = None, task_type: Optional[str] = None):
     tasks = read_csv_file("tasks.csv")
 
     # 按任务类型过滤（日度/月度）
     if task_type:
         tasks = [t for t in tasks if t.get("task_type") == task_type]
 
-    if user_id:
+    if employee_id:
         users = read_csv_file("users.csv")
         
         # 支持 user_id 或 employee_id 匹配
-        user = next((u for u in users if u["user_id"] == user_id or u.get("employee_id") == user_id), None)
+        user = next((u for u in users if u["employee_id"] == employee_id or u.get("employee_id") == employee_id), None)
         
         if user:
             role = user.get("role", "")
@@ -176,7 +182,7 @@ async def create_task(request: Request):
         creator_user = next((u for u in users if u.get("employee_id") == f"EMP_{creator_input.replace('EMP', '')}"), None)
     else:
         # 尝试匹配 user_id 或 username
-        creator_user = next((u for u in users if u["user_id"] == creator_input or u["username"] == creator_name_input), None)
+        creator_user = next((u for u in users if u["employee_id"] == creator_input or u["username"] == creator_name_input), None)
     
     # 确定最终的 creator_id（存储 employee_id，如 EMP_001）
     if creator_user:
@@ -204,7 +210,7 @@ async def create_task(request: Request):
             assigned_user = next((u for u in users if u.get("employee_id") == f"EMP_{assigned_input.replace('EMP', '')}"), None)
         else:
             # 尝试匹配 user_id 或 username（优先匹配姓名）
-            assigned_user = next((u for u in users if u["user_id"] == assigned_input or u["username"] == assigned_name_input), None)
+            assigned_user = next((u for u in users if u["employee_id"] == assigned_input or u["username"] == assigned_name_input), None)
     
     # 确定最终的 assigned_to_id（存储 employee_id，如 EMP_001）
     if assigned_user:
@@ -285,7 +291,7 @@ async def chat(request: Request):
         # FormData 格式（包含文件上传）
         form = await request.form()
         message = form.get("message", "")
-        user_id = form.get("user_id", "manager_default")
+        employee_id = form.get("employee_id", "manager_default")
         username = form.get("username", "业务负责人")
         task_id = form.get("task_id")
 
@@ -313,13 +319,13 @@ async def chat(request: Request):
         try:
             data = await request.json()
             message = data.get("message", "")
-            user_id = data.get("user_id", "manager_default")
+            employee_id = data.get("employee_id", "manager_default")
             username = data.get("username", "业务负责人")
             task_id = data.get("task_id")
             saved_files = []
         except Exception:
             message = ""
-            user_id = "manager_default"
+            employee_id = "manager_default"
             username = "业务负责人"
             task_id = None
             saved_files = []
@@ -333,7 +339,7 @@ async def chat(request: Request):
         )
     else:
         try:
-            agent = await get_or_create_manager_agent(user_id, username)
+            agent = await get_or_create_manager_agent(employee_id, username)
             response_text = await agent.chat(message, files=saved_files if saved_files else None)
             logger.info(f"[API] ManagerAgent 回复成功")
         except Exception as e:
@@ -351,7 +357,7 @@ async def chat(request: Request):
 
 @app.get("/api/risk-data")
 async def get_all_risk_data(
-    user_id: Optional[str] = None,
+    employee_id: Optional[str] = None,
     region_filter: Optional[str] = None
 ):
     """获取所有风险数据文件列表和内容
@@ -362,9 +368,9 @@ async def get_all_risk_data(
     user_region = None
     is_admin = False
     
-    if user_id:
+    if employee_id:
         users = read_csv_file("users.csv")
-        user = next((u for u in users if u.get("employee_id") == user_id or u["user_id"] == user_id), None)
+        user = next((u for u in users if u.get("employee_id") == employee_id or u["employee_id"] == employee_id), None)
         if user:
             user_region = user.get("region", "")
             is_admin = (user.get("employee_id") == "EMP_000" or user.get("user_id") == "000")
@@ -397,7 +403,7 @@ async def get_all_risk_data(
 
 @app.get("/api/risk-data/monthly")
 async def get_monthly_risk_data(
-    user_id: Optional[str] = None,
+    employee_id: Optional[str] = None,
     region_filter: Optional[str] = None
 ):
     """获取所有月度风险数据文件列表
@@ -408,9 +414,9 @@ async def get_monthly_risk_data(
     user_region = None
     is_admin = False
     
-    if user_id:
+    if employee_id:
         users = read_csv_file("users.csv")
-        user = next((u for u in users if u.get("employee_id") == user_id or u["user_id"] == user_id), None)
+        user = next((u for u in users if u.get("employee_id") == employee_id or u["employee_id"] == employee_id), None)
         if user:
             user_region = user.get("region", "")
             is_admin = (user.get("employee_id") == "EMP_000" or user.get("user_id") == "000")
@@ -443,7 +449,7 @@ async def get_monthly_risk_data(
 @app.get("/api/risk-data/{identifier}")
 async def get_risk_data_file(
     identifier: str,
-    user_id: Optional[str] = None,
+    employee_id: Optional[str] = None,
     region_filter: Optional[str] = None
 ):
     """获取单个风险数据文件内容
@@ -463,9 +469,9 @@ async def get_risk_data_file(
         user_region = None
         is_admin = False
         
-        if user_id:
+        if employee_id:
             users = read_csv_file("users.csv")
-            user = next((u for u in users if u.get("employee_id") == user_id or u["user_id"] == user_id), None)
+            user = next((u for u in users if u.get("employee_id") == employee_id or u["employee_id"] == employee_id), None)
             if user:
                 user_region = user.get("region", "")
                 is_admin = (user.get("employee_id") == "EMP_000" or user.get("user_id") == "000")
@@ -562,7 +568,7 @@ async def upload_task_file(task_id: str, request: Request):
     try:
         form = await request.form()
         file = form.get("file")
-        user_id = form.get("user_id")
+        employee_id = form.get("employee_id")
 
         if not file:
             raise HTTPException(status_code=400, detail="未上传文件")
@@ -593,7 +599,7 @@ async def upload_task_file(task_id: str, request: Request):
                 "filename": filename,
                 "file_path": str(file_path),
                 "upload_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "user_id": user_id,
+                "employee_id": employee_id,
             }
         )
 
@@ -617,7 +623,7 @@ async def upload_task_file(task_id: str, request: Request):
 
 
 @app.get("/api/tasks/{task_id}/chat-history")
-async def get_chat_history(task_id: str, user_id: str = None, username: str = None):
+async def get_chat_history(task_id: str, employee_id: str = None, username: str = None):
     feedback_path = DATA_DIR / "feedback" / f"{task_id}.json"
 
     if feedback_path.exists():
@@ -630,7 +636,7 @@ async def get_chat_history(task_id: str, user_id: str = None, username: str = No
         return [{"message": "Agent SDK未安装，无法加载任务", "sender": "Agent"}]
 
     try:
-        agent = StaffAgent(user_id, username)
+        agent = StaffAgent(employee_id, username)
         async with agent:
             initial_message = await agent.init_task(task_id)
 
@@ -668,7 +674,7 @@ async def send_message(task_id: str, request: Request):
     if "multipart/form-data" in content_type:
         form = await request.form()
         message = form.get("message", "")
-        user_id = form.get("user_id")
+        employee_id = form.get("employee_id")
         username = form.get("username", "")
 
         # 处理文件上传
@@ -698,11 +704,11 @@ async def send_message(task_id: str, request: Request):
         try:
             data = await request.json()
             message = data.get("message", "")
-            user_id = data.get("user_id")
+            employee_id = data.get("employee_id")
             username = data.get("username", "")
         except Exception:
             message = ""
-            user_id = None
+            employee_id = None
             username = ""
         saved_files = []
         file_info_list = []
@@ -721,7 +727,7 @@ async def send_message(task_id: str, request: Request):
         ai_response = "Agent SDK未安装，暂时无法处理消息"
     else:
         try:
-            agent = await get_or_create_staff_agent(user_id, username)
+            agent = await get_or_create_staff_agent(employee_id, username)
             agent.current_task_id = task_id
             ai_response = await agent.chat(message, files=saved_files if saved_files else None)
         except Exception as e:
@@ -760,7 +766,7 @@ async def send_message(task_id: str, request: Request):
     return {"user_message": user_message, "agent_reply": agent_reply}
 
     try:
-        agent = StaffAgent(user_id, username)
+        agent = StaffAgent(employee_id, username)
         async with agent:
             agent.current_task_id = task_id
             ai_response = await agent.chat(message)
@@ -788,11 +794,11 @@ async def logout(request: Request):
 
     try:
         data = await request.json()
-        user_id = data.get("user_id")
+        employee_id = data.get("employee_id")
 
-        if user_id:
-            await close_agent(user_id)
-            logger.info(f"[API] 用户 {user_id} 登出，会话已关闭")
+        if employee_id:
+            await close_agent(employee_id)
+            logger.info(f"[API] 用户 {employee_id} 登出，会话已关闭")
 
         return {"status": "success", "message": "登出成功"}
     except Exception as e:
@@ -807,11 +813,11 @@ async def cleanup_sessions(request: Request):
 
     try:
         data = await request.json()
-        user_ids = data.get("user_ids", [])
+        employee_ids = data.get("employee_ids", [])
 
         closed_count = 0
-        for user_id in user_ids:
-            await close_agent(user_id)
+        for employee_id in employee_ids:
+            await close_agent(employee_id)
             closed_count += 1
 
         logger.info(f"[API] 清理了 {closed_count} 个会话")
@@ -827,16 +833,16 @@ async def cleanup_sessions(request: Request):
 CHATS_DIR = DATA_DIR / "chats"
 
 
-def get_user_chats_dir(user_id: str) -> Path:
+def get_user_chats_dir(employee_id: str) -> Path:
     """获取用户对话存储目录"""
-    user_dir = CHATS_DIR / user_id
+    user_dir = CHATS_DIR / employee_id
     user_dir.mkdir(parents=True, exist_ok=True)
     return user_dir
 
 
-def list_chats(user_id: str) -> List[Dict]:
+def list_chats(employee_id: str) -> List[Dict]:
     """获取用户的所有对话列表"""
-    user_dir = get_user_chats_dir(user_id)
+    user_dir = get_user_chats_dir(employee_id)
     chats = []
     for f in user_dir.glob("*.json"):
         try:
@@ -858,7 +864,7 @@ def list_chats(user_id: str) -> List[Dict]:
     return chats
 
 
-def create_chat(user_id: str, username: str) -> Dict:
+def create_chat(employee_id: str, username: str) -> Dict:
     """创建新对话"""
     import uuid
     chat_id = f"CHAT_{uuid.uuid4().hex[:12]}"
@@ -866,7 +872,7 @@ def create_chat(user_id: str, username: str) -> Dict:
     
     chat_data = {
         "chat_id": chat_id,
-        "user_id": user_id,
+        "employee_id": employee_id,
         "username": username,
         "title": "新对话",
         "created_at": timestamp,
@@ -874,25 +880,25 @@ def create_chat(user_id: str, username: str) -> Dict:
         "messages": []
     }
     
-    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    chat_path = get_user_chats_dir(employee_id) / f"{chat_id}.json"
     with open(chat_path, "w", encoding="utf-8") as f:
         json.dump(chat_data, f, ensure_ascii=False, indent=2)
     
     return chat_data
 
 
-def get_chat(chat_id: str, user_id: str) -> Optional[Dict]:
+def get_chat(chat_id: str, employee_id: str) -> Optional[Dict]:
     """获取对话详情"""
-    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    chat_path = get_user_chats_dir(employee_id) / f"{chat_id}.json"
     if not chat_path.exists():
         return None
     with open(chat_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def update_chat(chat_id: str, user_id: str, messages: List[Dict], title: str = None) -> bool:
+def update_chat(chat_id: str, employee_id: str, messages: List[Dict], title: str = None) -> bool:
     """更新对话"""
-    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    chat_path = get_user_chats_dir(employee_id) / f"{chat_id}.json"
     if not chat_path.exists():
         return False
     
@@ -917,9 +923,9 @@ def update_chat(chat_id: str, user_id: str, messages: List[Dict], title: str = N
     return True
 
 
-def delete_chat(chat_id: str, user_id: str) -> bool:
+def delete_chat(chat_id: str, employee_id: str) -> bool:
     """删除对话"""
-    chat_path = get_user_chats_dir(user_id) / f"{chat_id}.json"
+    chat_path = get_user_chats_dir(employee_id) / f"{chat_id}.json"
     if chat_path.exists():
         chat_path.unlink()
         return True
@@ -927,11 +933,11 @@ def delete_chat(chat_id: str, user_id: str) -> bool:
 
 
 @app.get("/api/chats")
-async def get_user_chats(user_id: str):
+async def get_user_chats(employee_id: str):
     """获取用户的所有对话列表"""
-    if not user_id:
+    if not employee_id:
         return []
-    return list_chats(user_id)
+    return list_chats(employee_id)
 
 
 @app.post("/api/chats")
@@ -939,13 +945,13 @@ async def create_new_chat(request: Request):
     """创建新对话"""
     try:
         data = await request.json()
-        user_id = data.get("user_id")
+        employee_id = data.get("employee_id")
         username = data.get("username", "用户")
         
-        if not user_id:
-            return {"status": "error", "message": "缺少 user_id"}
+        if not employee_id:
+            return {"status": "error", "message": "缺少 employee_id"}
         
-        chat_data = create_chat(user_id, username)
+        chat_data = create_chat(employee_id, username)
         return {"status": "success", "chat": chat_data}
     except Exception as e:
         logger.error(f"[ERROR] 创建对话失败: {e}")
@@ -953,12 +959,12 @@ async def create_new_chat(request: Request):
 
 
 @app.get("/api/chats/{chat_id}")
-async def get_chat_detail(chat_id: str, user_id: str):
+async def get_chat_detail(chat_id: str, employee_id: str):
     """获取对话详情"""
-    if not user_id:
-        return {"status": "error", "message": "缺少 user_id"}
+    if not employee_id:
+        return {"status": "error", "message": "缺少 employee_id"}
     
-    chat = get_chat(chat_id, user_id)
+    chat = get_chat(chat_id, employee_id)
     if not chat:
         return {"status": "error", "message": "对话不存在"}
     
@@ -966,12 +972,12 @@ async def get_chat_detail(chat_id: str, user_id: str):
 
 
 @app.delete("/api/chats/{chat_id}")
-async def delete_chat_by_id(chat_id: str, user_id: str):
+async def delete_chat_by_id(chat_id: str, employee_id: str):
     """删除对话"""
-    if not user_id:
-        return {"status": "error", "message": "缺少 user_id"}
+    if not employee_id:
+        return {"status": "error", "message": "缺少 employee_id"}
     
-    success = delete_chat(chat_id, user_id)
+    success = delete_chat(chat_id, employee_id)
     if success:
         return {"status": "success"}
     return {"status": "error", "message": "对话不存在"}
@@ -988,7 +994,7 @@ async def send_chat_message(chat_id: str, request: Request):
     if "multipart/form-data" in content_type:
         form = await request.form()
         message = form.get("message", "")
-        user_id = form.get("user_id")
+        employee_id = form.get("employee_id")
         username = form.get("username", "业务负责人")
         
         files = form.getlist("files")
@@ -1006,17 +1012,17 @@ async def send_chat_message(chat_id: str, request: Request):
         try:
             data = await request.json()
             message = data.get("message", "")
-            user_id = data.get("user_id")
+            employee_id = data.get("employee_id")
             username = data.get("username", "业务负责人")
         except Exception:
             return {"status": "error", "message": "请求解析失败"}
         saved_files = []
 
-    if not user_id or not message:
+    if not employee_id or not message:
         return {"status": "error", "message": "缺少必要参数"}
 
     # 获取或创建对话
-    chat = get_chat(chat_id, user_id)
+    chat = get_chat(chat_id, employee_id)
     if not chat:
         return {"status": "error", "message": "对话不存在"}
 
@@ -1037,7 +1043,7 @@ async def send_chat_message(chat_id: str, request: Request):
     response_text = ""
     if HAS_AGENT_SDK:
         try:
-            agent = await get_or_create_manager_agent(user_id, username)
+            agent = await get_or_create_manager_agent(employee_id, username)
             response_text = await agent.chat(message, files=saved_files if saved_files else None)
         except Exception as e:
             logger.error(f"[ERROR] ManagerAgent 调用失败: {str(e)}")
@@ -1058,7 +1064,7 @@ async def send_chat_message(chat_id: str, request: Request):
     messages = chat.get("messages", [])
     messages.append(user_message)
     messages.append(agent_message)
-    update_chat(chat_id, user_id, messages)
+    update_chat(chat_id, employee_id, messages)
 
     return {
         "status": "success",
@@ -1090,8 +1096,8 @@ async def shutdown_event():
 
 # ============ SSE 事件流端点 ============
 
-@app.get("/api/events/{user_id}")
-async def sse_events(user_id: str):
+@app.get("/api/events/{employee_id}")
+async def sse_events(employee_id: str):
     """
     SSE 事件流端点，用于实时推送任务通知
 
@@ -1102,17 +1108,17 @@ async def sse_events(user_id: str):
     """
     async def event_generator():
         queue = asyncio.Queue()
-        sse_manager.subscribe(user_id, queue)
+        sse_manager.subscribe(employee_id, queue)
 
         try:
             while True:
                 message = await queue.get()
                 yield f"data: {message}\n\n"
         except asyncio.CancelledError:
-            logger.info(f"[SSE] 用户 {user_id} 连接断开")
+            logger.info(f"[SSE] 用户 {employee_id} 连接断开")
         finally:
-            sse_manager.unsubscribe(user_id, queue)
-            logger.info(f"[SSE] 用户 {user_id} 取消订阅")
+            sse_manager.unsubscribe(employee_id, queue)
+            logger.info(f"[SSE] 用户 {employee_id} 取消订阅")
 
     from fastapi.responses import StreamingResponse
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -1151,13 +1157,13 @@ async def notify_staff_task(task_id: str, request: Request):
     try:
         # 1. 获取请求体中的用户信息
         body = await request.json()
-        user_id = body.get("user_id")
+        employee_id = body.get("employee_id")
         username = body.get("username")
 
-        logger.info(f"[API] 请求用户: user_id={user_id}, username={username}")
+        logger.info(f"[API] 请求用户: employee_id={employee_id}, username={username}")
 
-        if not user_id or not username:
-            raise HTTPException(status_code=400, detail="缺少user_id或username")
+        if not employee_id or not username:
+            raise HTTPException(status_code=400, detail="缺少employee_id或username")
 
         # 2. 获取任务信息
         tasks = read_csv_file("tasks.csv")
@@ -1171,13 +1177,13 @@ async def notify_staff_task(task_id: str, request: Request):
 
         # 3. 验证用户是否是任务的执行人
         assigned_to_id = task_info.get("assigned_to_id")
-        if assigned_to_id != user_id:
-            logger.warning(f"[API] ⚠️ 用户不匹配: 请求user_id={user_id}, 任务assigned_to_id={assigned_to_id}")
+        if assigned_to_id != employee_id:
+            logger.warning(f"[API] ⚠️ 用户不匹配: 请求employee_id={employee_id}, 任务assigned_to_id={assigned_to_id}")
             # 仍然允许发送，但记录警告
 
         # 4. 获取或创建Staff Agent
-        logger.info(f"[API] 获取Staff Agent: user_id={user_id}")
-        agent = await get_or_create_staff_agent(user_id, username)
+        logger.info(f"[API] 获取Staff Agent: employee_id={employee_id}")
+        agent = await get_or_create_staff_agent(employee_id, username)
 
         # 5. 调用Agent发送通知
         logger.info(f"[API] 调用Agent发送通知...")

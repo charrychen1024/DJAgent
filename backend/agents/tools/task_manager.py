@@ -71,14 +71,24 @@ def _generate_task_id(creator_id: str = "") -> str:
 def _normalize_employee_id(employee_id: str) -> str:
     """
     标准化员工工号
-    - 去掉 EMP_ 前缀
+    - 确保是 EMP_xxx 格式
     - 转为大写
     """
     if not employee_id:
         return ""
-    # 去掉 EMP_ 或 EMP 前缀
-    normalized = employee_id.replace("EMP_", "").replace("EMP", "")
-    return normalized.upper()
+    
+    # 已经是 EMP_ 开头，直接转大写返回
+    if employee_id.startswith("EMP_"):
+        return employee_id.upper()
+    
+    # 没有 EMP_ 前缀，添加前缀
+    if employee_id.upper().startswith("EMP"):
+        # 去掉 EMP 前缀，重新添加标准前缀
+        num = employee_id.replace("EMP", "").strip()
+        return f"EMP_{num.zfill(3)}".upper()
+    
+    # 纯数字，转为 EMP_xxx 格式
+    return f"EMP_{employee_id.strip().zfill(3)}".upper()
 
 
 def create_task(task_info: Dict) -> Dict[str, Any]:
@@ -136,10 +146,11 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             "suggested_receiver_id": task_info.get("suggested_receiver_id", ""),
             "confirmed_receiver_id": task_info.get("confirmed_receiver_id", ""),
             "completed_time": "",
-            "task_type": task_type,  # 添加 task_type 字段
+            "region": task_info.get("region", ""),
+            "task_type": task_type,
         }
 
-        # 字段名
+        # 字段名 - 按 tasks.csv 表头顺序
         fieldnames = [
             "task_id",
             "creator_id",
@@ -153,7 +164,8 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             "suggested_receiver_id",
             "confirmed_receiver_id",
             "completed_time",
-            "task_type",  # 添加 task_type 字段
+            "region",
+            "task_type",
         ]
 
         # 写入CSV - 使用 QUOTE_ALL 确保包含逗号的字段被正确处理
