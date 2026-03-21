@@ -69,7 +69,7 @@ async def tool_list_users(args: Dict[str, Any]) -> Dict[str, Any]:
 
 @tool(
     name="create_task",
-    description="Create a new verification task. Input: task_info (dict) containing creator_id, creator_name, assigned_to_id, assigned_to_name, risk_summary.",
+    description="Create a new verification task. Input: task_info (dict) containing creator_id, creator_name, assigned_to_id, assigned_to_name, risk_summary, task_type (optional, '日度' or '月度', default '日度').",
     input_schema={"task_info": dict},
 )
 async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:

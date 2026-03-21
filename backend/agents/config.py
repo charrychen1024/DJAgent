@@ -342,7 +342,7 @@ class AgentConfig:
             # Manager 模式的工具列表
             tools = [
                 ("list_users", "列出用户，参数：role（可选，按角色筛选）"),
-                ("create_task", "创建任务，参数：task_info（包含creator_id, creator_name, assigned_to_id, assigned_to_name, risk_summary）"),
+                ("create_task", "创建任务，参数：task_info（包含creator_id, creator_name, assigned_to_id, assigned_to_name, risk_summary, task_type（可选，'日度'或'月度'，默认'日度'））"),
                 ("assign_task", "分配任务，参数：task_id, assigned_to_id, assigned_to_name, status"),
                 ("get_task_detail", "获取任务详情，参数：task_id"),
                 ("parse_csv", "解析CSV文件，参数：file_path"),
