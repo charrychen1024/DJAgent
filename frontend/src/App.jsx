@@ -1264,6 +1264,7 @@ function StaffWorkspace({ currentUser }) {
   const [pendingFiles, setPendingFiles] = useState([]) // 待发送的文件列表
   const [loading, setLoading] = useState({ chat: false, init: true })
   const [tasks, setTasks] = useState([])
+  const tasksRef = useRef([])  // 使用 ref 存储最新任务列表，解决 SSE 闭包问题
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const inputTextareaRef = useRef(null)
@@ -1278,7 +1279,9 @@ function StaffWorkspace({ currentUser }) {
     try {
       const response = await fetch(`${API_BASE}/tasks?employee_id=${userId}`)
       const data = await response.json()
-      setTasks(data.length > 0 ? data : [])
+      const taskList = data.length > 0 ? data : []
+      setTasks(taskList)
+      tasksRef.current = taskList  // 同步更新 ref
     } catch (err) {
       console.error('[ERROR] 获取任务失败:', err)
       setTasks([])
@@ -1325,8 +1328,8 @@ function StaffWorkspace({ currentUser }) {
           // 自动切换到新任务
           const newTaskId = data.task_id
           
-          // 查找新任务的信息
-          const newTask = tasks.find(t => t.task_id === newTaskId)
+          // 查找新任务的信息（使用 ref 获取最新任务列表）
+          const newTask = tasksRef.current.find(t => t.task_id === newTaskId)
           if (newTask) {
             setSelectedTask(newTask)
           }
@@ -1404,6 +1407,7 @@ function StaffWorkspace({ currentUser }) {
       const response = await fetch(`${API_BASE}/tasks?employee_id=${userId}&_t=${Date.now()}`)
       const tasks = await response.json()
       setTasks(tasks)
+      tasksRef.current = tasks  // 同步更新 ref
       
       let targetTask = null
       
