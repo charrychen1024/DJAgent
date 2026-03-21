@@ -12,18 +12,17 @@ DJAgent is an AI-powered risk management system built with React + FastAPI + Cla
 
 ## Running the Project
 
-**Mac/Linux:**
+**重要：必须先激活虚拟环境**
+
 ```bash
 # Backend (port 5005)
-cd backend && source venv/bin/activate && unset CLAUDECODE && python -m uvicorn app_fastapi:app --reload --port 5005
+cd backend
+source .venv/bin/activate  # 激活虚拟环境（关键！）
+python -m uvicorn app_fastapi:app --host 0.0.0.0 --port 5005
 
 # Frontend (port 5173)
-cd frontend && npm run dev
-```
-
-**Windows:**
-```bash
-cd backend && venv\Scripts\activate && set CLAUDECODE= && python -m uvicorn app_fastapi:app --reload --port 5005 --loop auto
+cd frontend
+npm run dev
 ```
 
 ## Architecture

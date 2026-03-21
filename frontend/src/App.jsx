@@ -18,8 +18,8 @@ function LoginPage({ users, onLogin, loading }) {
 
   const handleLogin = () => {
     if (selectedUserId) {
-      // 支持 user_id 或 employee_id 匹配
-      const user = users.find(u => u.user_id === selectedUserId || (u.employee_id || u.user_id) === selectedUserId)
+      // 使用 employee_id 匹配（优先）或 user_id
+      const user = users.find(u => u.employee_id === selectedUserId || u.user_id === selectedUserId)
       if (user) onLogin(user)
     }
   }
@@ -83,8 +83,8 @@ function LoginPage({ users, onLogin, loading }) {
           >
             <option value="" disabled>选择用户...</option>
             {filteredUsers.map(user => (
-              <option key={user.user_id} value={user.employee_id || user.user_id}>
-                {user.username} - {user.employee_id || user.user_id}
+              <option key={user.employee_id} value={user.employee_id}>
+                {user.username} - {user.employee_id}
               </option>
             ))}
           </select>
@@ -156,12 +156,13 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null)  // 要删除的对话ID
 
   useEffect(() => {
-    if (currentUser?.user_id) {
+    const userId = currentUser?.employee_id || currentUser?.user_id
+    if (userId) {
       fetchTasks()
       fetchAllRiskData()
       fetchChatList()  // 获取对话列表
     }
-  }, [currentUser?.user_id])
+  }, [currentUser?.employee_id, currentUser?.user_id])
 
   // 当对话列表加载完成后，自动加载最近一个有消息的对话
   useEffect(() => {
@@ -176,9 +177,10 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
   // SSE 事件监听 - 实时接收任务通知
   useEffect(() => {
-    if (!currentUser?.user_id) return
+    const userId = currentUser?.employee_id || currentUser?.user_id
+    if (!userId) return
 
-    const eventSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+    const eventSource = new EventSource(`${API_BASE}/events/${userId}`)
 
     eventSource.onmessage = (event) => {
       try {
@@ -209,8 +211,9 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       eventSource.close()
       console.log('[SSE] 3秒后尝试重新连接...')
       setTimeout(() => {
-        if (currentUser?.user_id) {
-          const newSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+        const userId = currentUser?.employee_id || currentUser?.user_id
+        if (userId) {
+          const newSource = new EventSource(`${API_BASE}/events/${userId}`)
           console.log('[SSE] 重新连接成功')
         }
       }, 3000)
@@ -220,7 +223,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
       eventSource.close()
       console.log('[SSE] Manager 断开连接')
     }
-  }, [currentUser?.user_id, selectedTask])
+  }, [currentUser?.employee_id, currentUser?.user_id, selectedTask])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -270,8 +273,8 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   ]
 
   const fetchTasks = async () => {
-    // 没有用户时不获取任务
-    if (!currentUser?.user_id) {
+    const userId = currentUser?.employee_id || currentUser?.user_id
+    if (!userId) {
       setTasks([])
       return
     }
@@ -279,7 +282,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     try {
       // 根据当前Tab获取对应类型的任务（日度/月度）
       const taskType = dataTab === 'daily' ? '日度' : '月度'
-      const url = `${API_BASE}/tasks?user_id=${currentUser.user_id}&task_type=${taskType}`
+      const url = `${API_BASE}/tasks?user_id=${userId}&task_type=${taskType}`
       const response = await fetch(url)
       const data = await response.json()
       setTasks(data.length > 0 ? data : [])
@@ -303,12 +306,15 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   }
 
   const fetchAllRiskData = async () => {
+    const userId = currentUser?.employee_id || currentUser?.user_id
     setLoading(prev => ({ ...prev, riskData: true }))
     const allData = []
     for (let i = 1; i <= 10; i++) {
       try {
         const filename = `00${i}`
-        const response = await fetch(`${API_BASE}/risk-data/${filename}`)
+        // 带上user_id参数，后端会根据用户地区过滤数据
+        const url = userId ? `${API_BASE}/risk-data/${filename}?user_id=${userId}` : `${API_BASE}/risk-data/${filename}`
+        const response = await fetch(url)
         if (response.ok) {
           const data = await response.json()
           const actualData = data.data || data
@@ -325,10 +331,13 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
   // 获取月度风险数据
   const fetchMonthlyRiskData = async () => {
+    const userId = currentUser?.employee_id || currentUser?.user_id
     setLoading(prev => ({ ...prev, riskData: true }))
     const allData = []
     try {
-      const response = await fetch(`${API_BASE}/risk-data/monthly`)
+      // 带上user_id参数，后端会根据用户地区过滤数据
+      const url = userId ? `${API_BASE}/risk-data/monthly?user_id=${userId}` : `${API_BASE}/risk-data/monthly`
+      const response = await fetch(url)
       if (response.ok) {
         const files = await response.json()
         for (const file of files) {
@@ -437,19 +446,20 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   // 发送消息（包含待发送的文件）
   // 创建新对话
   const handleNewChat = async () => {
+    const userId = currentUser?.employee_id || currentUser?.user_id
     try {
       // 先关闭旧的Agent会话（让新对话完全重新开始）
       await fetch(`${API_BASE}/session/cleanup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids: [currentUser.user_id] })
+        body: JSON.stringify({ user_ids: [userId] })
       })
       
       const response = await fetch(`${API_BASE}/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: currentUser.user_id,
+          user_id: userId,
           username: currentUser.username
         })
       })
@@ -468,8 +478,9 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
   // 删除对话
   const handleDeleteChat = async (chatId) => {
+    const userId = currentUser?.employee_id || currentUser?.user_id
     try {
-      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${currentUser.user_id}`, {
+      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${userId}`, {
         method: 'DELETE'
       })
       const data = await response.json()
@@ -491,8 +502,9 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
   // 获取对话列表
   const fetchChatList = async () => {
+    const userId = currentUser?.employee_id || currentUser?.user_id
     try {
-      const response = await fetch(`${API_BASE}/chats?user_id=${currentUser.user_id}`)
+      const response = await fetch(`${API_BASE}/chats?user_id=${userId}`)
       const chats = await response.json()
       setChatList(chats)
     } catch (err) {
@@ -503,8 +515,9 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   // 加载指定对话
   // 添加 isAutoLoad 参数区分自动加载和手动点击加载
   const loadChat = async (chatId, isAutoLoad = false) => {
+    const userId = currentUser?.employee_id || currentUser?.user_id
     try {
-      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${currentUser.user_id}`)
+      const response = await fetch(`${API_BASE}/chats/${chatId}?user_id=${userId}`)
       const data = await response.json()
       if (data.status === 'success' && data.chat) {
         setCurrentChatId(chatId)
@@ -543,11 +556,12 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     // 如果没有当前对话，先创建一个
     let activeChatId = currentChatId
     if (!activeChatId) {
+      const userId = currentUser?.employee_id || currentUser?.user_id
       const response = await fetch(`${API_BASE}/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: currentUser.user_id,
+          user_id: userId,
           username: currentUser.username
         })
       })
@@ -585,9 +599,10 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
     try {
       // 构建 FormData 发送到对话 API
+      const userId = currentUser?.employee_id || currentUser?.user_id
       const formData = new FormData()
       formData.append('message', messageToSend)
-      formData.append('user_id', currentUser.user_id)
+      formData.append('user_id', userId)
       formData.append('username', currentUser.username)
 
       // 添加文件
@@ -1255,12 +1270,13 @@ function StaffWorkspace({ currentUser }) {
 
   // 获取任务列表
   const fetchTasks = async () => {
-    if (!currentUser?.user_id) {
+    const userId = currentUser?.employee_id || currentUser?.user_id
+    if (!userId) {
       setTasks([])
       return
     }
     try {
-      const response = await fetch(`${API_BASE}/tasks?user_id=${currentUser.user_id}`)
+      const response = await fetch(`${API_BASE}/tasks?user_id=${userId}`)
       const data = await response.json()
       setTasks(data.length > 0 ? data : [])
     } catch (err) {
@@ -1271,11 +1287,12 @@ function StaffWorkspace({ currentUser }) {
 
   // 页面加载时初始化
   useEffect(() => {
-    if (currentUser?.user_id) {
+    const userId = currentUser?.employee_id || currentUser?.user_id
+    if (userId) {
       fetchTasks()
       initConversation()
     }
-  }, [currentUser])
+  }, [currentUser?.employee_id, currentUser?.user_id])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMessages])
 
@@ -1291,9 +1308,10 @@ function StaffWorkspace({ currentUser }) {
 
   // SSE 事件监听 - 实时接收新任务通知
   useEffect(() => {
-    if (!currentUser?.user_id) return
+    const userId = currentUser?.employee_id || currentUser?.user_id
+    if (!userId) return
 
-    const eventSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+    const eventSource = new EventSource(`${API_BASE}/events/${userId}`)
 
     eventSource.onmessage = (event) => {
       try {
@@ -1319,7 +1337,7 @@ function StaffWorkspace({ currentUser }) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              user_id: currentUser.user_id,
+              user_id: userId,
               username: currentUser.username
             })
           })
@@ -1365,8 +1383,9 @@ function StaffWorkspace({ currentUser }) {
       eventSource.close()
       console.log('[SSE Staff] 3秒后尝试重新连接...')
       setTimeout(() => {
-        if (currentUser?.user_id) {
-          const newSource = new EventSource(`${API_BASE}/events/${currentUser.user_id}`)
+        const userId = currentUser?.employee_id || currentUser?.user_id
+        if (userId) {
+          const newSource = new EventSource(`${API_BASE}/events/${userId}`)
           console.log('[SSE Staff] 重新连接成功')
         }
       }, 3000)
@@ -1376,12 +1395,13 @@ function StaffWorkspace({ currentUser }) {
       eventSource.close()
       console.log('[SSE Staff] 断开连接')
     }
-  }, [currentUser?.user_id])
+  }, [currentUser?.employee_id, currentUser?.user_id])
 
   const initConversation = async (specificTaskId = null) => {
+    const userId = currentUser?.employee_id || currentUser?.user_id
     try {
       // 获取当前用户的任务列表（强制刷新，加时间戳避免缓存）
-      const response = await fetch(`${API_BASE}/tasks?user_id=${currentUser.user_id}&_t=${Date.now()}`)
+      const response = await fetch(`${API_BASE}/tasks?user_id=${userId}&_t=${Date.now()}`)
       const tasks = await response.json()
       setTasks(tasks)
       
@@ -1404,7 +1424,7 @@ function StaffWorkspace({ currentUser }) {
         setSelectedTask(targetTask)
         
         // 获取对话历史
-        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history?user_id=${currentUser.user_id}`)
+        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history?user_id=${userId}`)
         const historyData = await historyRes.json()
         
         if (Array.isArray(historyData) && historyData.length > 0) {
@@ -1422,7 +1442,7 @@ function StaffWorkspace({ currentUser }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               message: "你好，请告诉我当前有什么任务需要处理", 
-              user_id: currentUser.user_id, 
+              user_id: userId, 
               username: currentUser.username 
             })
           })
@@ -1464,6 +1484,7 @@ function StaffWorkspace({ currentUser }) {
     setChatMessages(prev => [...prev, userMessage])
 
     const messageToSend = inputMessage
+    const userId = currentUser?.employee_id || currentUser?.user_id
     setInputMessage('')
     setPendingFiles([])
     setLoading(prev => ({ ...prev, chat: true }))
@@ -1472,7 +1493,7 @@ function StaffWorkspace({ currentUser }) {
       // 构建 FormData 发送消息和文件
       const formData = new FormData()
       formData.append('message', messageToSend)
-      formData.append('user_id', currentUser.user_id)
+      formData.append('user_id', userId)
       formData.append('username', currentUser.username)
 
       // 添加文件
