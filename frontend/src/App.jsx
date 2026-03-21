@@ -1408,56 +1408,71 @@ function StaffWorkspace({ currentUser }) {
       const tasks = await response.json()
       setTasks(tasks)
       tasksRef.current = tasks  // 同步更新 ref
-      
+
       let targetTask = null
-      
+
       // 如果指定了任务ID，直接使用该任务（优先精确匹配）
       if (specificTaskId) {
         targetTask = tasks.find(t => t.task_id === specificTaskId)
         console.log('[Staff] 查找指定任务:', specificTaskId, '结果:', targetTask ? '找到' : '未找到')
       }
-      
+
       // 否则找最新的待处理任务
       if (!targetTask) {
         targetTask = tasks.find(t => t.status !== '反馈完成') || tasks[0]
       }
-      
+
       console.log('[Staff] 最终选中任务:', targetTask?.task_id)
-      
+
+      // 获取所有任务的历史对话，按时间顺序合并显示
+      const allMessages = []
+      for (const task of tasks) {
+        try {
+          const historyRes = await fetch(`${API_BASE}/tasks/${task.task_id}/chat-history?employee_id=${userId}`)
+          const historyData = await historyRes.json()
+          if (Array.isArray(historyData) && historyData.length > 0) {
+            const msgs = historyData.map(msg => ({
+              sender: msg.sender === 'Agent' ? 'agent' : 'user',
+              message: msg.message,
+              timestamp: msg.timestamp,
+              messageType: msg.message_type,
+              files: msg.files,
+              taskId: task.task_id  // 标记消息所属任务
+            }))
+            allMessages.push(...msgs)
+          }
+        } catch (e) {
+          console.error('[Staff] 获取任务历史失败:', task.task_id, e)
+        }
+      }
+
+      // 按时间排序
+      allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+
       if (targetTask) {
         setSelectedTask(targetTask)
-        
-        // 获取对话历史
-        const historyRes = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/chat-history?employee_id=${userId}`)
-        const historyData = await historyRes.json()
-        
-        if (Array.isArray(historyData) && historyData.length > 0) {
-          setChatMessages(historyData.map(msg => ({
-            sender: msg.sender === 'Agent' ? 'agent' : 'user',
-            message: msg.message,
-            timestamp: msg.timestamp,
-            messageType: msg.message_type,
-            files: msg.files
-          })))
-        } else {
-          // 如果没有对话历史，发送初始消息让智能体推送任务
+
+        // 如果没有历史对话，发送初始消息让智能体推送任务
+        if (allMessages.length === 0) {
           const initResponse = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/message`, {
-            method: 'POST', 
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              message: "你好，请告诉我当前有什么任务需要处理", 
-              employee_id: userId, 
-              username: currentUser.username 
+            body: JSON.stringify({
+              message: "你好，请告诉我当前有什么任务需要处理",
+              employee_id: userId,
+              username: currentUser.username
             })
           })
           const initData = await initResponse.json()
           if (initData.agent_reply) {
-            setChatMessages([{ 
-              sender: 'agent', 
-              message: initData.agent_reply.message, 
-              timestamp: initData.agent_reply.timestamp 
+            setChatMessages([{
+              sender: 'agent',
+              message: initData.agent_reply.message,
+              timestamp: initData.agent_reply.timestamp
             }])
           }
+        } else {
+          setChatMessages(allMessages)
         }
       }
     } catch (err) { 
