@@ -120,7 +120,7 @@ def list_users(role: Optional[str] = None) -> Dict[str, Any]:
             - "manager" / "负责人" / "业务" -> 业务负责人
 
     Returns:
-        用户列表
+        用户列表（不返回user_id，只返回employee_id）
     """
     logger.info(f"[工具] list_users 调用: role={role}")
 
@@ -159,11 +159,12 @@ def list_users(role: Optional[str] = None) -> Dict[str, Any]:
                 if normalized_role is None or row.get("role") == normalized_role:
                     users.append(
                         {
-                            "user_id": row.get("user_id"),
+                            # 不返回user_id，只返回employee_id作为唯一标识
+                            "employee_id": row.get("employee_id", ""),
                             "username": row.get("username"),
                             "role": row.get("role"),
                             "department": row.get("department"),
-                            "employee_id": row.get("employee_id", ""),
+                            "region": row.get("region", ""),
                         }
                     )
 
@@ -180,10 +181,10 @@ def get_user(user_id: str) -> Dict[str, Any]:
     获取指定用户信息
 
     Args:
-        user_id: 用户ID
+        user_id: 用户ID（支持 user_id 或 employee_id）
 
     Returns:
-        用户信息
+        用户信息（不返回user_id）
     """
     logger.info(f"[工具] get_user 调用: user_id={user_id}")
 
@@ -196,16 +197,18 @@ def get_user(user_id: str) -> Dict[str, Any]:
 
         with open(users_file, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
+            # 支持 user_id 或 employee_id 查询
             for row in reader:
-                if row.get("user_id") == user_id:
+                if row.get("user_id") == user_id or row.get("employee_id") == user_id:
                     return {
                         "success": True,
                         "user": {
-                            "user_id": row.get("user_id"),
+                            # 不返回user_id，只返回employee_id
+                            "employee_id": row.get("employee_id", ""),
                             "username": row.get("username"),
                             "role": row.get("role"),
                             "department": row.get("department"),
-                            "employee_id": row.get("employee_id", ""),
+                            "region": row.get("region", ""),
                         },
                     }
 
