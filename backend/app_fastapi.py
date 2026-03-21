@@ -132,14 +132,14 @@ async def get_tasks(employee_id: Optional[str] = None, task_type: Optional[str] 
 
     if employee_id:
         users = read_csv_file("users.csv")
-        
+
         # 支持 user_id 或 employee_id 匹配
         user = next((u for u in users if u["employee_id"] == employee_id or u.get("employee_id") == employee_id), None)
-        
+
         if user:
             role = user.get("role", "")
             user_employee_id = user.get("employee_id", "")  # 如 EMP_001
-            
+
             # 总部管理员(EMP_000)：查看所有任务
             if user_employee_id == "EMP_000" or user.get("user_id") == "000":
                 pass  # 不做任何过滤，返回所有任务
@@ -149,6 +149,9 @@ async def get_tasks(employee_id: Optional[str] = None, task_type: Optional[str] 
             else:
                 # 一线人员：查看分配给自己的任务（用 employee_id 匹配）
                 tasks = [t for t in tasks if t["assigned_to_id"] == user_employee_id]
+
+    # 按创建时间倒序排序，最新创建的任务排在前面
+    tasks = sorted(tasks, key=lambda t: t.get("created_time", ""), reverse=True)
 
     return tasks
 
