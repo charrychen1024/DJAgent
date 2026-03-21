@@ -13,6 +13,42 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
+def load_identity_document(mode: str) -> str:
+    """
+    从身份文档加载系统提示词
+
+    Args:
+        mode: "manager" 或 "staff"
+
+    Returns:
+        系统提示词内容
+    """
+    # 获取当前文件目录
+    current_dir = Path(__file__).parent
+    identity_dir = current_dir / "identity"
+
+    if mode == "manager":
+        doc_path = identity_dir / "MANAGER_AGENT.md"
+    elif mode == "staff":
+        doc_path = identity_dir / "STAFF_AGENT.md"
+    else:
+        logger.warning(f"[AgentConfig] 未知模式: {mode}")
+        return ""
+
+    if not doc_path.exists():
+        logger.error(f"[AgentConfig] 身份文档不存在: {doc_path}")
+        return ""
+
+    try:
+        with open(doc_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        logger.info(f"[AgentConfig] 已加载身份文档: {doc_path.name}")
+        return content
+    except Exception as e:
+        logger.error(f"[AgentConfig] 读取身份文档失败: {e}")
+        return ""
+
+
 class AgentConfig:
     """
     统一的 Agent 配置类
@@ -141,6 +177,14 @@ class AgentConfig:
 
     def _build_default_system_prompt(self) -> str:
         """构建默认 System Prompt"""
+        # 优先从身份文档加载
+        identity_content = load_identity_document(self.mode)
+        if identity_content:
+            # 添加用户信息
+            user_info = f"\n\n## 当前用户\n- 用户ID: {self.user_id}\n- 用户名: {self.user_name}\n- 角色: {'业务负责人' if self.mode == 'manager' else '一线操作人员'}\n"
+            return identity_content + user_info
+        
+        # 如果文档加载失败，使用旧的硬编码方式
         if self.mode == "manager":
             return self._build_manager_prompt()
         elif self.mode == "staff":
@@ -149,7 +193,7 @@ class AgentConfig:
             return ""
 
     def _build_manager_prompt(self) -> str:
-        """构建 Manager 模式 System Prompt"""
+        """构建 Manager 模式 System Prompt（备用方案）"""
         return f"""你是「DJAgent风控智能助手」，一个专注于物流快递领域风险管理的AI协控助手。
 
 ## 身份定义

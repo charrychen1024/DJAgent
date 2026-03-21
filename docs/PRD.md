@@ -101,9 +101,19 @@ DJAgent - 风控智能助手
 - **角色区分**: 业务负责人 vs 一线人员
 - **用户切换**: 支持快速切换用户身份（顶部个人中心）
 - **权限控制**: 根据角色显示不同工作区
-- **地区归属**: 用户归属特定地区（总部/上海区/北京区/山西区/浙北区）
-  - 总部用户可切换查看全地区数据
-  - 地区用户默认只能看自己地区数据
+
+**数据权限控制**:
+| 角色 | 风险数据 | 任务查看 |
+|------|----------|----------|
+| 总部管理员(EMP_000) | 所有地区 | 所有任务 |
+| 业务负责人/分析人员 | 所属地区 | 自己创建的任务 |
+| 一线人员 | 所属地区 | 分配给自己的任务 |
+
+**工号系统**:
+- 所有用户使用`employee_id`（如EMP_001）作为唯一标识
+- 任务创建/查询使用employee_id
+- SSE推送使用employee_id
+- 前端登录/API调用统一使用employee_id
 
 #### 3.1.2 风险数据管理（业务负责人）
 
@@ -296,28 +306,45 @@ Staff Agent 是被 Manager Agent 调用的，它的职责是：
 ### 4.1 用户 (users.csv)
 ```csv
 user_id,username,role,department,employee_id,region
-001,王经理,业务负责人,风控部,,总部
-002,李总监,业务负责人,风控部,,总部
-003,张分析,普通分析人员,风控部,,上海区
-004,赵分析,普通分析人员,风控部,,北京区
-005,刘伟快递,一线操作人员,快递部,EMP_005,上海区
-006,刘秀英快递,一线操作人员,快递部,EMP_006,北京区
+000,总部管理员,业务负责人,风控部,EMP_000,总部
+001,王经理,业务负责人,风控部,EMP_001,上海区
+002,李总监,业务负责人,风控部,EMP_002,北京区
+003,张分析,普通分析人员,风控部,EMP_003,山西区
+004,赵分析,普通分析人员,风控部,EMP_004,浙北区
+005,刘伟,一线操作人员,快递部,EMP_005,上海区
+006,刘秀英,一线操作人员,快递部,EMP_006,上海区
+...
 ```
+
+**说明**：
+- `user_id`: 旧版用户ID（兼容用）
+- `employee_id`: 工号（EMP_xxx格式），用于任务创建、SSE推送等核心功能
+- `region`: 所属地区，用于数据权限控制
 
 ### 4.2 任务 (tasks.csv)
 ```csv
 task_id,creator_id,creator_name,assigned_to_id,assigned_to_name,
 status,created_time,risk_summary,risk_data_url,
-suggested_receiver_id,confirmed_receiver_id,completed_time,task_type
+suggested_receiver_id,confirmed_receiver_id,completed_time,region,task_type
 ```
+
+**说明**：
+- `creator_id`: 创建人employee_id（如EMP_001）
+- `assigned_to_id`: 执行人employee_id（如EMP_009）
+- `region`: 任务所属地区（创建人所在地区）
 
 ### 4.3 风险数据 (risk_data_*.csv)
 ```csv
 运单号,发货地,收货地,揽收人,揽收人ID,客户名称,供应商名称,
 货物类型,产品类型,重量,体积,运费金额,结算金额,
 发货时间,揽收时间,派件时间,签收时间,运单状态,
-对账人,公里数,发货网点,收货网点,异常类型,风险等级
+对账人,公里数,发货网点,收货网点,异常类型,风险等级,region
 ```
+
+**说明**：
+- 新增`region`字段，用于按地区过滤数据
+- 总部管理员可查看所有地区数据
+- 其他用户只能查看自己所属地区的数据
 
 ### 4.4 反馈 (feedback/{task_id}.json)
 ```json
@@ -427,10 +454,10 @@ suggested_receiver_id,confirmed_receiver_id,completed_time,task_type
 - ✅ 任务区域折叠
 - ✅ 个人中心菜单
 
-### 7.3 第三阶段（计划中）
-- ⏳ 用户身份验证完善
-- ⏳ 数据筛选和搜索增强
-- ⏳ 消息通知功能
+### 7.3 第三阶段（已完成）
+- ✅ 工号系统统一（使用employee_id）
+- ✅ 数据权限控制（按地区过滤）
+- ✅ 任务权限控制（按角色过滤）
 - ⏳ 性能优化
 
 ---

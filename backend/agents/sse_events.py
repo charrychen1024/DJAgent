@@ -64,18 +64,14 @@ async def notify_task_created(creator_id: str, task_id: str, task_info: dict):
     任务创建成功后推送通知
 
     Args:
-        creator_id: 创建者ID (Manager) - 可能是 user_id 或 employee_id
+        creator_id: 创建者 employee_id (如 EMP_001)
         task_id: 任务ID
         task_info: 任务信息
     """
-    # 读取用户列表，支持 user_id 或 employee_id 匹配
-    from .tools import get_data_dir
-    import csv
+    # creator_id 和 assigned_to_id 都是 employee_id (如 EMP_001)
+    # Staff 端连接 SSE 时用的也是 employee_id，直接推送即可
     
-    data_dir = get_data_dir()
-    users_file = data_dir / "users.csv"
-    
-    # 推送给创建者 (Manager)
+    # 推送给创建者 (Manager) - creator_id 就是 employee_id
     await sse_manager.publish_to_manager(
         creator_id,
         "task_created",
@@ -85,11 +81,9 @@ async def notify_task_created(creator_id: str, task_id: str, task_info: dict):
         }
     )
 
-    # 推送给执行人 (Staff) - 支持 user_id 或 employee_id
+    # 推送给执行人 (Staff) - assigned_to_id 就是 employee_id
     assigned_to_id = task_info.get("assigned_to_id")
     if assigned_to_id:
-        # 尝试推送多次，确保能匹配到
-        # 1. 直接推送 assigned_to_id
         await sse_manager.publish_to_staff(
             assigned_to_id,
             "new_task",
@@ -98,26 +92,6 @@ async def notify_task_created(creator_id: str, task_id: str, task_info: dict):
                 "task_info": task_info,
             }
         )
-        
-        # 2. 如果 assigned_to_id 看起来像 employee_id，尝试推送 user_id
-        if assigned_to_id.startswith("EMP_"):
-            # 尝试从 users.csv 找到对应的 user_id
-            try:
-                with open(users_file, 'r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if row.get("employee_id") == assigned_to_id:
-                            await sse_manager.publish_to_staff(
-                                row["user_id"],
-                                "new_task",
-                                {
-                                    "task_id": task_id,
-                                    "task_info": task_info,
-                                }
-                            )
-                            break
-            except Exception as e:
-                logger.error(f"[SSE] 推送失败: {e}")
 
 
 async def notify_task_updated(manager_id: str, task_id: str, status: str, task_info: dict = None):

@@ -1185,5 +1185,34 @@ Manager创建任务 → MCP tool_create_task → 创建StaffAgent → 调用noti
 
 ---
 
-**文档状态**: ✅ 已完成  
-**下一步**: 根据本蓝图实施架构重构
+**文档状态**: ✅ 已完成并实施
+
+---
+
+## 八、当前实现状态（2026-03-21）
+
+### 8.1 已实现的核心功能
+- ✅ 统一Agent核心（UnifiedAgent）
+- ✅ SDK工具定义（@tool装饰器）
+- ✅ 自动Skill加载
+- ✅ SessionManager会话管理
+- ✅ SSE任务通知
+- ✅ 工号系统（employee_id统一）
+- ✅ 数据权限控制（按地区过滤）
+- ✅ 任务权限控制（按角色过滤）
+
+### 8.2 核心API
+| API | 说明 |
+|-----|------|
+| /api/users | 获取用户列表 |
+| /api/users/{user_id} | 获取用户信息（支持user_id或employee_id） |
+| /api/tasks | 获取任务列表（按角色过滤） |
+| /api/tasks?user_id=EMP_xxx | 按用户查询任务 |
+| /api/risk-data | 获取风险数据（按地区过滤） |
+| /api/risk-data?user_id=EMP_xxx | 按用户地区过滤数据 |
+| /api/events/{user_id} | SSE事件流（使用employee_id） |
+
+### 8.3 数据权限规则
+- 总部管理员(EMP_000): 可查看所有地区数据、所有任务
+- 业务负责人/分析人员: 只能看到自己地区的风险数据、自己创建的任务
+- 一线人员: 只能看到自己地区的风险数据、分配给自己的任务

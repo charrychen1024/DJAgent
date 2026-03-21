@@ -102,8 +102,12 @@ async def get_users():
 
 @app.get("/api/users/{user_id}")
 async def get_user(user_id: str):
+    """
+    获取用户信息，支持 user_id 或 employee_id 查询
+    """
     users = read_csv_file("users.csv")
-    user = next((u for u in users if u["user_id"] == user_id), None)
+    # 支持 user_id 或 employee_id 匹配
+    user = next((u for u in users if u["user_id"] == user_id or u.get("employee_id") == user_id), None)
     if user:
         return user
     raise HTTPException(status_code=404, detail="User not found")
@@ -128,12 +132,17 @@ async def get_tasks(user_id: Optional[str] = None, task_type: Optional[str] = No
         
         if user:
             role = user.get("role", "")
-            # 业务负责人/分析人员：查看自己创建的任务
-            if role in ["业务负责人", "普通分析人员"]:
-                tasks = [t for t in tasks if t["creator_id"] == user["user_id"]]
+            user_employee_id = user.get("employee_id", "")  # 如 EMP_001
+            
+            # 总部管理员(EMP_000)：查看所有任务
+            if user_employee_id == "EMP_000" or user.get("user_id") == "000":
+                pass  # 不做任何过滤，返回所有任务
+            # 业务负责人/分析人员：查看自己创建的任务（用 employee_id 匹配）
+            elif role in ["业务负责人", "普通分析人员"]:
+                tasks = [t for t in tasks if t["creator_id"] == user_employee_id]
             else:
-                # 一线人员：查看分配给自己的任务（支持 employee_id 匹配）
-                tasks = [t for t in tasks if t["assigned_to_id"] == user["user_id"] or t.get("assigned_to_id") == user.get("employee_id")]
+                # 一线人员：查看分配给自己的任务（用 employee_id 匹配）
+                tasks = [t for t in tasks if t["assigned_to_id"] == user_employee_id]
 
     return tasks
 
@@ -169,12 +178,18 @@ async def create_task(request: Request):
         # 尝试匹配 user_id 或 username
         creator_user = next((u for u in users if u["user_id"] == creator_input or u["username"] == creator_name_input), None)
     
-    # 确定最终的 creator_id
+    # 确定最终的 creator_id（存储 employee_id，如 EMP_001）
     if creator_user:
-        creator_id = creator_user["user_id"]
+        creator_id = creator_user["employee_id"]  # 改为存储 employee_id
         creator_name = creator_user["username"]
     else:
-        creator_id = creator_input if not creator_input.startswith("EMP") else "000"
+        # 标准化处理，确保返回 EMP_xxx 格式
+        if creator_input.startswith("EMP_"):
+            creator_id = creator_input
+        elif creator_input.startswith("EMP"):
+            creator_id = f"EMP_{creator_input.replace('EMP', '')}"
+        else:
+            creator_id = creator_input if not creator_input.startswith("EMP") else "EMP_000"
         creator_name = creator_name_input
     
     # 解析 assigned_to_id：支持 user_id、employee_id、姓名
@@ -191,12 +206,18 @@ async def create_task(request: Request):
             # 尝试匹配 user_id 或 username（优先匹配姓名）
             assigned_user = next((u for u in users if u["user_id"] == assigned_input or u["username"] == assigned_name_input), None)
     
-    # 确定最终的 assigned_to_id 和 assigned_to_name
+    # 确定最终的 assigned_to_id（存储 employee_id，如 EMP_001）
     if assigned_user:
-        assigned_to_id = assigned_user["user_id"]
+        assigned_to_id = assigned_user["employee_id"]  # 改为存储 employee_id
         assigned_to_name = assigned_user["username"]
     else:
-        assigned_to_id = assigned_input if not assigned_input.startswith("EMP") else ""
+        # 标准化处理，确保返回 EMP_xxx 格式
+        if assigned_input.startswith("EMP_"):
+            assigned_to_id = assigned_input
+        elif assigned_input.startswith("EMP"):
+            assigned_to_id = f"EMP_{assigned_input.replace('EMP', '')}"
+        else:
+            assigned_to_id = assigned_input
         assigned_to_name = assigned_name_input
     
     # 使用员工编号 + 时间戳（精确到毫秒）+ 序号作为任务ID
@@ -224,7 +245,7 @@ async def create_task(request: Request):
         "suggested_receiver_id": assigned_to_id,
         "confirmed_receiver_id": assigned_to_id,
         "completed_time": "",
-        "region": data.get("region", ""),
+        "region": data.get("region", "") or creator_user.get("region", "") if creator_user else "",
         "task_type": task_type,
     }
 
@@ -329,19 +350,42 @@ async def chat(request: Request):
 
 
 @app.get("/api/risk-data")
-async def get_all_risk_data():
-    """获取所有风险数据文件列表和内容"""
-    risk_files = []
+async def get_all_risk_data(
+    user_id: Optional[str] = None,
+    region_filter: Optional[str] = None
+):
+    """获取所有风险数据文件列表和内容
+    - 总部管理员(EMP_000)：返回所有地区数据
+    - 其他用户：只返回自己所属地区的数据
+    """
+    # 获取用户信息，确定地区
+    user_region = None
+    is_admin = False
+    
+    if user_id:
+        users = read_csv_file("users.csv")
+        user = next((u for u in users if u.get("employee_id") == user_id or u["user_id"] == user_id), None)
+        if user:
+            user_region = user.get("region", "")
+            is_admin = (user.get("employee_id") == "EMP_000" or user.get("user_id") == "000")
+    
+    # 如果指定了region_filter参数，优先使用
+    if region_filter:
+        user_region = region_filter
 
-    # 风险数据在 risk_data 子目录
+    risk_files = []
     risk_data_dir = DATA_DIR / "risk_data"
 
     for file_path in risk_data_dir.glob("risk_data_*.csv"):
-        # 排除月度数据文件
         if "monthly" in file_path.name:
             continue
         try:
             data = read_csv_file(file_path.name, risk_data_dir)
+            
+            # 根据用户地区过滤数据
+            if not is_admin and user_region:
+                data = [row for row in data if row.get("region") == user_region]
+            
             risk_files.append(
                 {"filename": file_path.name, "data": data, "count": len(data)}
             )
@@ -352,17 +396,40 @@ async def get_all_risk_data():
 
 
 @app.get("/api/risk-data/monthly")
-async def get_monthly_risk_data():
-    """获取所有月度风险数据文件列表"""
-    risk_files = []
+async def get_monthly_risk_data(
+    user_id: Optional[str] = None,
+    region_filter: Optional[str] = None
+):
+    """获取所有月度风险数据文件列表
+    - 总部管理员(EMP_000)：返回所有地区数据
+    - 其他用户：只返回自己所属地区的数据
+    """
+    # 获取用户信息，确定地区
+    user_region = None
+    is_admin = False
+    
+    if user_id:
+        users = read_csv_file("users.csv")
+        user = next((u for u in users if u.get("employee_id") == user_id or u["user_id"] == user_id), None)
+        if user:
+            user_region = user.get("region", "")
+            is_admin = (user.get("employee_id") == "EMP_000" or user.get("user_id") == "000")
+    
+    # 如果指定了region_filter参数，优先使用
+    if region_filter:
+        user_region = region_filter
 
-    # 风险数据在 risk_data 子目录
+    risk_files = []
     risk_data_dir = DATA_DIR / "risk_data"
 
     for file_path in sorted(risk_data_dir.glob("risk_data_monthly_*.csv")):
         try:
             data = read_csv_file(file_path.name, risk_data_dir)
-            # 从文件名提取月份
+            
+            # 根据用户地区过滤数据
+            if not is_admin and user_region:
+                data = [row for row in data if row.get("region") == user_region]
+            
             month = file_path.stem.replace("risk_data_monthly_", "")
             risk_files.append(
                 {"filename": file_path.name, "month": month, "data": data, "count": len(data)}
@@ -374,8 +441,14 @@ async def get_monthly_risk_data():
 
 
 @app.get("/api/risk-data/{identifier}")
-async def get_risk_data_file(identifier: str):
+async def get_risk_data_file(
+    identifier: str,
+    user_id: Optional[str] = None,
+    region_filter: Optional[str] = None
+):
     """获取单个风险数据文件内容
+    - 总部管理员(EMP_000)：返回所有地区数据
+    - 其他用户：只返回自己所属地区的数据
 
     支持格式：
     - /api/risk-data/001  -> risk_data_001.csv
@@ -385,6 +458,21 @@ async def get_risk_data_file(identifier: str):
     """
     try:
         import re
+
+        # 获取用户信息，确定地区
+        user_region = None
+        is_admin = False
+        
+        if user_id:
+            users = read_csv_file("users.csv")
+            user = next((u for u in users if u.get("employee_id") == user_id or u["user_id"] == user_id), None)
+            if user:
+                user_region = user.get("region", "")
+                is_admin = (user.get("employee_id") == "EMP_000" or user.get("user_id") == "000")
+        
+        # 如果指定了region_filter参数，优先使用
+        if region_filter:
+            user_region = region_filter
 
         # 处理月度数据标识
         if identifier.startswith('monthly_'):
@@ -416,6 +504,10 @@ async def get_risk_data_file(identifier: str):
             raise HTTPException(
                 status_code=404, detail=f"风险数据文件不存在: {filename}"
             )
+
+        # 根据用户地区过滤数据
+        if not is_admin and user_region:
+            data = [row for row in data if row.get("region") == user_region]
 
         return {
             "filename": filename,
