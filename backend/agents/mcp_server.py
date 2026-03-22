@@ -105,6 +105,8 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
                 logger.info(f"[MCP-TOOL] StaffAgent 通知已发送: {assigned_to_name} (ID: {assigned_to_id})")
 
                 # 推送 SSE 事件通知 IM 端有新消息（即使没有订阅者也尝试推送）
+                # 使用 result.get("task", {}) 获取完整任务对象
+                full_task_info = result.get("task", {})
                 if SSE_AVAILABLE:
                     try:
                         from .sse_events import sse_manager
@@ -113,7 +115,7 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
                             "task_message_received",
                             {
                                 "task_id": task_id,
-                                "task_info": task_info,
+                                "task_info": full_task_info,  # 使用完整任务对象
                                 "message": notify_result.get("message", "") if isinstance(notify_result, dict) else ""
                             }
                         )

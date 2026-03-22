@@ -405,6 +405,7 @@ def create_manager_config(
 def create_staff_config(
     user_id: str,
     user_name: str,
+    mcp_servers: Optional[Dict[str, Any]] = None,
     skills: Optional[List[str]] = None,
     **kwargs,
 ) -> AgentConfig:
@@ -414,6 +415,7 @@ def create_staff_config(
     Args:
         user_id: 用户ID
         user_name: 用户名称
+        mcp_servers: MCP 服务器配置
         skills: 要加载的 Skill 列表
         **kwargs: 其他配置参数
 
@@ -421,5 +423,5 @@ def create_staff_config(
         AgentConfig 实例
     """
     return AgentConfig(
-        user_id=user_id, user_name=user_name, mode="staff", skills=skills, **kwargs
+        user_id=user_id, user_name=user_name, mode="staff", mcp_servers=mcp_servers, skills=skills, **kwargs
     )

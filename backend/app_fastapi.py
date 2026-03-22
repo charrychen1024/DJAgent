@@ -770,7 +770,11 @@ async def send_message(task_id: str, request: Request):
             agent = await get_or_create_staff_agent(employee_id, username)
             agent.current_task_id = task_id
             
-            ai_response = await agent.chat(message, files=saved_files if saved_files else None)
+            ai_response = await agent.chat(
+                message,
+                context={"task_id": task_id},
+                files=saved_files if saved_files else None
+            )
         except Exception as e:
             logger.error(f"[ERROR] Agent调用失败: {str(e)}")
             ai_response = "好的，请继续。"
