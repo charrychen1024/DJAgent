@@ -68,12 +68,3 @@ try:
     ]
 except ImportError:
     pass
-
-# 导出旧架构（向后兼容）
-try:
-    from .manager_agent import ManagerAgent
-    from .staff_agent import StaffAgent
-
-    __all__ += ["ManagerAgent", "StaffAgent"]
-except ImportError:
-    pass

@@ -658,9 +658,10 @@ async def get_chat_history(task_id: str, employee_id: str = None, username: str 
         return [{"message": "Agent SDK未安装，无法加载任务", "sender": "Agent"}]
 
     try:
-        agent = StaffAgent(employee_id, username)
-        async with agent:
-            initial_message = await agent.init_task(task_id)
+        from agents.session_manager import get_or_create_staff_agent
+
+        agent = await get_or_create_staff_agent(employee_id, username)
+        initial_message = await agent.init_task(task_id)
 
         feedback_data = {
             "task_id": task_id,
@@ -802,24 +803,6 @@ async def send_message(task_id: str, request: Request):
     feedback_path.parent.mkdir(parents=True, exist_ok=True)
     with open(feedback_path, "w", encoding="utf-8") as f:
         json.dump(feedback_data, f, ensure_ascii=False, indent=2)
-
-    return {"user_message": user_message, "agent_reply": agent_reply}
-
-    try:
-        agent = StaffAgent(employee_id, username)
-        async with agent:
-            agent.current_task_id = task_id
-            ai_response = await agent.chat(message)
-    except Exception as e:
-        logger.error(f"[ERROR] Agent调用失败: {str(e)}")
-        ai_response = "好的，请继续。"
-
-    agent_reply = {
-        "timestamp": timestamp,
-        "sender": "Agent",
-        "message": ai_response,
-        "message_type": "text",
-    }
 
     return {"user_message": user_message, "agent_reply": agent_reply}
 
