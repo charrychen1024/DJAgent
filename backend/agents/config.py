@@ -119,6 +119,7 @@ class AgentConfig:
             config["mcp_servers"] = self.mcp_servers
             # 显式授权所有 MCP 工具（使用 mcp__ 命名空间）
             config["allowed_tools"] = [
+                "mcp__djagent_tools__get_current_time",
                 "mcp__djagent_tools__list_users",
                 "mcp__djagent_tools__create_task",
                 "mcp__djagent_tools__assign_task",
