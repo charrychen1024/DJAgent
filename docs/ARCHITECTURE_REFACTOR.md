@@ -1145,6 +1145,8 @@ Manager创建任务 → MCP tool_create_task → 创建StaffAgent → 调用noti
 | new_task | 有新任务分配给 Staff（原始事件） |
 | task_message_received | StaffAgent 自动发送消息后推送 |
 | task_completed | 任务反馈完成 |
+| task_timeout | 任务已超时（超过feedback_deadline） |
+| task_failed | 任务下发失败 |
 
 ### 7.4 关键代码位置
 - 后端触发：`backend/agents/mcp_server.py` - `tool_create_task` 函数
