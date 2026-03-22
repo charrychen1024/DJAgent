@@ -746,23 +746,10 @@ async def send_message(task_id: str, request: Request):
         "files": file_info_list if file_info_list else None,
     }
 
-    # 首次调用时初始化任务（设置sent_time和feedback_deadline）- 无论Agent SDK是否安装都需要设置
-    from agents.tools import get_task_detail, update_task_status
-    from datetime import timedelta
-    
-    task_info = get_task_detail(task_id)
-    task_data = task_info.get("task", {}) if task_info else {}
-    if task_data and not task_data.get("sent_time"):
-        current_time = datetime.now()
-        current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
-        task_type = task_data.get("task_type", "日度")
-        deadline_hours = 72 if task_type == "月度" else 24
-        deadline_time = current_time + timedelta(hours=deadline_hours)
-        deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
-        
-        update_task_status(task_id, "反馈中", "", sent_time=current_time_str, feedback_deadline=deadline_str)
-        logger.info(f"[API] 首次消息，已设置 sent_time={current_time_str}, feedback_deadline={deadline_str}")
-    
+    # 注意：不再在这里强制设置 sent_time 和 feedback_deadline
+    # 这些时间应该在 notify_new_task 和 assign_task 时设置
+    # 状态流转：已创建 -> 已下发 -> 反馈中 -> 已完成
+
     if not HAS_AGENT_SDK:
         ai_response = "Agent SDK未安装，暂时无法处理消息"
     else:

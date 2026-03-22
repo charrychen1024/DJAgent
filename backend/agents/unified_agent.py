@@ -385,6 +385,21 @@ class UnifiedAgent:
                         logger.info(f"[UnifiedAgent] 请求完成: {msg.subtype}")
 
                 reply = "\n".join(responses) if responses else ""
+
+                # 消息发送成功后，设置 sent_time 和状态为"已下发"
+                if reply:
+                    from datetime import datetime
+                    from .tools import update_task_status
+                    sent_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    update_result = update_task_status(
+                        task_id,
+                        "已下发",  # 设置状态为"已下发"
+                        "",
+                        sent_time=sent_time_str,  # 设置 sent_time
+                        feedback_deadline=""  # 不设置 feedback_deadline（保护已有值）
+                    )
+                    logger.info(f"[UnifiedAgent] 消息发送成功，已设置 sent_time={sent_time_str}, status=已下发")
+
             except Exception as e:
                 logger.error(f"[UnifiedAgent] LLM 调用失败: {e}")
                 reply = ""
