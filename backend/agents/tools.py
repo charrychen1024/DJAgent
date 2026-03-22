@@ -241,6 +241,8 @@ def list_users(role: Optional[str] = None) -> Dict[str, Any]:
                     users.append({
                         "user_id": row.get('user_id'),
                         "username": row.get('username'),
+                        "employee_id": row.get('employee_id', ''),
+                        "name": row.get('username'),
                         "role": row.get('role'),
                         "department": row.get('department')
                     })
