@@ -96,7 +96,7 @@ class SummaryGeneratorSkill(Skill):
             
             # 如果需要自动完成
             if input_data.get("auto_complete", False):
-                update_result = update_task_status(task_id, "反馈完成", summary)
+                update_result = update_task_status(task_id, "已完成", summary)
                 
                 return {
                     "success": True,

@@ -265,8 +265,8 @@ async def tool_update_task_status(args: Dict[str, Any]) -> Dict[str, Any]:
         args.get("feedback_deadline", "")
     )
 
-    # 推送 SSE 事件（当任务状态变为"反馈完成"时通知 Manager）
-    if result.get("success") and args.get("status") == "反馈完成" and SSE_AVAILABLE:
+    # 推送 SSE 事件（当任务状态变为"已完成"时通知 Manager）
+    if result.get("success") and args.get("status") == "已完成" and SSE_AVAILABLE:
         try:
             task_id = args.get("task_id")
             # 获取任务详情以获取 creator_id

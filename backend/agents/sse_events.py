@@ -117,7 +117,7 @@ async def notify_task_updated(manager_id: str, task_id: str, status: str, task_i
 
 async def notify_task_completed(manager_id: str, task_id: str, task_info: dict = None):
     """
-    任务完成后推送通知（反馈完成）
+    任务完成后推送通知（已完成）
 
     Args:
         manager_id: Manager ID
@@ -129,7 +129,7 @@ async def notify_task_completed(manager_id: str, task_id: str, task_info: dict =
         "task_completed",
         {
             "task_id": task_id,
-            "status": "反馈完成",
+            "status": "已完成",
             "task_info": task_info or {},
         }
     )

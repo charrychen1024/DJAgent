@@ -221,7 +221,7 @@ def update_task_status(task_id: str, status: str, summary: str = "", sent_time: 
 
     Args:
         task_id: 任务ID
-        status: 新状态（已创建/已下发/反馈中/反馈完成/已超时）
+        status: 新状态（已创建/已下发/反馈中/已完成/已超时）
         summary: 反馈总结（可选）
         sent_time: 下发时间（可选）
         feedback_deadline: 反馈截止时间（可选）
@@ -248,7 +248,7 @@ def update_task_status(task_id: str, status: str, summary: str = "", sent_time: 
             for row in reader:
                 if row.get("task_id") == task_id:
                     row["status"] = status
-                    if status == "反馈完成":
+                    if status == "已完成":
                         row["completed_time"] = datetime.now().strftime(
                             "%Y-%m-%d %H:%M:%S"
                         )
