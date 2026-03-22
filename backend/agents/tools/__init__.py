@@ -21,6 +21,7 @@ from .data_access import (
     get_user,
     get_task,
     get_task_detail,
+    get_current_time,
     query_tasks,
     set_data_dir as set_data_access_data_dir,
     get_data_dir as get_data_access_data_dir
@@ -70,7 +71,7 @@ ALL_TOOLS = {
     "parse_word": parse_word,
     "parse_image": parse_image,
     "parse_file": parse_file,
-    
+
     # 数据访问
     "read_risk_data": read_risk_data,
     "list_risk_data_files": list_risk_data_files,
@@ -78,14 +79,15 @@ ALL_TOOLS = {
     "get_user": get_user,
     "get_task": get_task,
     "get_task_detail": get_task_detail,
+    "get_current_time": get_current_time,
     "query_tasks": query_tasks,
-    
+
     # 任务管理
     "create_task": create_task,
     "update_task_status": update_task_status,
     "assign_task": assign_task,
     "save_chat_message": save_chat_message,
-    
+
     # 文件操作
     "save_uploaded_file": save_uploaded_file,
     "save_uploaded_file_from_path": save_uploaded_file_from_path,
@@ -108,6 +110,7 @@ __all__ = [
     'get_user',
     'get_task',
     'get_task_detail',
+    'get_current_time',
     'query_tasks',
     'create_task',
     'update_task_status',
@@ -118,14 +121,14 @@ __all__ = [
     'read_file_content',
     'list_uploaded_files',
     'delete_file',
-    
+
     # 工具集
     'ALL_TOOLS',
-    
+
     # 数据目录
     'set_data_dir',
     'get_data_dir',
-    
+
     # 常量
     'ALLOWED_EXTENSIONS',
     'MAX_FILE_SIZE'

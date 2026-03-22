@@ -298,6 +298,25 @@ def get_task_detail(task_id: str) -> Dict[str, Any]:
         return {"error": f"获取任务详情失败: {str(e)}"}
 
 
+def get_current_time() -> Dict[str, Any]:
+    """
+    获取当前系统时间
+
+    当需要计算任务截止时间时，必须先调用此工具获取当前时间，然后根据用户指定的时限计算截止时间。
+    例如：用户说"1小时内"，则当前时间 + 1小时 = 截止时间
+
+    Returns:
+        当前时间，格式：YYYY-MM-DD HH:MM:SS
+    """
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"[工具] get_current_time 返回: {current_time}")
+    return {
+        "success": True,
+        "current_time": current_time,
+        "note": "当前时间，用于计算任务截止时间"
+    }
+
+
 def query_tasks(
     creator_id: Optional[str] = None,
     assigned_to_id: Optional[str] = None,
@@ -353,6 +372,7 @@ __all__ = [
     "get_user",
     "get_task",
     "get_task_detail",
+    "get_current_time",
     "query_tasks",
     "set_data_dir",
     "get_data_dir",
