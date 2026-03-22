@@ -57,7 +57,17 @@ async def get_or_create_staff_agent(
 
     # 创建新 Agent
     logger.info(f"[SessionManager] 创建新的 StaffAgent: {user_id}")
-    config = create_staff_config(user_id, user_name, skills=skills)
+
+    # Staff Agent 也需要加载 MCP 服务器
+    try:
+        from .mcp_server import create_djagent_mcp_server
+        mcp_servers = {"djagent_tools": create_djagent_mcp_server()}
+        logger.info(f"[SessionManager] StaffAgent 加载 MCP 服务器")
+    except Exception as e:
+        logger.error(f"[SessionManager] 加载 MCP 服务器失败: {e}")
+        mcp_servers = {}
+
+    config = create_staff_config(user_id, user_name, mcp_servers=mcp_servers, skills=skills)
     UnifiedAgentClass = _get_unified_agent_class()
     agent = UnifiedAgentClass(config)
     # 启动异步会话

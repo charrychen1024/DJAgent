@@ -1334,15 +1334,30 @@ function StaffWorkspace({ currentUser }) {
         if (data.type === 'new_task') {
           // 收到新任务通知
           console.log('[SSE Staff] 收到新任务:', data.task_id)
-          
+
           // 自动切换到新任务
           const newTaskId = data.task_id
-          
-          // 查找新任务的信息（使用 ref 获取最新任务列表）
-          const newTask = tasksRef.current.find(t => t.task_id === newTaskId)
-          if (newTask) {
-            setSelectedTask(newTask)
+
+          // 立即刷新任务列表，然后设置 selectedTask
+          const fetchAndSetTask = async () => {
+            try {
+              const response = await fetch(`${API_BASE}/tasks?employee_id=${userId}&_t=${Date.now()}`)
+              const updatedTasks = await response.json()
+              setTasks(updatedTasks)
+              tasksRef.current = updatedTasks
+
+              // 从更新后的任务列表中查找完整任务
+              const newTask = updatedTasks.find(t => t.task_id === newTaskId)
+              if (newTask) {
+                setSelectedTask(newTask)
+                console.log('[SSE Staff] 已更新 selectedTask:', newTask.task_id)
+              }
+            } catch (err) {
+              console.error('[SSE Staff] 刷新任务列表失败:', err)
+            }
           }
+
+          fetchAndSetTask()
 
           // 调用后端API触发Staff Agent发送消息
           console.log('[SSE Staff] 调用notify-staff API...')
@@ -1357,10 +1372,7 @@ function StaffWorkspace({ currentUser }) {
             .then(res => res.json())
             .then(result => {
               console.log('[SSE Staff] notify-staff 结果:', result)
-              if (result.success) {
-                // 获取新任务的聊天记录
-                initConversation(newTaskId)
-              } else {
+              if (!result.success) {
                 console.error('[SSE Staff] notify-staff 失败:', result)
                 alert(`收到新任务: ${data.task_id}\n${data.task_info?.risk_summary || ''}`)
               }
@@ -1465,11 +1477,17 @@ function StaffWorkspace({ currentUser }) {
       // 按时间排序
       allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
 
-      if (targetTask) {
-        setSelectedTask(targetTask)
+      // 确保 targetTask 存在且有效
+      if (!targetTask || !targetTask.task_id) {
+        console.error('[Staff] 没有找到有效任务，无法初始化对话')
+        setLoading(prev => ({ ...prev, init: false }))
+        return
+      }
 
-        // 如果没有历史对话，发送初始消息让智能体推送任务
-        if (allMessages.length === 0) {
+      setSelectedTask(targetTask)
+
+      // 如果没有历史对话，发送初始消息让智能体推送任务
+      if (allMessages.length === 0) {
           const initResponse = await fetch(`${API_BASE}/tasks/${targetTask.task_id}/message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
