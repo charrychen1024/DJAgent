@@ -251,6 +251,10 @@ class StaffAgent:
         """
         logger.info(f"[StaffAgent] 收到消息: {message[:100]}...")
 
+        # 检测用户是否确认完成（代码层面兜底）
+        confirm_keywords = ["确认完成", "完成了", "确认", "已完成", "可以了", "已经核实"]
+        is_confirm_complete = any(keyword in message for keyword in confirm_keywords)
+
         # 检查是否是首次调用（sent_time为空），如果是则记录当前时间
         if self.current_task_id:
             from .tools import get_task_detail
@@ -313,6 +317,42 @@ class StaffAgent:
                 logger.info(f"[StaffAgent] 请求完成: {msg.subtype}")
 
         reply = "\n".join(responses) if responses else "好的，请继续。"
+
+        # 代码兜底：如果用户确认完成，但LLM没有调用工具，则强制更新状态
+        if is_confirm_complete and self.current_task_id:
+            from .tools import get_task_detail, update_task_status
+
+            # 获取当前任务状态
+            current_task = get_task_detail(self.current_task_id)
+            current_status = current_task.get("status", "") if current_task else ""
+
+            # 如果任务还不是"已完成"状态，则强制更新
+            if current_status != "已完成":
+                logger.info(f"[StaffAgent] 检测到用户确认完成，强制更新任务状态: {self.current_task_id}")
+
+                # 从回复中提取反馈总结（如果有的话）
+                feedback_summary = ""
+                if "核查结论" in reply or "反馈总结" in reply or "已完成核查" in reply:
+                    # 提取关键段落作为总结
+                    lines = reply.split("\n")
+                    summary_lines = []
+                    capture = False
+                    for line in lines:
+                        if "核查结论" in line or "反馈总结" in line or "已完成" in line:
+                            capture = True
+                        if capture and line.strip():
+                            summary_lines.append(line.strip())
+                        if len(summary_lines) > 5:  # 限制总结长度
+                            break
+                    feedback_summary = "\n".join(summary_lines[:5])
+
+                # 强制更新状态
+                update_result = update_task_status(
+                    self.current_task_id,
+                    "已完成",
+                    feedback_summary or "一线人员已确认完成核查"
+                )
+                logger.info(f"[StaffAgent] 强制更新任务状态结果: {update_result}")
 
         logger.info(f"[StaffAgent] 回复: {reply[:100]}...")
         return reply
