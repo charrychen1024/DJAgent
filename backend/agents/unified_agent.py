@@ -197,17 +197,20 @@ class UnifiedAgent:
         if "error" in task_detail:
             return f"任务 {task_id} 不存在"
 
-        # 首次调用时设置 sent_time 和 feedback_deadline
-        if not task_detail.get("sent_time"):
+        # 获取任务数据（从 task_detail["task"] 中获取）
+        task_data = task_detail.get("task", {})
+
+        # 首次调用时设置 sent_time 和 feedback_deadline（只有未下发时才设置）
+        if not task_data.get("sent_time"):
             current_time = datetime.now()
             current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
-            
+
             # 根据任务类型设置 feedback_deadline
-            task_type = task_detail.get("task_type", "日度")
+            task_type = task_data.get("task_type", "日度")
             deadline_hours = 72 if task_type == "月度" else 24
             deadline_time = current_time + timedelta(hours=deadline_hours)
             deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
-            
+
             # 更新任务
             from .tools import update_task_status
             update_result = update_task_status(
@@ -218,18 +221,18 @@ class UnifiedAgent:
                 feedback_deadline=deadline_str
             )
             logger.info(f"[UnifiedAgent] 首次初始化，已设置 sent_time={current_time_str}, feedback_deadline={deadline_str}")
-            
-            # 更新task_detail以便返回正确的feedback_deadline
-            task_detail["sent_time"] = current_time_str
-            task_detail["feedback_deadline"] = deadline_str
+
+            # 更新task_data以便返回正确的feedback_deadline
+            task_data["sent_time"] = current_time_str
+            task_data["feedback_deadline"] = deadline_str
 
         # 生成欢迎消息
         welcome = f"""您好！您有新任务需要核查：
 
 **任务ID**: {task_id}
-**风险摘要**: {task_detail.get("risk_summary", "无")}
-**创建人**: {task_detail.get("creator_name", "未知")}
-**截止时间**: {task_detail.get("feedback_deadline", "未设置")}
+**风险摘要**: {task_data.get("risk_summary", "无")}
+**创建人**: {task_data.get("creator_name", "未知")}
+**截止时间**: {task_data.get("feedback_deadline", "未设置")}
 
 请开始核查工作，如有疑问，随时问我！"""
 
@@ -324,6 +327,7 @@ class UnifiedAgent:
             risk_summary = task_info.get("risk_summary", "未知")
             task_type = task_info.get("task_type", "日度")
             creator_name = task_info.get("creator_name", "未知")
+            feedback_deadline = task_info.get("feedback_deadline", "")
 
             # 精心设计的提示词 - 与 Staff System Prompt 保持一致
             notification_prompt = f"""【新任务通知】
@@ -335,6 +339,7 @@ class UnifiedAgent:
 - 任务类型：{task_type}
 - 创建人：{creator_name}
 - 风险摘要：{risk_summary}
+{f"- 反馈截止时间：{feedback_deadline}" if feedback_deadline else ""}
 
 请主动发送一条友好的消息，告知用户有新的核查任务。
 
@@ -344,6 +349,7 @@ class UnifiedAgent:
 3. 明确告诉用户**需要提交什么材料**（如：运单截图、签收单据、情况说明等）
 4. 引导用户开始提交材料或提问
 5. 适当使用emoji让消息更生动
+6. **明确告诉用户反馈截止时间**，格式如"请在XX月XX日XX:XX前完成反馈"
 
 **重要**：你是告知用户需要提交什么材料来完成任务，**不是教用户怎么核查**。
 

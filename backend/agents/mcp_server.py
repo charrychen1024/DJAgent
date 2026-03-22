@@ -101,12 +101,13 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 from .session_manager import get_or_create_staff_agent
                 staff_agent = await get_or_create_staff_agent(assigned_to_id, assigned_to_name)
-                notify_result = await staff_agent.notify_new_task(task_id, task_info)
+
+                # 使用 result.get("task", {}) 获取完整任务对象（包含 feedback_deadline）
+                full_task_info = result.get("task", {})
+                notify_result = await staff_agent.notify_new_task(task_id, full_task_info)
                 logger.info(f"[MCP-TOOL] StaffAgent 通知已发送: {assigned_to_name} (ID: {assigned_to_id})")
 
                 # 推送 SSE 事件通知 IM 端有新消息（即使没有订阅者也尝试推送）
-                # 使用 result.get("task", {}) 获取完整任务对象
-                full_task_info = result.get("task", {})
                 if SSE_AVAILABLE:
                     try:
                         from .sse_events import sse_manager
@@ -273,10 +274,11 @@ async def tool_update_task_status(args: Dict[str, Any]) -> Dict[str, Any]:
             task_id = args.get("task_id")
             # 获取任务详情以获取 creator_id
             task_detail = get_task_detail(task_id)
-            creator_id = task_detail.get("creator_id", "")
+            # get_task_detail 返回格式是 {"success": True, "task": {...}, ...}
+            creator_id = task_detail.get("task", {}).get("creator_id", "")
             if creator_id:
-                await notify_task_completed(creator_id, task_id, task_detail)
-                logger.info(f"[MCP-TOOL] SSE 任务完成事件推送成功: {task_id}")
+                await notify_task_completed(creator_id, task_id, task_detail.get("task", {}))
+                logger.info(f"[MCP-TOOL] SSE 任务完成事件推送成功: {task_id} -> {creator_id}")
         except Exception as e:
             logger.error(f"[MCP-TOOL] SSE 事件推送失败: {e}")
 
