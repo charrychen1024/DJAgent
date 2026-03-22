@@ -130,6 +130,22 @@ async def get_tasks(employee_id: Optional[str] = None, task_type: Optional[str] 
     if task_type:
         tasks = [t for t in tasks if t.get("task_type") == task_type]
 
+    # 超期判断：检查"反馈中"状态的任务是否已超时
+    from datetime import datetime
+    now = datetime.now()
+    for task in tasks:
+        if task.get("status") == "反馈中":
+            deadline_str = task.get("feedback_deadline", "")
+            if deadline_str:
+                try:
+                    deadline = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M:%S")
+                    if now > deadline:
+                        task["status"] = "已超时"
+                        # 更新CSV中的状态
+                        _update_task_status(task["task_id"], "已超时")
+                except ValueError:
+                    pass
+
     if employee_id:
         users = read_csv_file("users.csv")
 
@@ -256,6 +272,9 @@ async def create_task(request: Request):
         "completed_time": "",
         "region": data.get("region", "") or creator_user.get("region", "") if creator_user else "",
         "task_type": task_type,
+        "sent_time": "",
+        "feedback_deadline": data.get("feedback_deadline", ""),
+        "feedback_summary": "",
     }
 
     tasks.append(new_task)
@@ -726,12 +745,30 @@ async def send_message(task_id: str, request: Request):
         "files": file_info_list if file_info_list else None,
     }
 
+    # 首次调用时初始化任务（设置sent_time和feedback_deadline）- 无论Agent SDK是否安装都需要设置
+    from agents.tools import get_task_detail, update_task_status
+    from datetime import timedelta
+    
+    task_info = get_task_detail(task_id)
+    task_data = task_info.get("task", {}) if task_info else {}
+    if task_data and not task_data.get("sent_time"):
+        current_time = datetime.now()
+        current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
+        task_type = task_data.get("task_type", "日度")
+        deadline_hours = 72 if task_type == "月度" else 24
+        deadline_time = current_time + timedelta(hours=deadline_hours)
+        deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        update_task_status(task_id, "反馈中", "", sent_time=current_time_str, feedback_deadline=deadline_str)
+        logger.info(f"[API] 首次消息，已设置 sent_time={current_time_str}, feedback_deadline={deadline_str}")
+    
     if not HAS_AGENT_SDK:
         ai_response = "Agent SDK未安装，暂时无法处理消息"
     else:
         try:
             agent = await get_or_create_staff_agent(employee_id, username)
             agent.current_task_id = task_id
+            
             ai_response = await agent.chat(message, files=saved_files if saved_files else None)
         except Exception as e:
             logger.error(f"[ERROR] Agent调用失败: {str(e)}")
@@ -1216,3 +1253,42 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="127.0.0.1", port=5005)
+
+
+# ============ 辅助函数 ============
+
+def _update_task_status(task_id: str, new_status: str):
+    """更新任务状态"""
+    import csv
+    from pathlib import Path
+    
+    tasks_file = Path(__file__).parent.parent / "data" / "tasks.csv"
+    if not tasks_file.exists():
+        return False
+    
+    try:
+        # 读取所有任务
+        with open(tasks_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+            fieldnames = reader.fieldnames
+        
+        # 更新状态
+        updated = False
+        for row in rows:
+            if row.get("task_id") == task_id:
+                row["status"] = new_status
+                updated = True
+                break
+        
+        if updated:
+            # 写回
+            with open(tasks_file, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+        
+        return updated
+    except Exception as e:
+        logger.error(f"[ERROR] 更新任务状态失败: {e}")
+        return False

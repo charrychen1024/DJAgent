@@ -190,11 +190,38 @@ class UnifiedAgent:
 
         # 获取任务详情
         from .tools import get_task_detail
+        from datetime import datetime, timedelta
 
         task_detail = get_task_detail(task_id)
 
         if "error" in task_detail:
             return f"任务 {task_id} 不存在"
+
+        # 首次调用时设置 sent_time 和 feedback_deadline
+        if not task_detail.get("sent_time"):
+            current_time = datetime.now()
+            current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 根据任务类型设置 feedback_deadline
+            task_type = task_detail.get("task_type", "日度")
+            deadline_hours = 72 if task_type == "月度" else 24
+            deadline_time = current_time + timedelta(hours=deadline_hours)
+            deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 更新任务
+            from .tools import update_task_status
+            update_result = update_task_status(
+                task_id,
+                "反馈中",
+                "",
+                sent_time=current_time_str,
+                feedback_deadline=deadline_str
+            )
+            logger.info(f"[UnifiedAgent] 首次初始化，已设置 sent_time={current_time_str}, feedback_deadline={deadline_str}")
+            
+            # 更新task_detail以便返回正确的feedback_deadline
+            task_detail["sent_time"] = current_time_str
+            task_detail["feedback_deadline"] = deadline_str
 
         # 生成欢迎消息
         welcome = f"""您好！您有新任务需要核查：
@@ -202,7 +229,7 @@ class UnifiedAgent:
 **任务ID**: {task_id}
 **风险摘要**: {task_detail.get("risk_summary", "无")}
 **创建人**: {task_detail.get("creator_name", "未知")}
-**创建时间**: {task_detail.get("created_at", "未知")}
+**截止时间**: {task_detail.get("feedback_deadline", "未设置")}
 
 请开始核查工作，如有疑问，随时问我！"""
 

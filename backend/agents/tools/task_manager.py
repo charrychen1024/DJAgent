@@ -9,7 +9,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +148,9 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             "completed_time": "",
             "region": task_info.get("region", ""),
             "task_type": task_type,
+            "sent_time": task_info.get("sent_time", ""),
+            "feedback_deadline": task_info.get("feedback_deadline", ""),
+            "feedback_summary": "",
         }
 
         # 字段名 - 按 tasks.csv 表头顺序
@@ -166,6 +169,9 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             "completed_time",
             "region",
             "task_type",
+            "sent_time",
+            "feedback_deadline",
+            "feedback_summary",
         ]
 
         # 写入CSV - 使用 QUOTE_ALL 确保包含逗号的字段被正确处理
@@ -209,14 +215,16 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
         return {"error": f"创建任务失败: {str(e)}"}
 
 
-def update_task_status(task_id: str, status: str, summary: str = "") -> Dict[str, Any]:
+def update_task_status(task_id: str, status: str, summary: str = "", sent_time: str = "", feedback_deadline: str = "") -> Dict[str, Any]:
     """
     更新任务状态
 
     Args:
         task_id: 任务ID
-        status: 新状态（已创建/已下发/反馈中/反馈完成/已超期）
+        status: 新状态（已创建/已下发/反馈中/反馈完成/已超时）
         summary: 反馈总结（可选）
+        sent_time: 下发时间（可选）
+        feedback_deadline: 反馈截止时间（可选）
 
     Returns:
         更新结果
@@ -244,6 +252,15 @@ def update_task_status(task_id: str, status: str, summary: str = "") -> Dict[str
                         row["completed_time"] = datetime.now().strftime(
                             "%Y-%m-%d %H:%M:%S"
                         )
+                    # 更新反馈总结
+                    if summary:
+                        row["feedback_summary"] = summary
+                    # 更新sent_time
+                    if sent_time:
+                        row["sent_time"] = sent_time
+                    # 更新feedback_deadline
+                    if feedback_deadline:
+                        row["feedback_deadline"] = feedback_deadline
                 rows.append(row)
 
         # 写回
@@ -309,9 +326,31 @@ def assign_task(
         if not tasks_file.exists():
             return {"error": "任务文件不存在"}
 
-        # 读取并更新
+        # 计算 sent_time 和 feedback_deadline
+        current_time = datetime.now()
+        current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # 读取现有任务获取 task_type
+        task_type = "日度"  # 默认
         rows = []
         fieldnames = []
+        with open(tasks_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames or []
+            for row in reader:
+                if row.get("task_id") == task_id:
+                    task_type = row.get("task_type", "日度")
+                    break
+
+        # 根据任务类型设置 deadline
+        deadline_hours = 72 if task_type == "月度" else 24
+        deadline_time = current_time + timedelta(hours=deadline_hours)
+        deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        logger.info(f"[工具] assign_task 设置时间: sent_time={current_time_str}, feedback_deadline={deadline_str}, task_type={task_type}")
+
+        # 读取并更新
+        rows = []
 
         with open(tasks_file, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
@@ -321,6 +360,9 @@ def assign_task(
                     row["assigned_to_id"] = assigned_to_id
                     row["assigned_to_name"] = assigned_to_name
                     row["status"] = status
+                    # 设置 sent_time 和 feedback_deadline
+                    row["sent_time"] = current_time_str
+                    row["feedback_deadline"] = deadline_str
                 rows.append(row)
 
         # 写回

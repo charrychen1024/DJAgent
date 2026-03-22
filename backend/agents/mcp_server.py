@@ -150,15 +150,62 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
 async def tool_assign_task(args: Dict[str, Any]) -> Dict[str, Any]:
     """Assign task tool"""
     logger.info(f"[MCP-TOOL] assign_task called for task: {args.get('task_id')}")
-    result = assign_task(
-        args["task_id"],
-        args["assigned_to_id"],
-        args["assigned_to_name"],
-        args.get("status", "已下发"),
-    )
-    logger.info(f"[MCP-TOOL] assign_task completed")
-    error_flag = "error" in result
-    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+    
+    try:
+        result = assign_task(
+            args["task_id"],
+            args["assigned_to_id"],
+            args["assigned_to_name"],
+            args.get("status", "已下发"),
+        )
+        
+        # 检查是否分配成功
+        if result.get("success"):
+            logger.info(f"[MCP-TOOL] assign_task completed successfully for task: {args.get('task_id')}")
+            error_flag = False
+            return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+        else:
+            # 分配失败，记录失败原因并设置状态为"下发失败"
+            error_msg = result.get("error", "未知错误")
+            logger.error(f"[MCP-TOOL] assign_task failed for task {args.get('task_id')}: {error_msg}")
+            
+            # 调用 update_task_status 设置状态为"下发失败"
+            try:
+                from tools import update_task_status
+                failure_result = update_task_status(
+                    args["task_id"],
+                    "下发失败",
+                    f"分配失败原因: {error_msg}",
+                    "",
+                    ""
+                )
+                logger.info(f"[MCP-TOOL] Task status updated to '下发失败' for task: {args.get('task_id')}")
+            except Exception as status_err:
+                logger.error(f"[MCP-TOOL] Failed to update task status to '下发失败': {status_err}")
+            
+            error_flag = True
+            return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
+            
+    except Exception as e:
+        # 捕获异常，处理下发失败情况
+        logger.error(f"[MCP-TOOL] assign_task exception for task {args.get('task_id')}: {str(e)}", exc_info=True)
+        
+        # 尝试设置状态为"下发失败"
+        try:
+            from tools import update_task_status
+            failure_result = update_task_status(
+                args["task_id"],
+                "下发失败",
+                f"分配异常: {str(e)}",
+                "",
+                ""
+            )
+            logger.info(f"[MCP-TOOL] Task status updated to '下发失败' after exception for task: {args.get('task_id')}")
+        except Exception as status_err:
+            logger.error(f"[MCP-TOOL] Failed to update task status to '下发失败': {status_err}")
+        
+        error_flag = True
+        return {"content": [{"type": "text", "text": f"分配任务失败: {str(e)}"}], "is_error": error_flag}
 
 
 @tool(
@@ -202,13 +249,19 @@ async def tool_read_risk_data(args: Dict[str, Any]) -> Dict[str, Any]:
 
 @tool(
     name="update_task_status",
-    description="Update task status. Input: task_id, status.",
-    input_schema={"task_id": str, "status": str},
+    description="Update task status. Input: task_id, status, feedback_summary (optional), sent_time (optional), feedback_deadline (optional).",
+    input_schema={"task_id": str, "status": str, "feedback_summary": str, "sent_time": str, "feedback_deadline": str},
 )
 async def tool_update_task_status(args: Dict[str, Any]) -> Dict[str, Any]:
     """Update task status tool"""
     logger.info(f"[MCP-TOOL] update_task_status called for task: {args.get('task_id')}")
-    result = update_task_status(args["task_id"], args["status"])
+    result = update_task_status(
+        args["task_id"], 
+        args["status"],
+        args.get("feedback_summary", ""),
+        args.get("sent_time", ""),
+        args.get("feedback_deadline", "")
+    )
 
     # 推送 SSE 事件（当任务状态变为"反馈完成"时通知 Manager）
     if result.get("success") and args.get("status") == "反馈完成" and SSE_AVAILABLE:
