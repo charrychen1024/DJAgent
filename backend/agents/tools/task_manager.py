@@ -269,24 +269,27 @@ def update_task_status(task_id: str, status: str, summary: str = "", sent_time: 
             writer.writeheader()
             writer.writerows(rows)
 
-        # 更新反馈文件
+        # 更新反馈文件（无论是否有 summary，都更新 status）
+        feedback_file = data_dir / "feedback" / f"{task_id}.json"
+        feedback_data = {}
+
+        if feedback_file.exists():
+            with open(feedback_file, "r", encoding="utf-8") as f:
+                feedback_data = json.load(f)
+
+        # 始终更新 status 和 last_updated
+        feedback_data["status"] = status
+        feedback_data["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 只有提供 summary 时才更新反馈总结
         if summary:
-            feedback_file = data_dir / "feedback" / f"{task_id}.json"
-            feedback_data = {}
-
-            if feedback_file.exists():
-                with open(feedback_file, "r", encoding="utf-8") as f:
-                    feedback_data = json.load(f)
-
             feedback_data["feedback_summary"] = summary
-            feedback_data["status"] = status
             feedback_data["summary_timestamp"] = datetime.now().strftime(
                 "%Y-%m-%d %H:%M:%S"
             )
-            feedback_data["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            with open(feedback_file, "w", encoding="utf-8") as f:
-                json.dump(feedback_data, f, ensure_ascii=False, indent=2)
+        with open(feedback_file, "w", encoding="utf-8") as f:
+            json.dump(feedback_data, f, ensure_ascii=False, indent=2)
 
         logger.info(f"[工具] update_task_status 成功: {task_id}")
 
