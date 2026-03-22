@@ -190,6 +190,28 @@ def parse_word(file_path: str) -> Dict[str, Any]:
         return {"error": f"解析Word文件失败: {str(e)}"}
 
 
+# ==================== 系统工具 ====================
+
+def get_current_time() -> Dict[str, Any]:
+    """
+    获取当前系统时间
+
+    当需要计算截止时间时，必须先调用此工具获取当前时间，然后根据用户指定的时限计算截止时间。
+    例如：用户说"1小时内"，则当前时间 + 1小时 = 截止时间
+
+    Returns:
+        当前时间，格式：YYYY-MM-DD HH:MM:SS
+    """
+    from datetime import datetime
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"[工具] get_current_time 返回: {current_time}")
+    return {
+        "success": True,
+        "current_time": current_time,
+        "note": "当前时间，用于计算任务截止时间"
+    }
+
+
 # ==================== 业务工具 ====================
 
 def read_risk_data(filename: str) -> Dict[str, Any]:
