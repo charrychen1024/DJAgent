@@ -32,6 +32,7 @@ class TaskCreatorSkill(Skill):
     name = "task_creator"
     description = "根据风险分析结果创建核查任务，下发给执行人"
     tools = [
+        "get_current_time",
         "list_users",
         "create_task",
         "update_task_status",

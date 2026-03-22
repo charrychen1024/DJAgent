@@ -897,10 +897,12 @@
   font-weight: 500;
 }
 
-.task-status.已创建 { background: #f0f0f0; color: #595959; }
-.task-status.已下发 { background: var(--primary-color); color: white; }
-.task-status.反馈完成 { background: var(--success-color); color: white; }
-.task-status.已超期 { background: var(--danger-color); color: white; }
+.task-status.已创建 { background: #9e9e9e; color: white; }
+.task-status.已下发 { background: #2196f3; color: white; }
+.task-status.反馈中 { background: #ff9800; color: white; }
+.task-status.已完成 { background: #4caf50; color: white; }
+.task-status.已超时 { background: #f44336; color: white; }
+.task-status.下发失败 { background: #f44336; color: white; }
 
 .task-summary {
   font-size: 0.85rem;
@@ -1517,10 +1519,12 @@
   font-weight: 500;
 }
 
-.status-tag.已创建 { background: #f0f0f0; }
-.status-tag.已下发 { background: var(--primary-color); color: white; }
-.status-tag.反馈完成 { background: var(--success-color); color: white; }
-.status-tag.已超期 { background: var(--danger-color); color: white; }
+.status-tag.已创建 { background: #9e9e9e; color: white; }
+.status-tag.已下发 { background: #2196f3; color: white; }
+.status-tag.反馈中 { background: #ff9800; color: white; }
+.status-tag.已完成 { background: #4caf50; color: white; }
+.status-tag.已超时 { background: #f44336; color: white; }
+.status-tag.下发失败 { background: #f44336; color: white; }
 
 .feedback-section, .files-section {
   margin-top: var(--spacing-md);

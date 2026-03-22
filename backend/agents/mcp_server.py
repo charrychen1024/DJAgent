@@ -31,6 +31,7 @@ from tools import (
     save_chat_message,
     save_uploaded_file_from_path,
     list_uploaded_files,
+    get_current_time,
 )
 
 # Import data query tools
@@ -51,6 +52,20 @@ except ImportError as e:
     logger.warning(f"[MCP] SSE 事件模块导入失败: {e}")
 
 # ============ Define MCP Tools ============
+
+
+@tool(
+    name="get_current_time",
+    description="Get current system time. Use this when you need to calculate task deadline. When user specifies a deadline like '1 hour' or '30 minutes', you MUST first call this tool to get the current time, then calculate the deadline accordingly. Returns: current time in format YYYY-MM-DD HH:MM:SS.",
+    input_schema={},
+)
+async def tool_get_current_time(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Get current time tool"""
+    logger.info(f"[MCP-TOOL] get_current_time called")
+    result = get_current_time()
+    logger.info(f"[MCP-TOOL] get_current_time returned: {result.get('current_time')}")
+    error_flag = "error" in result
+    return {"content": [{"type": "text", "text": str(result)}], "is_error": error_flag}
 
 
 @tool(
@@ -447,6 +462,7 @@ def create_djagent_mcp_server():
     """Create DJAgent MCP server"""
 
     all_tools = [
+        tool_get_current_time,
         tool_list_users,
         tool_create_task,
         tool_assign_task,

@@ -268,7 +268,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   // 模拟任务数据
   const mockTasks = [
     { task_id: 'TASK_001', risk_summary: '运单WLYD001重量异常核查', status: '已下发', assigned_to_name: '刘伟快递', created_time: '2026-03-01 10:00', creator_name: '王经理' },
-    { task_id: 'TASK_002', risk_summary: '运单WLYD002超时派送核查', status: '反馈完成', assigned_to_name: '刘秀英快递', created_time: '2026-03-01 14:30', creator_name: '王经理', completed_time: '2026-03-01 16:00' },
+    { task_id: 'TASK_002', risk_summary: '运单WLYD002超时派送核查', status: '已完成', assigned_to_name: '刘秀英快递', created_time: '2026-03-01 14:30', creator_name: '王经理', completed_time: '2026-03-01 16:00' },
     { task_id: 'TASK_003', risk_summary: '运单WLYD003未及时签收核查', status: '已创建', assigned_to_name: '黄强快递', created_time: '2026-03-02 09:00', creator_name: '王经理' },
   ]
 
@@ -1447,7 +1447,7 @@ function StaffWorkspace({ currentUser }) {
 
       // 否则找最新的待处理任务
       if (!targetTask) {
-        targetTask = tasks.find(t => t.status !== '反馈完成') || tasks[0]
+        targetTask = tasks.find(t => t.status !== '已完成') || tasks[0]
       }
 
       console.log('[Staff] 最终选中任务:', targetTask?.task_id)
