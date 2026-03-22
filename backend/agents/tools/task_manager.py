@@ -342,8 +342,9 @@ def assign_task(
         current_time = datetime.now()
         current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        # 读取现有任务获取 task_type
+        # 读取现有任务获取 task_type 和已存在的 feedback_deadline
         task_type = "日度"  # 默认
+        existing_deadline = ""
         rows = []
         fieldnames = []
         with open(tasks_file, "r", encoding="utf-8") as f:
@@ -352,13 +353,18 @@ def assign_task(
             for row in reader:
                 if row.get("task_id") == task_id:
                     task_type = row.get("task_type", "日度")
+                    existing_deadline = row.get("feedback_deadline", "")
                     break
 
-        # 如果提供了自定义 deadline，使用它；否则根据任务类型计算
+        # 如果提供了自定义 deadline，使用它；否则尝试使用已有的 deadline；最后才是默认计算
         if feedback_deadline:
             # 处理 ISO 格式（如 "2026-03-22T16:00:00"）
             deadline_str = feedback_deadline.replace("T", " ") if "T" in feedback_deadline else feedback_deadline
-            logger.info(f"[工具] assign_task 使用自定义 deadline: {deadline_str}")
+            logger.info(f"[工具] assign_task 使用传入的 deadline: {deadline_str}")
+        elif existing_deadline:
+            # 使用任务中已有的 deadline（来自 create_task）
+            deadline_str = existing_deadline
+            logger.info(f"[工具] assign_task 使用已有的 deadline: {deadline_str}")
         else:
             # 根据任务类型设置默认 deadline
             deadline_hours = 72 if task_type == "月度" else 24
