@@ -84,7 +84,11 @@ class TaskCreatorSkill(Skill):
             assigned_to_id = input_data.get("assigned_to_id")
             assigned_to_name = input_data.get("assigned_to_name")
             risk_data_url = input_data.get("risk_data_url", "")
-            
+            feedback_deadline = input_data.get("feedback_deadline", "")
+            task_type = input_data.get("task_type", "日度")
+
+            logger.info(f"[TaskCreatorSkill] feedback_deadline={feedback_deadline}, task_type={task_type}")
+
             # 如果没有指定执行人，需要获取可选执行人列表
             if not assigned_to_id or not assigned_to_name:
                 users_result = list_users(role="一线操作人员")
@@ -103,23 +107,26 @@ class TaskCreatorSkill(Skill):
                 "assigned_to_id": assigned_to_id or "",
                 "assigned_to_name": assigned_to_name or "",
                 "risk_summary": risk_summary,
-                "risk_data_url": risk_data_url
+                "risk_data_url": risk_data_url,
+                "feedback_deadline": feedback_deadline,
+                "task_type": task_type
             }
-            
+
             result = create_task(task_info)
-            
+
             if "error" in result:
                 return result
-            
+
             task_id = result.get("task_id")
-            
+
             # 如果指定了执行人，直接分配任务
             if assigned_to_id and assigned_to_name:
                 assign_result = assign_task(
                     task_id=task_id,
                     assigned_to_id=assigned_to_id,
                     assigned_to_name=assigned_to_name,
-                    status="已下发"
+                    status="已下发",
+                    feedback_deadline=feedback_deadline
                 )
                 
                 if "error" not in assign_result:

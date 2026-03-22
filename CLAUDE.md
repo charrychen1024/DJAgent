@@ -18,6 +18,7 @@ DJAgent is an AI-powered risk management system built with React + FastAPI + Cla
 # Backend (port 5005)
 cd backend
 source .venv/bin/activate  # 激活虚拟环境（关键！）
+unset CLAUDE  # 重要：必须取消设置 CLAUDE 环境变量，否则 Claude Agent SDK 无法正常工作
 python -m uvicorn app_fastapi:app --host 0.0.0.0 --port 5005
 
 # Frontend (port 5173)

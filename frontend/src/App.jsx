@@ -1505,9 +1505,8 @@ function StaffWorkspace({ currentUser }) {
               timestamp: initData.agent_reply.timestamp
             }])
           }
-        } else {
-          setChatMessages(allMessages)
-        }
+      } else {
+        setChatMessages(allMessages)
       }
     } catch (err) { 
       console.error('[ERROR] 初始化对话失败:', err) 
