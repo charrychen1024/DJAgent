@@ -330,6 +330,18 @@ class UnifiedAgent:
             feedback_deadline = task_info.get("feedback_deadline", "")
 
             # 精心设计的提示词 - 与 Staff System Prompt 保持一致
+            deadline_display = ""
+            if feedback_deadline:
+                # 转换时间格式为更友好的显示
+                try:
+                    from datetime import datetime
+                    dt = datetime.strptime(feedback_deadline, "%Y-%m-%d %H:%M:%S")
+                    deadline_display = f"请在 {dt.month}月{dt.day}日 {dt.hour:02d}:{dt.minute:02d} 前完成反馈"
+                except:
+                    deadline_display = f"请在 {feedback_deadline} 前完成反馈"
+            else:
+                deadline_display = "请尽快完成反馈"
+
             notification_prompt = f"""【新任务通知】
 
 您有一个新的风险核查任务需要处理！
@@ -339,7 +351,6 @@ class UnifiedAgent:
 - 任务类型：{task_type}
 - 创建人：{creator_name}
 - 风险摘要：{risk_summary}
-{f"- 反馈截止时间：{feedback_deadline}" if feedback_deadline else ""}
 
 请主动发送一条友好的消息，告知用户有新的核查任务。
 
@@ -349,7 +360,7 @@ class UnifiedAgent:
 3. 明确告诉用户**需要提交什么材料**（如：运单截图、签收单据、情况说明等）
 4. 引导用户开始提交材料或提问
 5. 适当使用emoji让消息更生动
-6. **明确告诉用户反馈截止时间**，格式如"请在XX月XX日XX:XX前完成反馈"
+6. **{deadline_display}** - 必须直接使用这个时间，不要自己编造！
 
 **重要**：你是告知用户需要提交什么材料来完成任务，**不是教用户怎么核查**。
 
