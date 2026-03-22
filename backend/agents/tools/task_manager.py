@@ -132,6 +132,13 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
         if task_type not in ["日度", "月度"]:
             task_type = "日度"
 
+        # 处理 feedback_deadline 格式（前端可能传入 ISO 格式如 "2026-03-22T16:00:00"）
+        feedback_deadline = task_info.get("feedback_deadline", "")
+        if feedback_deadline and "T" in feedback_deadline:
+            # 将 ISO 格式转换为标准格式
+            feedback_deadline = feedback_deadline.replace("T", " ")
+            logger.info(f"[工具] create_task 转换 deadline 格式: {task_info.get('feedback_deadline', '')} -> {feedback_deadline}")
+
         # 组装任务数据
         task_row = {
             "task_id": task_id,
@@ -149,7 +156,7 @@ def create_task(task_info: Dict) -> Dict[str, Any]:
             "region": task_info.get("region", ""),
             "task_type": task_type,
             "sent_time": task_info.get("sent_time", ""),
-            "feedback_deadline": task_info.get("feedback_deadline", ""),
+            "feedback_deadline": feedback_deadline,
             "feedback_summary": "",
         }
 
@@ -349,7 +356,8 @@ def assign_task(
 
         # 如果提供了自定义 deadline，使用它；否则根据任务类型计算
         if feedback_deadline:
-            deadline_str = feedback_deadline
+            # 处理 ISO 格式（如 "2026-03-22T16:00:00"）
+            deadline_str = feedback_deadline.replace("T", " ") if "T" in feedback_deadline else feedback_deadline
             logger.info(f"[工具] assign_task 使用自定义 deadline: {deadline_str}")
         else:
             # 根据任务类型设置默认 deadline
