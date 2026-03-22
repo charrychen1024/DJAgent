@@ -139,24 +139,26 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
 
 @tool(
     name="assign_task",
-    description="Assign a task to an executor. Input: task_id, assigned_to_id, assigned_to_name, status.",
+    description="Assign a task to an executor. Input: task_id, assigned_to_id, assigned_to_name, status, feedback_deadline (optional, format: YYYY-MM-DD HH:MM:SS).",
     input_schema={
         "task_id": str,
         "assigned_to_id": str,
         "assigned_to_name": str,
         "status": str,
+        "feedback_deadline": str,
     },
 )
 async def tool_assign_task(args: Dict[str, Any]) -> Dict[str, Any]:
     """Assign task tool"""
     logger.info(f"[MCP-TOOL] assign_task called for task: {args.get('task_id')}")
-    
+
     try:
         result = assign_task(
             args["task_id"],
             args["assigned_to_id"],
             args["assigned_to_name"],
             args.get("status", "已下发"),
+            args.get("feedback_deadline", ""),  # 支持自定义反馈截止时间
         )
         
         # 检查是否分配成功

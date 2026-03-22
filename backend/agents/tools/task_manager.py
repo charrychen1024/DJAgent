@@ -303,7 +303,8 @@ def update_task_status(task_id: str, status: str, summary: str = "", sent_time: 
 
 
 def assign_task(
-    task_id: str, assigned_to_id: str, assigned_to_name: str, status: str = "已下发"
+    task_id: str, assigned_to_id: str, assigned_to_name: str, status: str = "已下发",
+    feedback_deadline: str = ""
 ) -> Dict[str, Any]:
     """
     分配任务给执行人
@@ -313,6 +314,7 @@ def assign_task(
         assigned_to_id: 执行人ID
         assigned_to_name: 执行人名称
         status: 任务状态
+        feedback_deadline: 自定义反馈截止时间（可选，格式：YYYY-MM-DD HH:MM:SS）
 
     Returns:
         分配结果
@@ -342,12 +344,16 @@ def assign_task(
                     task_type = row.get("task_type", "日度")
                     break
 
-        # 根据任务类型设置 deadline
-        deadline_hours = 72 if task_type == "月度" else 24
-        deadline_time = current_time + timedelta(hours=deadline_hours)
-        deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
-
-        logger.info(f"[工具] assign_task 设置时间: sent_time={current_time_str}, feedback_deadline={deadline_str}, task_type={task_type}")
+        # 如果提供了自定义 deadline，使用它；否则根据任务类型计算
+        if feedback_deadline:
+            deadline_str = feedback_deadline
+            logger.info(f"[工具] assign_task 使用自定义 deadline: {deadline_str}")
+        else:
+            # 根据任务类型设置默认 deadline
+            deadline_hours = 72 if task_type == "月度" else 24
+            deadline_time = current_time + timedelta(hours=deadline_hours)
+            deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
+            logger.info(f"[工具] assign_task 计算默认 deadline: {deadline_str}, task_type={task_type}")
 
         # 读取并更新
         rows = []
