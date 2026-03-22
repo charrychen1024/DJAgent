@@ -8,6 +8,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
+from datetime import datetime
 from claude_agent_sdk import (
     ClaudeSDKClient,
     ClaudeAgentOptions,
@@ -99,6 +100,25 @@ class StaffAgent:
 
 主动推送任务信息，指导用户完成核查工作。
 
+## 任务状态流转规则
+
+### 任务状态说明
+- **已创建**：任务刚创建，尚未下发
+- **已下发**：任务已分配给您，等待您反馈
+- **反馈中**：您开始处理任务，正在提交材料或进行核查
+- **反馈完成**：您已完成核查，提交了反馈
+- **已超时**：未在规定时间内完成反馈
+
+### 时间规则
+- 日度任务：反馈截止时间 = 下发时间 + 24小时
+- 月度任务：反馈截止时间 = 下发时间 + 72小时
+
+### 重要提示
+1. 任务创建后，需要等待业务负责人下发任务（assign_task），您才会收到"已下发"状态的通知
+2. 您的首次消息会触发系统记录 sent_time（如果尚未设置）
+3. 当您确认完成核查后，系统会自动将任务状态更新为"反馈完成"
+4. 请注意任务截止时间，在截止前完成反馈
+
 ## 当前用户
 - 用户ID: {self.user_id}
 - 用户名: {self.user_name}
@@ -153,6 +173,47 @@ class StaffAgent:
         logger.info(f"[StaffAgent] 初始化任务: {task_id}")
         self.current_task_id = task_id
 
+        # 首次调用时设置 sent_time 和 feedback_deadline
+        from .tools import get_task_detail, update_task_status
+        from datetime import datetime, timedelta
+
+        task_info = get_task_detail(task_id)
+        if task_info:
+            current_time = datetime.now()
+            current_time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
+            # 根据任务类型设置 feedback_deadline
+            task_type = task_info.get("task_type", "日度")
+            if task_type == "月度":
+                # 月度任务：72小时
+                deadline_hours = 72
+            else:
+                # 日度任务（默认）：24小时
+                deadline_hours = 24
+
+            deadline_time = current_time + timedelta(hours=deadline_hours)
+            deadline_str = deadline_time.strftime("%Y-%m-%d %H:%M:%S")
+
+            # 如果任务没有 sent_time，设置它
+            if not task_info.get("sent_time"):
+                update_task_status(
+                    task_id,
+                    "反馈中",
+                    "",
+                    sent_time=current_time_str,
+                    feedback_deadline=deadline_str
+                )
+                logger.info(f"[StaffAgent] 首次初始化，已设置 sent_time={current_time_str}, feedback_deadline={deadline_str}")
+            elif not task_info.get("feedback_deadline"):
+                # 如果有 sent_time 但没有 feedback_deadline，也设置它
+                update_task_status(
+                    task_id,
+                    "反馈中",
+                    "",
+                    feedback_deadline=deadline_str
+                )
+                logger.info(f"[StaffAgent] 已设置 feedback_deadline={deadline_str}")
+
         # 使用Skill获取任务信息
         from .skills import get_skill
 
@@ -190,13 +251,35 @@ class StaffAgent:
         """
         logger.info(f"[StaffAgent] 收到消息: {message[:100]}...")
 
+        # 检查是否是首次调用（sent_time为空），如果是则记录当前时间
+        if self.current_task_id:
+            from .tools import get_task_detail
+
+            task_info = get_task_detail(self.current_task_id)
+            if task_info and not task_info.get("sent_time"):
+                # 首次调用，记录sent_time
+                from .tools import update_task_status
+
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                update_task_status(
+                    self.current_task_id,
+                    "反馈中",
+                    "",
+                    sent_time=current_time
+                )
+                logger.info(f"[StaffAgent] 首次对话，已记录sent_time: {current_time}")
+
         # 构建prompt
         prompt = f"""当前用户：{self.user_name} (ID: {self.user_id})
 当前任务ID：{self.current_task_id or "无"}
 
 一线人员消息：{message}
 
-请根据任务要求回复用户，指导其完成核查工作。"""
+请根据任务要求回复用户，指导其完成核查工作。
+
+重要提示：
+1. 如果用户表示已完成核查任务（如说"完成了"、"已经核实完毕"、"确认完成"等），请调用update_task_status工具将任务状态更新为"反馈完成"，并生成反馈总结。
+2. 在调用update_task_status时，需要提供清晰的反馈总结，说明核查的结果和结论。"""
 
         # 发送SDK处理
         await self.client.query(prompt)

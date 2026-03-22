@@ -939,7 +939,13 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                     <div key={task.task_id} className={`task-card ${selectedTask?.task_id === task.task_id ? 'selected' : ''}`} onClick={() => handleTaskClick(task)}>
                       <div className="task-header"><span className="task-id">{task.task_id}</span><span className={`task-status ${task.status}`}>{task.status}</span></div>
                       <div className="task-summary">{task.risk_summary}</div>
-                      <div className="task-info"><span>创建: {task.creator_name || task.creator_id}</span><span>→ {task.assigned_to_name}</span></div>
+                      <div className="task-info">
+                        <span>创建: {task.creator_name || task.creator_id}</span>
+                        <span>→ {task.assigned_to_name}</span>
+                        {task.feedback_deadline && (
+                          <span className="task-deadline">截止: {new Date(task.feedback_deadline).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1211,14 +1217,18 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                 <p><strong>状态:</strong> <span className={`status-tag ${selectedTask.status}`}>{selectedTask.status}</span></p>
                 <p><strong>创建人:</strong> {selectedTask.creator_name}</p>
                 <p><strong>执行人:</strong> {selectedTask.assigned_to_name}</p>
+                <p><strong>地区:</strong> {selectedTask.region || '-'}</p>
+                <p><strong>任务类型:</strong> {selectedTask.task_type || '-'}</p>
                 <p><strong>创建时间:</strong> {selectedTask.created_time}</p>
+                {selectedTask.sent_time && <p><strong>发送时间:</strong> {selectedTask.sent_time}</p>}
                 {selectedTask.completed_time && <p><strong>完成时间:</strong> {selectedTask.completed_time}</p>}
-                
+                {selectedTask.feedback_deadline && <p><strong>反馈截止:</strong> {selectedTask.feedback_deadline}</p>}
+
                 <div className="feedback-section">
                   <h5>📝 反馈详情</h5>
-                  {taskFeedback?.feedback_summary ? (
+                  {(selectedTask.feedback_summary || taskFeedback?.feedback_summary) ? (
                     <div className="feedback-summary">
-                      <p>{taskFeedback.feedback_summary}</p>
+                      <p>{selectedTask.feedback_summary || taskFeedback?.feedback_summary}</p>
                     </div>
                   ) : (
                     <div className="empty-tip">暂无反馈总结</div>
@@ -1362,6 +1372,12 @@ function StaffWorkspace({ currentUser }) {
         } else if (data.type === 'task_message_received') {
           // 后端自动触发StaffAgent发送消息后，推送此事件通知前端
           console.log('[SSE Staff] 收到新消息通知:', data.task_id)
+
+          // 设置当前任务（如果还没有选中任务或者任务不匹配）
+          if (data.task_info && (!selectedTask || selectedTask.task_id !== data.task_id)) {
+            setSelectedTask(data.task_info)
+            console.log('[SSE Staff] 设置当前任务:', data.task_info.task_id)
+          }
 
           // 直接追加新消息到当前对话，不获取历史记录（IM端是持续会话）
           const newMessage = data.message
