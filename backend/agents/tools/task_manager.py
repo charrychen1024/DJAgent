@@ -262,12 +262,22 @@ def update_task_status(task_id: str, status: str, summary: str = "", sent_time: 
                     # 更新反馈总结
                     if summary:
                         row["feedback_summary"] = summary
-                    # 更新sent_time
-                    if sent_time:
-                        row["sent_time"] = sent_time
-                    # 更新feedback_deadline
-                    if feedback_deadline:
-                        row["feedback_deadline"] = feedback_deadline
+                    # 更新sent_time（只在状态为"已创建"且没有已有值时设置）
+                    if sent_time and sent_time.strip():
+                        existing_sent_time = row.get("sent_time", "").strip()
+                        if status == "已创建" and not existing_sent_time:
+                            row["sent_time"] = sent_time.strip()
+                            logger.info(f"[工具] 设置 sent_time: {sent_time}")
+                        elif existing_sent_time:
+                            logger.info(f"[工具] 保护已有 sent_time: {existing_sent_time}，不更新")
+                    # 更新feedback_deadline（只在没有已有值时设置，保护已有截止时间）
+                    if feedback_deadline and feedback_deadline.strip():
+                        existing_deadline = row.get("feedback_deadline", "").strip()
+                        if not existing_deadline:
+                            row["feedback_deadline"] = feedback_deadline.strip()
+                            logger.info(f"[工具] 设置 feedback_deadline: {feedback_deadline}")
+                        else:
+                            logger.info(f"[工具] 保护已有 feedback_deadline: {existing_deadline}，不更新")
                 rows.append(row)
 
         # 写回
