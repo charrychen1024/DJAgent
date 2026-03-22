@@ -1,8 +1,8 @@
 # DJAgent 风控智能助手 - 产品需求文档 (PRD)
 
-**版本**: v2.1.0
+**版本**: v2.2.0
 **创建日期**: 2026-03-07
-**最后更新**: 2026-03-15
+**最后更新**: 2026-03-22
 
 ---
 
@@ -187,9 +187,19 @@ DJAgent - 风控智能助手
 **任务状态流转**:
 ```
 已创建 → 已下发 → 反馈中 → 反馈完成
-                ↓
-             已超期
+                ↓          ↓
+             已超时    下发失败
 ```
+
+**状态说明**:
+| 状态 | 说明 |
+|------|------|
+| 已创建 | 任务刚创建，尚未下发给执行人 |
+| 已下发 | 任务已下发给执行人，等待执行人反馈 |
+| 反馈中 | 执行人正在处理任务，提交了材料或开始对话 |
+| 反馈完成 | 执行人确认完成，材料审核通过 |
+| 已超时 | 超过截止时间（feedback_deadline）未完成 |
+| 下发失败 | 任务发送/分配失败 |
 
 #### 3.1.4 AI智能体对话（基于 SDK）
 
@@ -229,8 +239,9 @@ Staff Agent 是被 Manager Agent 调用的，它的职责是：
 2. **材料审核**：一线用户提交材料后，进行双重判断：
    - 判断材料是否符合任务要求（完整？涵盖所有内容？）
    - 判断风险是否真实存在（真实风险？问题不大？无风险？）
+3. **反馈总结生成**：当任务完成时，根据聊天记录和材料内容生成反馈总结（feedback_summary），总结风险核查结果
 
-**重要**：Staff Agent 不是"指导员"教一线人员如何核查风险，而是"传话筒"传达任务要求 + "材料审核员"审核材料和风险。
+**重要**：Staff Agent 不是"指导员"教一线人员如何核查风险，而是"传话筒"传达任务要求 + "材料审核员"审核材料和风险 + "总结者"生成核查结论。
 
 **AI工具**:
 - `parse_csv`: 解析CSV文件
@@ -325,13 +336,26 @@ user_id,username,role,department,employee_id,region
 ```csv
 task_id,creator_id,creator_name,assigned_to_id,assigned_to_name,
 status,created_time,risk_summary,risk_data_url,
-suggested_receiver_id,confirmed_receiver_id,completed_time,region,task_type
+suggested_receiver_id,confirmed_receiver_id,completed_time,region,task_type,
+sent_time,feedback_deadline,feedback_summary
 ```
 
-**说明**：
-- `creator_id`: 创建人employee_id（如EMP_001）
-- `assigned_to_id`: 执行人employee_id（如EMP_009）
-- `region`: 任务所属地区（创建人所在地区）
+**字段说明**：
+| 字段 | 说明 |
+|------|------|
+| `creator_id` | 创建人employee_id（如EMP_001） |
+| `assigned_to_id` | 执行人employee_id（如EMP_009） |
+| `region` | 任务所属地区（创建人所在地区） |
+| `sent_time` | 任务下发时间（首次消息触发） |
+| `feedback_deadline` | 反馈截止时间（日度任务24h，月度任务72h） |
+| `feedback_summary` | 反馈总结（AI生成） |
+
+**状态流转规则**：
+- 已创建 → 已下发：Manager确认执行人后
+- 已下发 → 反馈中：执行人首次回复消息
+- 反馈中 → 反馈完成：执行人确认完成并通过材料审核
+- 已下发/反馈中 → 已超时：超过feedback_deadline未完成
+- 已创建 → 下发失败：任务分配/发送失败
 
 ### 4.3 风险数据 (risk_data_*.csv)
 ```csv
@@ -539,8 +563,14 @@ suggested_receiver_id,confirmed_receiver_id,completed_time,region,task_type
 
 ---
 
-**文档状态**: ✅ 已更新 v2.1.0
-**更新内容**:
+**文档状态**: ✅ 已更新 v2.2.0
+**更新内容 (v2.2.0)**:
+- 新增任务状态：反馈中、下发失败、已超时
+- 新增任务字段：sent_time（下发时间）、feedback_deadline（反馈截止时间）、feedback_summary（反馈总结）
+- 更新任务状态流转图
+- Staff Agent 新增反馈总结生成职责
+
+**更新内容 (v2.1.0)**:
 - 新增地区归属功能（总部/上海区/北京区/山西区/浙北区）
 - 新增月度数据 Tab 视图
 - 新增全局搜索功能

@@ -1,0 +1,35 @@
+{
+  "chat_history": [
+    {
+      "timestamp": "2026-03-22 10:54:32",
+      "sender": "",
+      "message": "收到任务，开始核查",
+      "message_type": "text",
+      "files": null
+    },
+    {
+      "timestamp": "2026-03-22 10:54:32",
+      "sender": "Agent",
+      "message": "Agent SDK未安装，暂时无法处理消息",
+      "message_type": "text"
+    },
+    {
+      "timestamp": "2026-03-22 10:55:38",
+      "sender": "",
+      "message": "开始核查",
+      "message_type": "text",
+      "files": null
+    },
+    {
+      "timestamp": "2026-03-22 10:55:38",
+      "sender": "Agent",
+      "message": "Agent SDK未安装，暂时无法处理消息",
+      "message_type": "text"
+    }
+  ],
+  "task_id": "001-20260322105427248-001",
+  "last_updated": "2026-03-22 10:57:04",
+  "feedback_summary": "已完成核查，确认无风险",
+  "status": "反馈完成",
+  "summary_timestamp": "2026-03-22 10:57:04"
+}
