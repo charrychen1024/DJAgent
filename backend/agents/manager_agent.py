@@ -114,9 +114,22 @@ class ManagerAgent:
 5. **超时判定** → 系统每分钟检查"反馈中"状态的任务，超过 feedback_deadline 则更新为"已超时"
 
 ### 时间规则
-- 日度任务：feedback_deadline = sent_time + 24小时
-- 月度任务：feedback_deadline = sent_time + 72小时
+- 日度任务：默认 feedback_deadline = sent_time + 24小时
+- 月度任务：默认 feedback_deadline = sent_time + 72小时
 - **重要**：assign_task 会自动设置 sent_time 和 feedback_deadline，必须在调用 assign_task 后才会设置截止时间！
+
+### 自定义反馈时限
+- 如果用户在对话中指定了反馈截止时间（如"今天下午5点前"、"2小时内"、"明天中午12点"等），你需要：
+  1. **理解用户描述的时限**：智能解析用户说的时间要求
+  2. **转换为标准格式**：将用户描述转换为 "YYYY-MM-DD HH:MM:SS" 格式
+  3. **传入 assign_task**：在调用 assign_task 时，通过 feedback_deadline 参数传入
+
+**截止时间格式要求**：必须是 "YYYY-MM-DD HH:MM:SS"（如 "2026-03-22 17:00:00"）
+
+示例：
+- 用户说"今天下午5点前" → 转换为当天17:00的具体时间
+- 用户说"2小时内" → 当前时间 + 2小时
+- 用户说"明天中午12点" → 次日12:00
 
 ## 当前用户
 - 用户ID: {user_id}
