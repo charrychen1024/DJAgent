@@ -1,0 +1,580 @@
+/* ChatInput.css - Styling for chat input component */
+
+.chat-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(10px);
+  border: none;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  margin: 0 12px 12px 12px;
+  border-radius: 12px;
+}
+
+.chat-input--disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.chat-input--focused {
+  border-top-color: #3b82f6;
+  box-shadow: 0 -2px 8px rgba(59, 130, 246, 0.1);
+}
+
+/* File list */
+.input-files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 8px 0;
+  border-bottom: none;
+}
+
+.input-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.file-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+}
+
+.file-remove-btn {
+  padding: 2px 6px;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  transition: color 0.2s ease;
+  border-radius: 2px;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.file-remove-btn:hover:not(:disabled) {
+  color: #ef4444;
+  background: #fecaca33;
+}
+
+.file-remove-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.file-remove-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Input row - Single integrated container with glass-morphism */
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+/* Input buttons */
+.input-btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  flex-shrink: 0;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: transparent;
+}
+
+.input-btn:active:not(:disabled) {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.input-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+.input-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* File button */
+.input-file-btn {
+  background: #f3f4f6 !important;
+  border: none !important;
+  color: #6b7280;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.input-file-btn:hover:not(:disabled) {
+  background: #e5e7eb !important;
+  color: #374151;
+  border: none !important;
+}
+
+/* Toolbar - horizontal strip at bottom */
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 0 0 0;
+  border: none;
+  margin: 0;
+  order: unset;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+}
+
+/* Toolbar button with icon + text */
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px !important;
+  background: #fafbfc !important;
+  border: none !important;
+  border-radius: 16px !important;
+  color: #374151 !important;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  font-weight: 500;
+  outline: none;
+  white-space: nowrap;
+}
+
+.toolbar-btn-icon {
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-btn-text {
+  font-size: 13px;
+  color: #374151 !important;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: #f0f1f3 !important;
+  color: #1f2937 !important;
+}
+
+.toolbar-btn:active:not(:disabled) {
+  background: #e8eaed !important;
+}
+
+.toolbar-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-toolbar-btn {
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto;
+  height: auto;
+  line-height: 1;
+}
+
+.input-toolbar-btn:hover:not(:disabled) {
+  background: transparent;
+  color: #6b7280;
+}
+
+.input-toolbar-btn:active:not(:disabled) {
+  background: transparent;
+}
+
+/* Minimal toolbar icon button */
+.toolbar-icon {
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  color: #374151;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 0 !important;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto !important;
+  height: auto !important;
+  line-height: 1;
+  font-weight: normal !important;
+  width: auto;
+}
+
+.toolbar-icon:hover:not(:disabled) {
+  background: transparent !important;
+  color: #1f2937;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.toolbar-icon:active:not(:disabled) {
+  background: transparent !important;
+  transform: none !important;
+}
+
+.toolbar-icon:focus,
+.toolbar-icon:focus-visible {
+  outline: none;
+  background: transparent !important;
+}
+
+/* Send button */
+.input-send-btn {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: transparent;
+  padding: 4px 10px;
+  min-width: 28px;
+  height: 24px;
+  font-size: 14px;
+}
+
+.input-send-btn:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: transparent;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+
+.input-send-btn:active:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.input-send-btn:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+  border-color: transparent;
+}
+
+/* Textarea */
+.input-textarea {
+  flex: 1;
+  height: auto !important;
+  min-height: 100px !important;
+  padding: 12px 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  resize: none;
+  overflow-y: hidden;
+  transition: all 0.2s ease;
+  color: #1f2937;
+  line-height: 1.5;
+  background: transparent;
+}
+
+.input-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.input-textarea:focus {
+  outline: none;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.input-textarea:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Character count */
+.input-char-count {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Helper text */
+.input-helper {
+  padding: 2px 0 0 0;
+  font-size: 12px;
+  min-height: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.helper-text {
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+/* Loading state */
+.chat-input.chat-input--disabled .helper-text {
+  color: #9ca3af;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .chat-input {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .input-row {
+    gap: 6px;
+  }
+
+  .input-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .input-textarea {
+    height: 36px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  .input-char-count {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  .input-file {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
+
+/* Mobile phone */
+@media (max-width: 480px) {
+  .chat-input {
+    padding: 8px 10px;
+  }
+
+  .input-row {
+    gap: 4px;
+  }
+
+  .input-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .input-textarea {
+    height: 32px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .file-name {
+    max-width: 150px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .chat-input {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .chat-input--focused {
+    border-top-color: transparent;
+  }
+
+  .input-files {
+    border-bottom-color: transparent;
+  }
+
+  .input-toolbar-btn {
+    color: #d1d5db;
+    background: transparent;
+  }
+
+  .input-toolbar-btn:hover:not(:disabled) {
+    background: transparent;
+    color: #f3f4f6;
+  }
+
+  .input-toolbar-btn:active:not(:disabled) {
+    background: transparent;
+  }
+
+  .toolbar-icon {
+    color: #d1d5db;
+  }
+
+  .toolbar-icon:hover:not(:disabled) {
+    color: #f3f4f6;
+  }
+
+  .toolbar-btn {
+    background: #1f2937 !important;
+    border-color: #374151;
+    color: #d1d5db !important;
+  }
+
+  .toolbar-btn-text {
+    color: #d1d5db !important;
+  }
+
+  .toolbar-btn:hover:not(:disabled) {
+    background: #374151 !important;
+    color: #f3f4f6 !important;
+  }
+
+  .toolbar-btn:active:not(:disabled) {
+    background: #4b5563 !important;
+  }
+
+  .input-file {
+    background: #1f2937;
+    border-color: #374151;
+    color: #d1d5db;
+  }
+
+  .file-name {
+    color: #e5e7eb;
+  }
+
+  .file-remove-btn {
+    color: #9ca3af;
+  }
+
+  .file-remove-btn:hover:not(:disabled) {
+    color: #fca5a5;
+    background: #7f1d1d33;
+  }
+
+  .input-btn {
+    background: transparent;
+    border-color: transparent;
+    color: #9ca3af;
+  }
+
+  .input-btn:hover:not(:disabled) {
+    background: rgba(96, 165, 250, 0.1);
+    border-color: transparent;
+    color: #60a5fa;
+  }
+
+  .input-btn:active:not(:disabled) {
+    background: rgba(96, 165, 250, 0.15);
+  }
+
+  .input-file-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #9ca3af;
+    padding: 8px 10px;
+    border-radius: 6px;
+  }
+
+  .input-file-btn:hover:not(:disabled) {
+    background: rgba(96, 165, 250, 0.1) !important;
+    color: #60a5fa;
+    border: none !important;
+  }
+
+  .input-send-btn {
+    background: #2563eb;
+    border-color: transparent;
+  }
+
+  .input-send-btn:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+
+  .input-send-btn:disabled {
+    background: #4b5563;
+    border-color: transparent;
+  }
+
+  .input-textarea {
+    background: transparent;
+    border-color: transparent;
+    color: #f3f4f6;
+  }
+
+  .input-textarea::placeholder {
+    color: #6b7280;
+  }
+
+  .input-textarea:focus {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .input-textarea:disabled {
+    background: transparent;
+  }
+
+  .helper-text {
+    color: #9ca3af;
+  }
+}

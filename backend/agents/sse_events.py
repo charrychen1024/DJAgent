@@ -133,3 +133,28 @@ async def notify_task_completed(manager_id: str, task_id: str, task_info: dict =
             "task_info": task_info or {},
         }
     )
+
+
+async def notify_task_timeout_reminder(staff_id: str, task_id: str, task_title: str = "",
+                                      reminder_type: str = "about_to_timeout", remaining_time: str = ""):
+    """
+    任务超时提醒推送通知
+
+    Args:
+        staff_id: 一线人员 employee_id (如 EMP_001)
+        task_id: 任务ID
+        task_title: 任务标题
+        reminder_type: 提醒类型 ("about_to_timeout" 或 "already_timeout")
+        remaining_time: 人类可读的剩余时间描述 (如 "还剩2小时30分钟")
+    """
+    await sse_manager.publish_to_staff(
+        staff_id,
+        "task_timeout_reminder",
+        {
+            "task_id": task_id,
+            "task_title": task_title,
+            "reminder_type": reminder_type,
+            "remaining_time": remaining_time,
+            "timestamp": __import__('datetime').datetime.now().isoformat()
+        }
+    )

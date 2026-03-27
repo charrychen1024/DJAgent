@@ -1,0 +1,187 @@
+/**
+ * TabToday Component Styles
+ *
+ * Displays grouped todo items by category with visual hierarchy
+ */
+
+.tab-today {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Empty state */
+.tab-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.6;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.empty-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Category group container */
+.todo-category-group {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.todo-category-group:last-child {
+  border-bottom: none;
+}
+
+/* Category header */
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm);
+  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.category-header:hover {
+  background: #f5f5f5;
+}
+
+.category-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+  flex: 1;
+}
+
+.category-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  background: var(--primary-color);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* Category divider line - blue horizontal line */
+.category-divider {
+  width: 40px;
+  height: 2px;
+  background: var(--primary-color);
+  margin-left: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+/* Category content area */
+.category-content {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm);
+}
+
+/* Type group (sub-grouping within category) */
+.type-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Type subheader (optional - can be hidden with CSS) */
+.type-subheader {
+  padding: var(--spacing-sm) var(--spacing-sm) 4px var(--spacing-sm);
+  display: none; /* Hidden by default, set to 'flex' to show */
+}
+
+.type-name {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Show type subheader when there are multiple types */
+.category-content:has(.type-group:nth-child(n+2)) .type-subheader {
+  display: flex;
+}
+
+/* Todo list within type group */
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Scrollbar styling for the tab container */
+.tab-today::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tab-today::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-today::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+  transition: background 0.2s;
+}
+
+.tab-today::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Firefox scrollbar */
+.tab-today {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .category-header {
+    padding: var(--spacing-sm);
+  }
+
+  .category-title {
+    font-size: 0.85rem;
+  }
+
+  .category-count {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+  }
+
+  .category-content {
+    padding: 4px 0;
+  }
+}

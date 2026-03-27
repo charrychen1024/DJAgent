@@ -1,0 +1,10 @@
+{
+  "chat_history": [
+    {
+      "timestamp": "2026-03-24 14:40:19",
+      "sender": "王经理",
+      "sender_type": "请求分析2条风险运单数据：WLYD9585102（重量异常）和WLYD5678298（超时派送）",
+      "message": "EMP_001"
+    }
+  ]
+}

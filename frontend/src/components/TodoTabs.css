@@ -1,0 +1,279 @@
+/**
+ * TodoTabs Component Styles
+ *
+ * Left sidebar with 3 tabs: Today Todos, Risk Data, Task Tracking
+ * - Collapsible with independent state
+ * - Tab switching with smooth transitions
+ * - Dynamic tab badges showing counts
+ * - Draggable divider for resizing
+ */
+
+.todo-tabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  border-right: 1px solid var(--border-color);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Closed/collapsed state */
+.todo-tabs-closed {
+  width: 48px;
+  padding: 0;
+  align-items: center;
+}
+
+.todo-tabs-closed .toggle-btn {
+  width: 100%;
+  height: 48px;
+  background: white;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.todo-tabs-closed .toggle-btn:hover {
+  background: var(--bg-gray);
+  color: var(--text-primary);
+}
+
+/* Open state */
+.todo-tabs-open {
+  width: 100%;
+  min-width: 260px;
+  max-width: 450px;
+}
+
+/* Tab headers - contains close button + tab navigation */
+.tabs-header {
+  display: flex;
+  align-items: stretch;
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+/* Toggle button for collapse/expand */
+.toggle-btn {
+  width: 44px;
+  height: 44px;
+  background: white;
+  border: none;
+  border-right: 1px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-btn:hover {
+  background: var(--bg-gray);
+  color: var(--text-primary);
+}
+
+/* Tab buttons container */
+.tabs-buttons {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.tabs-buttons::-webkit-scrollbar {
+  height: 2px;
+}
+
+.tabs-buttons::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+}
+
+/* Individual tab button */
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--spacing-md);
+  height: 44px;
+  background: white;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-gray);
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.tab-label {
+  font-weight: 600;
+}
+
+/* Tab badge */
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tab-badge.badge-urgent {
+  background: var(--danger-color);
+  color: white;
+}
+
+.tab-badge.badge-normal {
+  background: var(--warning-color);
+  color: white;
+}
+
+/* Tab content area */
+.tabs-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+/* Placeholder for unimplemented tabs */
+.tab-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.placeholder-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.6;
+}
+
+.placeholder-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.placeholder-description {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Resize overlay - shows during dragging */
+.resize-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  cursor: col-resize;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .todo-tabs-open {
+    max-width: 320px;
+  }
+
+  .tab-btn {
+    padding: 0 var(--spacing-sm);
+    font-size: 0.8rem;
+  }
+
+  .tab-label {
+    flex: 1;
+  }
+
+  .tab-badge {
+    min-width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .todo-tabs-open {
+    max-width: 280px;
+  }
+
+  .tabs-header {
+    height: 44px;
+  }
+
+  .toggle-btn {
+    width: 40px;
+    height: 44px;
+  }
+
+  .tab-btn {
+    padding: 0 8px;
+    height: 44px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .todo-tabs-open {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    max-width: 100%;
+    width: 280px;
+    z-index: 100;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .tabs-header {
+    position: sticky;
+    top: 0;
+    z-index: 101;
+  }
+
+  .tab-btn {
+    font-size: 0.8rem;
+  }
+}

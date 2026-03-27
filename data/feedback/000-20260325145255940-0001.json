@@ -1,0 +1,18 @@
+{
+  "task_id": "000-20260325145255940-0001",
+  "assigned_to_id": "EMP_006",
+  "assigned_to_name": "刘秀英",
+  "chat_history": [
+    {
+      "timestamp": "2026-03-25 14:53:05",
+      "sender": "Agent",
+      "sender_type": "agent",
+      "message": "你好，刘秀英！👋\n\n我是你的风控核查助手。系统为你分配了一个新的风险核查任务，现在需要你的配合完成反馈。\n\n📋 **任务详情：**\n- **任务编号**：000-20260325145255940-0001\n- **运单号**：WLYD5491598\n- **风险类型**：重复下单异常\n- **货物信息**：服装鞋帽，重量4745kg\n- **客户**：李刚物流公司\n\n⚠️ **存在的异常问题：**\n- 运费（2979元）与结算额（5264元）差异较大，差额2285元\n- 发货、揽收、派件、签收时间完全相同（2025-01-18 16:49），这不正常\n\n📸 **需要你提交的材料：**\n\n1. **运单凭证** - 请上传运单截图或照片（包含运单号、费用、时间戳等信息）\n2. **签收单据** - 请上传签收单据或收货单据的照片\n3. **现场照片** - 如有，请提供货物现场的照片作为凭证\n4. **情况说明** - 请简要说明：\n   - 该运单是否存在重复下单？\n   - 物流轨迹各环节的实际时间是什么？\n   - 为什么运费和结算额差异这么大？\n\n⏰ **完成期限**：请尽快完成反馈\n\n请按照上面的要求逐一提供材料，我会帮你审核。有任何问题直接告诉我！\n\n---\n\n```json\n{\n  \"form_id\": \"form_check_000-20260325145\",\n  \"title\": \"重复下单风险核查表\",\n  \"description\": \"请提交相关材料完成运单风险核查\",\n  \"state\": \"editable\",\n  \"sections\": [\n    {\n      \"title\": \"任务基本信息\",\n      \"fields\": [\n        {\n          \"id\": \"task_id\",\n          \"label\": \"任务编号\",\n          \"type\": \"text\",\n          \"required\": true,\n          \"readonly\": true,\n          \"value\": \"000-20260325145255940-0001\"\n        },\n        {\n          \"id\": \"waybill_no\",\n          \"label\": \"运单号\",\n          \"type\": \"text\",\n          \"required\": true,\n          \"readonly\": true,\n          \"value\": \"WLYD5491598\"\n        }\n      ]\n    },\n    {\n      \"title\": \"核查凭证上传\",\n      \"fields\": [\n        {\n          \"id\": \"waybill_photo\",\n          \"label\": \"运单凭证（必需）\",\n          \"type\": \"file_upload\",\n          \"required\": true,\n          \"accept\": \"image/*\",\n          \"hint\": \"请上传运单截图或照片，需清晰显示运单号、费用、时间等信息\"\n        },\n        {\n          \"id\": \"receipt_photo\",\n          \"label\": \"签收单据（必需）\",\n          \"type\": \"file_upload\",\n          \"required\": true,\n          \"accept\": \"image/*\",\n          \"hint\": \"请上传签收单据或收货单据照片\"\n        },\n        {\n          \"id\": \"scene_photo\",\n          \"label\": \"现场照片（可选）\",\n          \"type\": \"file_upload\",\n          \"required\": false,\n          \"accept\": \"image/*\",\n          \"hint\": \"如有货物现场照片，请上传\"\n        }\n      ]\n    },\n    {\n      \"title\": \"核查说明\",\n      \"fields\": [\n        {\n          \"id\": \"check_notes\",\n          \"label\": \"情况说明\",\n          \"type\": \"textarea\",\n          \"required\": true,\n          \"placeholder\": \"请说明：1) 该运单是否重复下单？2) 各环节的实际时间是什么？3) 运费与结算额的差异原因是什么？\",\n          \"validation\": {\"maxLength\": 1000}\n        }\n      ]\n    }\n  ]\n}\n```"
+    }
+  ],
+  "uploaded_files": [],
+  "feedback_summary": "",
+  "status": "已下发",
+  "task_type": "日度",
+  "last_updated": "2026-03-25 14:53:05"
+}

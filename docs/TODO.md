@@ -1,99 +1,232 @@
 # DJAgent 待解决事项
 
-**更新日期**：2026-03-23
+**更新日期**：2026-03-26
+**版本**: v2.4.0-dev
+**当前分支**: `feature/dj-ai-report`
 
 ---
 
-## 2026-03-21 已完成功能
+## 📊 项目整体进度
 
-### 工号系统统一 ✅
-- 任务创建/查询使用 employee_id (如 EMP_001)
-- SSE推送使用 employee_id
-- 前端登录/API调用统一使用 employee_id
+### 已完成功能 ✅
+- ✅ 工号系统统一（使用 employee_id）
+- ✅ 风险数据地区过滤
+- ✅ 任务权限控制
+- ✅ 任务创建和下发基础功能
+- ✅ 任务超期自动检测
+- ✅ Manager Agent 和 Staff Agent 框架
+- ✅ 5个业务 Skill（risk_analyzer, task_creator, receiver_recommender, summary_generator, 核查_guider）
+- ✅ 18个 MCP 工具
+- ✅ SSE 实时事件推送
+- ✅ 任务状态流转规则
+- ✅ 动态表单卡片完整功能（Form Card + FormRenderer + 表单提交）
+- ✅ 表单数据持久化（历史记录）
+- ✅ 文件上传功能（FormData 序列化）
+- ✅ 表单按钮状态机（提交/取消按钮交互）
 
-### 风险数据地区过滤 ✅
-- 风险数据添加 region 字段
-- 总部管理员(EMP_000)可查看所有地区数据
-- 其他用户只能看到自己所属地区的风险数据
+### 部分完成功能 ⚠️
+- ⚠️ 反馈总结生成（Skill已定义，执行流程需验证）
+- ⚠️ Staff Agent 智能审核（基础框架已建立）
+- ⚠️ Manager Agent 智能确认（基础框架已建立）
+- ⚠️ 进度督促提醒（超期检测已实现，定时主动提醒需补充）
 
-### 任务权限控制 ✅
-- 总部管理员可查看所有任务
-- 业务负责人/分析人员只能看到自己创建的任务
-- 一线人员只能看到分配给自己的任务
+### 未实现功能 ❌
+- ❌ 批量操作功能
+- ❌ 数据导出功能
+- ❌ 定时任务/调度系统（用于主动提醒）
 
 ---
 
-## 待开发功能
+## 🔴 关键待处理问题
 
-### 1. 任务状态流转改进 ✅ 已完成
+### Issue-FE-1: SkillSelector 弹窗定位不稳定
+**优先级**: 🔴 **P0 - 用户体验阻塞**
+**状态**: 📋 **分析中，反复重现**
+**预计工作量**: 2-4小时
+**相关文件**: `frontend/src/components/SkillSelector.jsx`, `frontend/src/components/SkillSelector.css`
 
-#### 1.1 状态定义
-| 状态 | 说明 | 触发条件 |
-|------|------|----------|
-| 已创建 | 任务刚创建 | Manager 创建任务 |
-| 已下发 | 任务已下发给执行人 | Manager 确认执行人后 |
-| 反馈中 | 执行人正在处理 | Staff Agent 首次回复消息 |
-| 已完成 | 用户确认完成 | 一线用户点击确认 |
-| 已超时 | 超时未完成 | 超过 feedback_deadline 未完成 |
-| 下发失败 | 任务下发失败 | 任务发送/分配失败 |
+**问题描述**:
+- 点击"使用技能"按钮后，弹窗位置会出现 3 种不同的位置
+- 其中只有一个位置是正确的（紧贴按钮下方）
+- 每次点击时位置都会变动，用户体验差
 
-#### 1.2 状态流转规则
+**症状**:
 ```
-已创建 → 已下发 → 反馈中 → 已完成
-                    ↓
-                  已超时
-已下发/反馈中 → 下发失败（异常时）
+点击1: ✓ 正确位置（紧贴按钮下方）
+点击2: ✗ 位置错误1（偏上）
+点击3: ✗ 位置错误2（又偏上）
+点击4: ✓ 正确位置
+...（重复）
 ```
 
-**规则**：
-- 状态必须连续，不能跳跃
-- 已创建 → 已下发 → 反馈中 → 已完成
-- 已创建 → 已下发 → 已超时
-- 已下发/反馈中 → 下发失败
+**根本原因分析**:
+已尝试的方案及存在的问题：
 
-#### 1.3 超时时间规则
-| 任务类型 | 默认超时 | 可自定义 |
-|----------|----------|----------|
-| 日度 | 24小时 | 是 |
-| 月度 | 72小时 | 是 |
+1. **原始方案（已失败）**：
+   - 使用 requestAnimationFrame + setTimeout
+   - 问题：无法保证一致的位置，存在重排影响
 
-用户可指定反馈截止时间，否则用默认值。
+2. **ResizeObserver 方案（已失败）**：
+   - 监听 dropdown 高度变化直到稳定
+   - 问题：高度持续变化（92px → 236px → 286px → 236px），永远无法满足"两次连续相同"条件
 
-#### 1.4 数据模型改进 ✅ 已完成
-- `sent_time` - 下发时间（Staff Agent 发送成功时记录）
-- `feedback_deadline` - 反馈截止时间
-- `feedback_summary` - AI 生成的反馈总结
+3. **提前保存按钮位置方案（已实施，问题仍存）**：
+   - 在 effect 最开始调用 getBoundingClientRect()
+   - 在 setTimeout 内仅测量高度
+   - 问题：仍然出现三个不同位置
+
+**已验证的事实**：
+- 当 top ≈ 688.6 时，位置正确，说明计算逻辑本身没问题
+- 问题不在定位计算，而在于**什么时候应用 finalPosition state**
+
+**可能的深层原因**（需进一步调查）:
+1. **State 更新时序**：setFinalPosition 可能被多次触发
+2. **Dropdown 多次重渲染**：UI 更新导致高度变化，触发多次定位计算
+3. **Component 卸载/重挂载**：visible 状态切换导致重新计算
+4. **CSS 动画影响**：transition 导致测量时机不同
+
+**已实施的改动**:
+- Commit 5049c49a: 初步改进（失败）
+- Commit 70499070: 保存按钮位置（问题仍存）
+
+**建议下一步调查**:
+1. **添加日志追踪**：在 setFinalPosition 前后添加日志，追踪状态更新次数和顺序
+2. **分析重渲染次数**：检查是否 effect 被执行多次
+3. **考虑使用 useCallback 缓存函数**：防止依赖项变化导致重复执行
+4. **禁用 CSS 动画进行测试**：检查 transition 是否影响测量
+5. **使用 MutationObserver**：监听 DOM 变化而非高度变化
+
+**相关 Commit**:
+- `5049c49a`: fix: SkillSelector 定位修复 - 使用 requestAnimationFrame 精确测量和定位
+- `70499070`: fix: SkillSelector 定位改进 - 保存按钮位置避免重排影响
 
 ---
 
-### 2. Manager Agent 智能确认逻辑
+### Issue-1: 任务创建时序问题 - feedback_deadline 设置时机
+**优先级**: 🔴 **P0 - 立即处理**
+**状态**: 📋 **已分析完整，待实施**
+**预计工作量**: 2-3小时
 
-#### 2.1 操作分类
-| 操作类型 | 是否需要确认 |
-|----------|--------------|
-| 危险操作 | ⚠️ 始终需要确认（删除、修改数据等） |
-| 关键操作 | 🔔 默认需要确认，可根据用户意图跳过 |
-| 普通操作 | ✅ 可自动执行 |
+**问题描述**:
+- Staff Agent 发送的任务通知消息没有包含截止时间
+- 显示 "请尽快完成反馈" 而非具体截止时间
 
-#### 2.2 关键操作列表
-- 创建任务
-- 分配任务
-- 发送消息给一线人员
-- 确认反馈完成
-- 删除任务
+**根本原因分析**:
+```
+当前流程时序问题：
+Manager Agent 创建任务 (status="已创建", feedback_deadline="")
+    ↓ (缺少deadline)
+MCP 工具调用 notify_new_task()
+    ↓ (deadline 仍为空，无法通知截止时间)
+最后才调用 assign_task() 和计算 deadline
+    ↓ (太晚了！已经发送通知给 Agent 了)
+```
 
-#### 2.3 智能判断用户意图
+**修复方案**:
+改变任务创建流程，让 feedback_deadline 在创建时就生成：
 
-**判断逻辑**：
-1. 用户说"帮我创建个任务" → 显示预览 → 询问确认
-2. 用户说"帮我自动创建，不用问我" → 直接执行
-3. 用户说"删除这个任务" → 显示危险提示 → 始终询问确认
-4. 用户说"帮我查一下数据" → 直接执行
+```
+Step 1: 修改 task_manager.py create_task() 函数
+  - 添加自动计算 feedback_deadline 的逻辑
+  - 如果 Manager Agent 未指定，根据 task_type（日度/月度）自动计算
+  - 日度：deadline = now + 24小时
+  - 月度：deadline = now + 72小时
 
-#### 2.4 任务预览内容（创建任务时）
+Step 2: 简化 task_manager.py assign_task() 函数
+  - 移除所有 deadline 计算逻辑
+  - 仅更新 assigned_to_id, assigned_to_name, status
+  - 设置 sent_time = 当前时间
 
-创建任务前，呈现给用户确认：
+Step 3: MCP create_task 工具流程无需改动
+  - 保留 assign_task 调用（简化后自动起效）
+  - MCP 工具会获取完整的 feedback_deadline 信息
+  - notify_new_task() 时已包含截止时间
+```
 
+**相关代码位置**:
+- `backend/agents/tools/task_manager.py` Line 133-171 (create_task)
+- `backend/agents/tools/task_manager.py` Line 341-455 (assign_task)
+- `backend/agents/mcp_server.py` Line 100-173 (MCP 工具集成)
+- `backend/agents/identity/MANAGER_AGENT.md` Line 111-153 (系统提示词)
+
+**依赖**: 无
+**相关Commit**: 无（待实施）
+
+---
+
+### Issue-2: 新增后续问题清单 🔍
+
+#### Issue-2.1: Form Card 中 readonly 字段被锁定 ✅ 已修复
+**优先级**: 🟡 P1
+**状态**: ✅ **已修复 (Fix 11A & 11B)**
+
+**问题**: 任务编号、运单号等 readonly 字段显示为灰色禁用，无法交互
+
+**修复方案**: 区分 readonly 和 disabled
+- readonly 字段使用 HTML `readonly` 属性（可复制，不可编辑）
+- 而非 `disabled` 属性（完全禁用）
+- 提交时保留字段值
+
+**相关Commit**:
+- `c638a0c5`: Fix React key warning in FormRenderer
+- `c638a0c5`: Fix 11A & 11B - 修复Form Card消息文本缺失和readonly字段被锁定
+
+**已解决** ✅
+
+---
+
+## 🎯 高优先级待开发任务
+
+### P0-1: 补充反馈总结生成执行流程 ⚠️ 需验证
+**优先级**: 🔴 **P0**
+**现状**: Skill已定义，但Staff Agent中未调用，需验证与 Issue-1 的兼容性
+**预计工作量**: 2-4小时
+
+**需要做**:
+1. 等待 Issue-1 完成（确保 feedback_deadline 正确设置）
+2. 验证 Staff Agent chat() 中反馈完成的判断逻辑
+3. 补充调用 summary_generator skill
+4. 更新任务状态为"已完成"
+
+**实现示例**:
+```python
+# staff_agent.py 中补充逻辑
+when user_confirms_completion:
+    # 验证反馈是否符合要求
+    is_valid = await self.review_feedback(task_id, feedback_data)
+    if is_valid:
+        # 调用总结 skill
+        summary = await self.summary_generator.execute(task_id)
+        # 更新任务状态
+        update_task_status(task_id, "已完成", feedback_summary=summary)
+```
+
+**依赖**:
+- Issue-1 完成
+- summary_generator Skill
+- Staff Agent 框架
+
+**状态**: ⏳ 等待 Issue-1 完成后实施
+
+---
+
+### P0-2: Manager Agent 智能确认逻辑
+**优先级**: 🔴 **P0**
+**现状**: 基础Agent框架完整，但无确认流程
+**预计工作量**: 4-6小时
+
+**需要做**:
+1. 任务创建前显示预览给用户
+2. 询问用户确认
+3. 危险操作始终需要用户确认
+
+**关键操作列表**:
+- 创建任务 → 显示预览，询问确认
+- 分配任务 → 显示执行人，询问确认
+- 删除任务 → 显示危险提示，始终确认
+- 发送消息 → 显示内容，询问确认
+
+**任务预览示例**:
 ```
 📋 任务预览
 
@@ -111,300 +244,342 @@
 是否确认创建？回复"确认"或"取消"
 ```
 
----
-
-### 3. Staff Agent 角色定义与行为规范
-
-#### 3.1 核心职责
-| 职责 | 说明 |
-|------|------|
-| **指导** | 告诉一线人员需要提供什么材料 |
-| **监督** | 确保反馈符合任务要求 |
-| **提醒** | 督促在规定时间内完成 |
-
-#### 3.2 行为边界（不能做）
-| 边界 | 说明 |
-|------|------|
-| ❌ 非任务对话 | 不能闲聊，只谈当前任务 |
-| ❌ 查询任务消息 | 不能去查任务详情、对话历史 |
-| ❌ 任务外操作 | 只管本次反馈，不做其他事 |
-
-#### 3.3 智能审核反馈内容
-
-**材料审核**：
-| 场景 | 行为 |
-|------|------|
-| 任务要求上传货物图片 | 检查是否上传了图片 |
-| 上传了图片 | 检查图片内容是否与货物相关 |
-| 上传了无关内容 | ❌ 引导重新上传："请上传与运单货物相关的照片" |
-| 没上传图片 | ❌ 提醒上传："任务要求提供货物照片作为凭证" |
-
-**文字说明审核**：
-| 场景 | 行为 |
-|------|------|
-| 任务要求文字说明 | 检查用户回复是否与任务/风险相关 |
-| 回答跑题/胡说八道 | ❌ 引导重新回复："请提供与运单风险相关的说明" |
-| 回答基本相关但不够详细 | ⚠️ 建议补充："可以补充更多细节吗？" |
-| 回答符合要求 | ✅ 可以进入确认完成流程 |
-
-#### 3.4 智能处理"无法完成"的情况
-
-| 场景 | 行为 |
-|------|------|
-| 用户说"我无法提供照片" | 记录原因，继续引导 |
-| 用户说"这个我做不到" | 记录原因，告知后果 |
-| 用户多次无法完成 | 进入确认结束流程 |
-
-**处理流程**：
-```
-用户反馈无法完成
-    ↓
-记录"无法完成原因"
-    ↓
-告知后果：
-"如果无法完成反馈，任务将标记为超期，
-可能影响个人绩效，并将情况上报主管。"
-    ↓
-询问用户：
-"是否确认以此情况结束反馈？"
-    ↓
-用户确认 → 结束反馈任务
-用户继续尝试 → 继续引导
+**实现示例**:
+```python
+# manager_agent.py
+preview = await self._build_task_preview(task_info)
+confirmation = await self.client.query(f"请确认创建此任务:\n{preview}")
+if "确认" in confirmation:
+    await self._create_task_and_notify(task_info)
 ```
 
-#### 3.5 主动确认完成
-
-**触发条件**：
-- 用户提供了符合要求的材料
-- 用户明确表示完成
-
-**流程**：
-```
-用户提交材料/表示完成
-    ↓
-检查是否符合要求
-    ↓
-符合要求 → 主动询问"是否确认完成反馈？"
-    ↓
-用户确认 → 反馈任务结束，更新状态为"反馈完成"
-```
-
-#### 3.6 超期提醒
-
-**发送时机**：任务截止时间前
-
-**提醒内容**：
-> ⚠️ 温馨提醒：您还有 X 小时完成任务反馈。
-> 
-> 超过规定时间未完成反馈，将影响个人绩效，并将情况上报主管。
-> 
-> 请尽快完成反馈，或说明无法完成的原因。
-
-#### 3.7 监督内容提醒
-
-一线人员需要提供：
-- 文字说明（与风险相关）
-- 凭证照片（与任务相关）
-- 核查报告
-- 其他任务要求的材料
+**依赖**: 无
+**相关文件**: `backend/agents/manager_agent.py`
 
 ---
 
-### 4. IM端任务反馈功能（超期判断、反馈记录、总结）
+### P0-3: Staff Agent 反馈内容智能审核
+**优先级**: 🔴 **P0**
+**现状**: 框架存在，但无具体审核逻辑
+**预计工作量**: 6-8小时
 
-#### 4.1 数据模型
+**需要做**:
+1. 检查上传文件类型和内容
+2. 检查文字说明与任务/风险的相关性
+3. 判断是否符合任务要求
 
-**tasks.csv 新增字段**：
-| 字段 | 说明 | 示例 |
-|------|------|------|
-| sent_time | 下发时间 | 2026-03-21 10:00 |
-| feedback_deadline | 反馈截止时间 | 2026-03-22 10:00 |
-| overdue_time | 超期时间 | 2026-03-23 10:00（超期时记录） |
-| feedback_count | 反馈次数 | 5 |
-| feedback_summary | 反馈总结 | （完成后写入） |
+**审核规则**:
 
-**旧任务处理**：以上字段留空即可
+| 场景 | 审核逻辑 | 行为 |
+|------|---------|------|
+| 任务要求图片 | 检查是否上传了相关图片 | ✅ 通过 / ❌ 提醒重新上传 |
+| 任务要求文字说明 | 检查内容是否与任务相关 | ✅ 通过 / ⚠️ 建议补充 / ❌ 引导重新回复 |
+| 上传无关内容 | 检查文件内容 | ❌ 拒收，引导上传正确的文件 |
+| 回答不够详细 | 检查是否包含关键信息 | ⚠️ 建议补充 |
 
-#### 4.2 超时时间规则
-| 任务类型 | 默认超时 | 用户指定 |
-|----------|----------|----------|
-| 日度 | 24小时 | 可在对话中指定 |
-| 月度 | 72小时 | 可在对话中指定 |
+**实现示例**:
+```python
+# staff_agent.py
+async def review_feedback(self, task_id, feedback_content, files):
+    task = await self.get_task(task_id)
+    required_materials = task.get("required_materials", [])
 
-用户指定格式：
-- "今天之内完成" → 今天 24:00
-- "3天内完成" → now + 3天
-- "明天中午前" → 明天 12:00
-- "2026-03-25" → 2026-03-25 23:59
+    # 检查上传文件
+    for material in required_materials:
+        if material["type"] == "image":
+            if not files or not any(f.type.startswith("image") for f in files):
+                return {"valid": False, "hint": "请上传相关货物照片"}
 
-#### 4.3 超期判断逻辑
+    # 检查文字相关性
+    if feedback_content:
+        relevance = await self._check_relevance(feedback_content, task)
+        if relevance < 0.5:
+            return {"valid": False, "hint": "请提供与任务相关的说明"}
 
-**触发时机**：一线人员打开页面时（get_tasks API 调用时）
-
-**判断流程**：
-```
-页面加载 → get_tasks API
-    ↓
-遍历"反馈中"任务
-    ↓
-检查 now() > feedback_deadline ?
-    ↓
-是 → 更新状态为"超期未反馈"
-    ↓
-记录 overdue_time = now()
-    ↓
-返回超期任务列表
+    return {"valid": True}
 ```
 
-#### 4.4 超期后行为
+**依赖**: 无
+**相关文件**: `backend/agents/staff_agent.py`
 
-| 行为 | 说明 |
-|------|------|
-| 状态变更 | 反馈中 → 超期未反馈 |
-| 继续对话 | 允许，但 Agent 提示"任务已超期，无法修改反馈内容" |
-| 反馈内容 | 不能再修改/追加 |
-| 对话记录 | 仍然保存 |
+---
 
-#### 4.5 反馈行为记录
+### P0-4: 任务超时提醒系统（定时任务 + 主动推送）
+**优先级**: 🔴 **P0**
+**现状**: 超期被动检测已实现，但无主动提醒机制
+**预计工作量**: 8-10小时
 
-| 指标 | 说明 | 记录方式 |
-|------|------|----------|
-| feedback_count | 反馈次数 | 每次用户发送消息 +1 |
-| 反馈效率 | 响应速度 | 记录每次反馈的时间间隔 |
-| 反馈内容 | 文字/图片/文件 | 记录附件数量、内容长度 |
-| overdue_time | 超期时长 | 超期时记录 |
+**关键功能**:
+- 后台定时任务（APScheduler，每5分钟检测一次）
+- 即将超时预警（提前1-2小时通知）
+- 已超时通知（超期后立即通知）
+- Manager 手动催促功能
+- 通知状态追踪（防止重复发送）
 
-#### 4.6 反馈完成流程
+**监测范围**: 同时监测"反馈中"和"已下发"两种状态的任务
 
+**实现步骤**（4阶段）:
+
+**第一阶段：基础设施** (1-2小时)
 ```
-用户说"完成"或 Agent 判断符合要求
-    ↓
-Agent 调用总结技能
-    ↓
-生成反馈报告：
-- 反馈次数、耗时
-- 提供的材料清单
-- 核查结果
-- 是否超期
-    ↓
-更新 tasks.csv：
-- status = "反馈完成"
-- feedback_summary = 总结内容
-    ↓
-业务负责人可见总结
+├── 更新 requirements.txt 添加 apscheduler
+├── 创建 timeout_config.py - 配置管理
+└── 创建 notification_state.py - 通知状态管理
 ```
 
-**反馈总结示例**：
+**第二阶段：核心服务** (3-4小时)
 ```
-📊 反馈总结
+├── 创建 timeout_helpers.py - 时间计算工具
+├── 创建 timeout_reminder_service.py - 主服务
+└── 修改 sse_events.py - 新事件类型
+```
+
+**第三阶段：集成** (2-3小时)
+```
+├── 修改 session_manager.py - Agent可用性验证
+├── 修改 app_fastapi.py - 启动/关闭和API端点
+└── 验证日志和异常处理
+```
+
+**第四阶段：测试** (1-2小时)
+```
+├── 创建单元测试
+├── 手动集成测试
+└── 验证SSE前端显示
+```
+
+**新增文件** (5个):
+| 文件 | 说明 | 工作量 |
+|------|------|-------|
+| backend/agents/timeout_config.py | 配置和常量定义 | 0.5h |
+| backend/agents/notification_state.py | 通知状态管理器 | 1h |
+| backend/agents/timeout_helpers.py | 辅助函数 | 0.5h |
+| backend/agents/timeout_reminder_service.py | 核心服务 | 3h |
+| backend/agents/tests/test_timeout_reminder.py | 单元测试 | 1.5h |
+
+**修改文件** (4个):
+| 文件 | 修改内容 | 工作量 |
+|------|---------|-------|
+| backend/app_fastapi.py | startup/shutdown事件 + API端点 | 2h |
+| backend/agents/sse_events.py | 新事件类型 | 0.5h |
+| backend/agents/session_manager.py | 验证Agent可用性 | 0.5h |
+| backend/requirements.txt | 添加apscheduler | 0.1h |
+
+**依赖**: APScheduler, StaffAgent, SSE事件系统
+**相关文件**: `backend/agents/app_fastapi.py`, `backend/agents/sse_events.py`
+
+---
+
+## 🟡 短期优化任务 (P1)
+
+### P1-1: 进度督促提醒
+**优先级**: 🟡 **P1**
+**现状**: 超期检测已实现，但无主动提醒
+**预计工作量**: 4-6小时
+
+**需要做**:
+1. 建立定时任务系统（APScheduler）
+2. 在截止时间前发送提醒（提前1-2小时）
+3. 超期后发送警告（立即通知）
+
+**实现流程**:
+```python
+# 添加后台定时任务
+scheduler.add_job(check_task_deadlines, 'interval', minutes=5)
+
+async def check_task_deadlines():
+    for task in get_pending_tasks():
+        time_until_deadline = task.feedback_deadline - now()
+
+        # 提前1小时提醒
+        if 0 < time_until_deadline < 1小时:
+            await notify_staff_agent(task, "warning")
+
+        # 已超期
+        elif time_until_deadline <= 0:
+            await notify_staff_agent(task, "overdue")
+```
+
+**提醒内容示例**:
+```
+⚠️ 任务即将超期
 
 任务：运单WLYD001风险核查
 执行人：刘伟（EMP_005）
-反馈时间：2026-03-21 10:00 ~ 14:00
-状态：已完成
+截止时间：2026-03-22 18:00（剩余 1小时）
 
-📈 反馈统计：
-- 反馈次数：5次
-- 响应时长：4小时
-- 超期状态：否
-
-📝 反馈内容：
-1. 第一次：文字说明情况
-2. 第二次：上传货物照片
-3. 第三次：补充称重凭证
-4. 第四次：提交核查报告
-5. 第五次：确认完成
-
-✅ 核查结论：
-经核实，运单实际重量与系统记录一致，
-无异常情况。
+请尽快完成反馈，逾期将影响个人绩效。
 ```
 
-#### 4.7 Staff Agent 下发任务提醒内容
-
-```
-您好！您有新任务需要核查：
-
-📋 任务内容：运单WLYD001重量异常
-⏰ 截止时间：2026-03-22 18:00（剩余 XX 小时）
-
-请尽快完成反馈，逾期将影响绩效。
-```
-
-#### 4.8 Staff Agent 超期提醒内容
-
-```
-⚠️ 温馨提醒：该任务已于 XXX 超期！
-
-任务：运单WLYD001风险核查
-执行人：刘伟（EMP_005）
-超期时间：3小时
-
-抱歉，该任务已超期，无法再修改反馈内容。
-如有问题，请联系主管。
-```
-
-#### 4.9 需要修改的代码
-
-| 模块 | 文件 | 修改内容 |
-|------|------|----------|
-| 数据 | tasks.csv | 新增 sent_time, feedback_deadline, overdue_time, feedback_count, feedback_summary 字段 |
-| 创建任务 | agents/mcp_server.py | tool_create_task 解析用户指定时间，设置默认值 |
-| 下发任务 | agents/staff_agent.py | notify_new_task 记录 sent_time，计算 feedback_deadline |
-| 超期检查 | app_fastapi.py | get_tasks API 检查超期，更新状态 |
-| 反馈完成 | agents/staff_agent.py | chat 函数检测完成意图，调用总结 |
-| 总结技能 | agents/skills/summary_generator/ | 生成反馈总结 |
+**依赖**: APScheduler, SSE事件系统
+**相关**: 依赖 P0-4 完成
 
 ---
 
-## 技术债务
+### P1-2: 批量操作功能
+**优先级**: 🟡 **P1**
+**现状**: 暂未实现
+**预计工作量**: 4-6小时
 
-- [x] 文档更新（架构文档、PRD）- 2026-03-23 更新完成
-- [ ] 清理旧任务数据中的空状态
-- [ ] 统一使用 employee_id 后，旧 user_id 相关代码可清理
+**需要做**:
+1. 批量创建任务
+2. 批量分配任务
+3. 批量更新状态
+
+**API设计示例**:
+```python
+@app.post("/api/tasks/batch")
+async def batch_create_tasks(requests: List[TaskRequest]):
+    results = []
+    for req in requests:
+        task = await create_task(req)
+        results.append(task)
+    return {"total": len(results), "created": results}
+
+@app.post("/api/tasks/batch/assign")
+async def batch_assign_tasks(assignments: List[AssignmentRequest]):
+    # 批量分配任务给不同执行人
+    pass
+```
+
+**依赖**: 无
+**相关文件**: `backend/app_fastapi.py`
 
 ---
 
-## 新增待办项：任务反馈时效检查功能
+### P1-3: 数据导出功能
+**优先级**: 🟡 **P1**
+**现状**: 暂未实现
+**预计工作量**: 4-6小时
 
-### 功能概述
-实现任务反馈时效的自动检查和提醒，确保一线人员在规定时间内完成反馈。
+**需要做**:
+1. 导出任务列表（CSV/Excel）
+2. 导出反馈总结报告
+3. 导出风险数据统计
 
-### 状态定义
-| 状态 | 说明 | 触发条件 |
-|------|------|----------|
-| 已创建 | 任务刚创建 | Manager 创建任务 |
-| 已下发 | 任务已下发给执行人 | Manager 确认执行人 |
-| 反馈中 | 执行人正在处理 | Staff Agent 首次回复消息 |
-| 已完成 | 执行人确认完成 | 用户点击确认完成 |
-| 已超时 | 超过截止时间 | 超过 feedback_deadline 未完成 |
-| 下发失败 | 任务下发失败 | Agent 发送失败 |
+**支持格式**: CSV, Excel (.xlsx), PDF
 
-### 超时判断逻辑
-```
-检查时机：get_tasks API 调用时 + Staff Agent 对话时
-判断条件：now() > feedback_deadline 且 status == "反馈中"
-执行动作：
-  1. 更新状态为"已超时"
-  2. 记录 overdue_time
-  3. 继续允许对话但提示超期
-```
+**API设计**:
+```python
+@app.get("/api/export/tasks")
+async def export_tasks(format: str = "csv"):  # csv, xlsx, pdf
+    # 生成导出文件
+    pass
 
-### 状态流转规则
-```
-已创建 → 已下发 → 反馈中 → 已完成
-                    ↓
-                  已超时
-已下发/反馈中 → 下发失败（异常时）
+@app.get("/api/export/feedback-report")
+async def export_feedback_report(task_id: str, format: str = "pdf"):
+    # 生成反馈报告
+    pass
 ```
 
-### 关键字段
-- `sent_time`: 任务下发时间（日度任务自动设置24h，月度任务自动设置72h）
-- `feedback_deadline`: 反馈截止时间
-- `feedback_summary`: AI 生成的反馈总结
+**依赖**: openpyxl (Excel), reportlab (PDF)
+**相关文件**: `backend/app_fastapi.py`
 
-### 需要实现
-- [ ] 超期自动检测（get_tasks API）
-- [ ] 超期提醒（Staff Agent 对话）
-- [ ] 反馈完成时生成总结（feedback_summary）
-- [ ] 进度督促提醒（截止前提醒）
+---
+
+## 🟢 可选功能优化 (P2)
+
+### P2-1: Manager Agent 多步对话优化
+**优先级**: 🟢 **P2**
+
+**需要做**:
+- 支持多轮对话收集信息
+- 更智能的意图识别
+- 更好的错误恢复
+
+---
+
+### P2-2: Staff Agent Skill 自动化增强
+**优先级**: 🟢 **P2**
+
+**需要做**:
+- 基于任务类型自动选择Skill
+- 支持Skill链式调用
+- Skill执行结果验证
+
+---
+
+### P2-3: 性能优化
+**优先级**: 🟢 **P2**
+
+**需要做**:
+- 任务列表分页查询优化
+- 风险数据缓存策略
+- 代理响应时间优化
+
+---
+
+## 📝 技术债务 & 代码质量
+
+### 需要改进的地方
+
+1. **代码注释完善**
+   - [ ] Agent配置部分注释不足
+   - [ ] Skill实现缺少业务说明
+   - [ ] 工具函数需要补充docstring
+
+2. **错误处理增强**
+   - [ ] 任务创建失败的回滚逻辑
+   - [ ] Agent对话异常时的降级方案
+   - [ ] 文件上传错误提示完善
+
+3. **单元测试补充**
+   - [ ] 任务创建流程测试（包含新的 deadline 逻辑）
+   - [ ] 状态流转逻辑测试
+   - [ ] 权限控制测试
+   - [ ] Skill执行测试
+   - [ ] 表单提交端到端测试
+
+4. **日志完善**
+   - [ ] 任务流转日志
+   - [ ] Agent决策日志
+   - [ ] 性能指标日志
+
+---
+
+## 📅 里程碑规划
+
+### V2.4.0 (预计 2026-03-31)
+**主要目标**: 完成核心反馈流程和 Agent 智能功能
+
+- 🔴 Issue-1 修复：feedback_deadline 时序问题
+- 🔴 P0-1: 反馈总结生成执行流程
+- 🔴 P0-2: Manager Agent 智能确认逻辑
+- 🔴 P0-3: Staff Agent 反馈内容审核
+- 🎯 预计完成度: 80%+
+
+### V2.5.0 (预计 2026-04-15)
+**主要目标**: 完成超时管理和数据导出
+
+- 🔴 P0-4: 任务超时提醒系统（定时任务）
+- 🟡 P1-1: 进度督促提醒
+- 🟡 P1-2: 批量操作功能
+- 🟡 P1-3: 数据导出功能
+- 🎯 预计完成度: 95%+
+
+### V3.0.0 (预计 2026-05-01)
+**主要目标**: 完成性能优化和高级功能
+
+- 🟢 P2-1: Manager Agent 多步对话优化
+- 🟢 P2-2: Staff Agent Skill 自动化
+- 🟢 P2-3: 性能优化
+- 📊 数据分析和报表功能
+- 🎯 预计完成度: 98%+
+
+---
+
+## 📋 文档更新记录
+
+**2026-03-26** - 根据最新代码进度完整更新
+- ✅ 精化了 Issue-1 的分析和修复方案
+- ✅ 删除了已完成的功能描述
+- ✅ 更新了优先级和工作量估算
+- ✅ 完整列出了所有高优先级 P0 任务
+- ✅ 清理了过时的 Issue 描述
+
+**2026-03-25** - 初始分析和文档化
+- ✅ 分析了 Issue-1 和 Issue-2
+- ✅ 制定了修复方案
+
+**版本**: v2.4.0-dev
+**状态**: 持续维护中

@@ -1,0 +1,121 @@
+/* FormCardBubble.css - Chat bubble styling for forms */
+
+.form-card-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  animation: bubbleIn 0.3s ease-out;
+}
+
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Agent sent form */
+.form-card-bubble--agent {
+  align-items: flex-start;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.form-card-bubble--agent .bubble-container {
+  max-width: 90%;
+  margin-right: auto;
+}
+
+/* User sent form */
+.form-card-bubble--user {
+  align-items: flex-end;
+  margin-right: 0;
+  margin-left: auto;
+}
+
+.form-card-bubble--user .bubble-container {
+  max-width: 90%;
+  margin-left: auto;
+}
+
+.form-card-bubble--user .form-renderer {
+  background: #e3f2fd;
+  border-color: #90caf9;
+}
+
+.form-card-bubble--user .form-renderer--readonly {
+  background: #f5f5f5;
+}
+
+/* Bubble container */
+.bubble-container {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.form-card-bubble--agent .bubble-container {
+  width: 100%;
+}
+
+/* Timestamp */
+.bubble-timestamp {
+  font-size: 12px;
+  color: #999;
+  padding: 0 4px;
+  text-align: right;
+}
+
+.form-card-bubble--agent .bubble-timestamp {
+  text-align: left;
+}
+
+/* On smaller screens */
+@media (max-width: 768px) {
+  .form-card-bubble {
+    margin: 12px 0;
+  }
+
+  .form-card-bubble--agent .bubble-container,
+  .form-card-bubble--user .bubble-container {
+    max-width: 95%;
+  }
+}
+
+/* Mobile phone */
+@media (max-width: 480px) {
+  .form-card-bubble {
+    margin: 10px 0;
+  }
+
+  .form-card-bubble--agent .bubble-container,
+  .form-card-bubble--user .bubble-container {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .form-card-bubble--agent {
+    margin-right: 8px;
+  }
+
+  .form-card-bubble--user {
+    margin-left: 8px;
+  }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .form-card-bubble--user .form-renderer {
+    background: #1e3a5f;
+    border-color: #0d47a1;
+  }
+
+  .bubble-timestamp {
+    color: #666;
+  }
+}

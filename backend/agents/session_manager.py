@@ -209,3 +209,52 @@ async def close_all_agents():
 def get_session_count() -> int:
     """获取当前会话数量"""
     return len(_sessions)
+
+
+def clear_user_session(user_id: str) -> Dict[str, Any]:
+    """
+    清除特定用户的会话（强制重新加载Skills）
+
+    调用场景：
+    1. 创建/更新/删除 Skill 后
+    2. 用户刷新页面时
+    3. 需要重新加载配置时
+
+    原理：
+    - 关闭 Agent 的 Client 连接
+    - 删除缓存中的 Agent 实例
+    - 下次请求时会重新创建 Agent 并加载新的 Skills
+
+    Args:
+        user_id: 用户ID
+
+    Returns:
+        Dict with success status and message
+    """
+    if user_id in _sessions:
+        agent = _sessions[user_id]
+        try:
+            # 关闭 client
+            if hasattr(agent, 'client') and agent.client:
+                # 尝试异步关闭（如果在事件循环中）
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # 不能直接 await，返回告知需要异步处理
+                        logger.warning(f"[SessionManager] 无法同步关闭 client（事件循环运行中）: {user_id}")
+                    else:
+                        loop.run_until_complete(agent.client.__aexit__(None, None, None))
+                except RuntimeError:
+                    # 没有事件循环
+                    logger.warning(f"[SessionManager] 无法同步关闭 client（没有事件循环）: {user_id}")
+        except Exception as e:
+            logger.error(f"[SessionManager] 关闭 client 失败: {str(e)}")
+
+        # 删除缓存
+        del _sessions[user_id]
+        logger.info(f"[SessionManager] 清除用户会话: {user_id}")
+
+    return {
+        "success": True,
+        "message": f"用户 {user_id} 的会话已清除"
+    }

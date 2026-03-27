@@ -1,0 +1,263 @@
+{
+  "version": "1.0.0",
+  "templates": {
+    "quality_defect": {
+      "title": "质量缺陷核查",
+      "description": "用于报告和核查产品质量缺陷问题",
+      "icon": "bug",
+      "sections": [
+        {
+          "id": "photos",
+          "title": "照片上报",
+          "description": "请上传清晰的缺陷照片",
+          "fields": [
+            {
+              "id": "defect_photo",
+              "type": "file_upload",
+              "label": "缺陷照片",
+              "placeholder": "选择或拖拽上传图片文件",
+              "required": true,
+              "helpText": "支持 JPG、PNG、GIF 格式，不超过 50MB",
+              "accept": "image/*",
+              "maxSize": 52428800
+            }
+          ]
+        },
+        {
+          "id": "description",
+          "title": "问题描述",
+          "description": "详细描述发现的质量问题",
+          "fields": [
+            {
+              "id": "defect_description",
+              "type": "textarea",
+              "label": "缺陷信息",
+              "placeholder": "请简述缺陷的具体表现、影响范围等...",
+              "required": true,
+              "minLength": 10,
+              "maxLength": 500,
+              "helpText": "建议 10-500 个字符"
+            }
+          ]
+        }
+      ]
+    },
+    "inventory_variance": {
+      "title": "库存差异核查",
+      "description": "用于核查和处理库存不符问题",
+      "icon": "boxes",
+      "sections": [
+        {
+          "id": "photos",
+          "title": "现场照片",
+          "fields": [
+            {
+              "id": "variance_photo",
+              "type": "file_upload",
+              "label": "库存差异照片",
+              "required": true,
+              "accept": "image/*",
+              "maxSize": 52428800,
+              "helpText": "请上传现场库存差异的照片"
+            }
+          ]
+        },
+        {
+          "id": "details",
+          "title": "差异详情",
+          "fields": [
+            {
+              "id": "variance_type",
+              "type": "select",
+              "label": "差异类型",
+              "required": true,
+              "options": [
+                {
+                  "value": "missing",
+                  "label": "缺少（系统有，现场无）"
+                },
+                {
+                  "value": "extra",
+                  "label": "多余（系统无，现场有）"
+                },
+                {
+                  "value": "damaged",
+                  "label": "损坏"
+                }
+              ]
+            },
+            {
+              "id": "variance_description",
+              "type": "textarea",
+              "label": "差异说明",
+              "required": true,
+              "minLength": 10,
+              "maxLength": 500,
+              "placeholder": "请详细说明库存差异的原因和处理方案..."
+            }
+          ]
+        }
+      ]
+    },
+    "delivery_exception": {
+      "title": "配送异常处理",
+      "description": "用于处理订单配送过程中的异常情况",
+      "icon": "truck",
+      "sections": [
+        {
+          "id": "exception_photo",
+          "title": "异常证据",
+          "fields": [
+            {
+              "id": "exception_photo_upload",
+              "type": "file_upload",
+              "label": "配送异常照片",
+              "required": true,
+              "accept": "image/*",
+              "maxSize": 52428800
+            }
+          ]
+        },
+        {
+          "id": "exception_info",
+          "title": "异常信息",
+          "fields": [
+            {
+              "id": "exception_type",
+              "type": "select",
+              "label": "异常类型",
+              "required": true,
+              "options": [
+                {
+                  "value": "late_delivery",
+                  "label": "迟到配送"
+                },
+                {
+                  "value": "address_error",
+                  "label": "地址错误"
+                },
+                {
+                  "value": "package_damaged",
+                  "label": "包裹破损"
+                },
+                {
+                  "value": "wrong_item",
+                  "label": "错发商品"
+                }
+              ]
+            },
+            {
+              "id": "exception_description",
+              "type": "textarea",
+              "label": "异常说明",
+              "required": true,
+              "minLength": 10,
+              "maxLength": 500
+            }
+          ]
+        }
+      ]
+    },
+    "safety_incident": {
+      "title": "安全事件报告",
+      "description": "用于报告和处理工作中的安全事件",
+      "icon": "alert",
+      "sections": [
+        {
+          "id": "incident_photo",
+          "title": "事件照片",
+          "fields": [
+            {
+              "id": "incident_photo_upload",
+              "type": "file_upload",
+              "label": "事件现场照片",
+              "required": true,
+              "accept": "image/*",
+              "maxSize": 52428800
+            }
+          ]
+        },
+        {
+          "id": "incident_details",
+          "title": "事件详情",
+          "fields": [
+            {
+              "id": "incident_description",
+              "type": "textarea",
+              "label": "事件描述",
+              "required": true,
+              "minLength": 20,
+              "maxLength": 500,
+              "placeholder": "详细描述发生的安全事件..."
+            },
+            {
+              "id": "people_involved",
+              "type": "text",
+              "label": "涉及人员",
+              "placeholder": "请输入涉及人员名单"
+            }
+          ]
+        }
+      ]
+    },
+    "compliance_violation": {
+      "title": "合规性违规",
+      "description": "用于报告和处理合规性相关违规",
+      "icon": "clipboard",
+      "sections": [
+        {
+          "id": "violation_evidence",
+          "title": "违规证据",
+          "fields": [
+            {
+              "id": "violation_photo",
+              "type": "file_upload",
+              "label": "违规证据照片",
+              "required": true,
+              "accept": "image/*",
+              "maxSize": 52428800
+            }
+          ]
+        },
+        {
+          "id": "violation_info",
+          "title": "违规信息",
+          "fields": [
+            {
+              "id": "violation_type",
+              "type": "select",
+              "label": "违规类型",
+              "required": true,
+              "options": [
+                {
+                  "value": "documentation",
+                  "label": "文件记录不完整"
+                },
+                {
+                  "value": "procedure",
+                  "label": "操作流程不符"
+                },
+                {
+                  "value": "equipment",
+                  "label": "设备使用不当"
+                },
+                {
+                  "value": "other",
+                  "label": "其他"
+                }
+              ]
+            },
+            {
+              "id": "violation_description",
+              "type": "textarea",
+              "label": "违规说明",
+              "required": true,
+              "minLength": 10,
+              "maxLength": 500
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

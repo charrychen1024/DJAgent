@@ -1,0 +1,267 @@
+/**
+ * TaskTrackingTab Component Styles
+ *
+ * Displays task tracking with collapsible task list
+ */
+
+.task-tracking-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  background: white;
+}
+
+/* Task search bar */
+.task-search-bar {
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.task-search-input {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: white;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.task-search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.task-search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* Task list header */
+.task-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.task-list-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.collapse-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.collapse-btn:hover {
+  background: var(--bg-gray);
+  border-color: var(--primary-color);
+}
+
+.collapse-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+
+.collapse-icon.collapsed {
+  transform: rotate(180deg);
+}
+
+/* Task list */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Task card */
+.task-card {
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.task-card:hover {
+  background: var(--bg-gray);
+}
+
+.task-card.selected {
+  background: var(--primary-light);
+  border-left: 3px solid var(--primary-color);
+  padding-left: calc(var(--spacing-sm) - 3px);
+}
+
+/* Task header: ID + status */
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: 6px;
+}
+
+.task-id {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-status {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Task status styles */
+.task-status.已超时 {
+  background: var(--danger-color);
+  color: white;
+}
+
+.task-status.处理中 {
+  background: var(--warning-color);
+  color: white;
+}
+
+.task-status.已完成 {
+  background: var(--success-color);
+  color: white;
+}
+
+.task-status.未开始 {
+  background: var(--bg-gray);
+  color: var(--text-secondary);
+}
+
+/* Task summary */
+.task-summary {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+}
+
+/* Task info */
+.task-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.task-info span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-deadline {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+/* Loading and empty states */
+.loading-tip,
+.empty-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+/* Scrollbar styling */
+.task-tracking-tab::-webkit-scrollbar {
+  width: 6px;
+}
+
+.task-tracking-tab::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-tracking-tab::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+}
+
+.task-tracking-tab::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Firefox scrollbar */
+.task-tracking-tab {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .task-card {
+    padding: 8px var(--spacing-sm);
+  }
+
+  .task-id {
+    font-size: 0.75rem;
+  }
+
+  .task-summary {
+    font-size: 0.75rem;
+  }
+
+  .task-info {
+    gap: 6px;
+  }
+
+  .task-info span {
+    font-size: 0.65rem;
+  }
+}

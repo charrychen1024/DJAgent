@@ -6,6 +6,7 @@ import os
 import asyncio
 import csv
 import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict
@@ -55,8 +56,22 @@ app.add_middleware(
 # 数据目录
 DATA_DIR = Path(__file__).parent.parent / "data"
 
+# ============ 常量定义 ============
+
+# 文件限制
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+ALLOWED_FILE_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png', '.docx', '.doc', '.xlsx', '.xls'}
+
 # 导入 SSE 事件管理器
 from agents.sse_events import sse_manager
+
+# 导入 Skills API 路由
+try:
+    from api.skills_api import router as skills_router
+    app.include_router(skills_router)
+    logger.info("[API] ✅ Skill 管理 API 已注册")
+except ImportError as e:
+    logger.warning(f"[API] Skills API 导入失败，某些功能不可用: {e}")
 
 
 def read_csv_file(filename: str, data_dir: Path = None) -> List[Dict]:
@@ -131,20 +146,33 @@ async def get_tasks(employee_id: Optional[str] = None, task_type: Optional[str] 
         tasks = [t for t in tasks if t.get("task_type") == task_type]
 
     # 超期判断：检查"反馈中"状态的任务是否已超时
-    from datetime import datetime
     now = datetime.now()
     for task in tasks:
         if task.get("status") == "反馈中":
             deadline_str = task.get("feedback_deadline", "")
             if deadline_str:
-                try:
-                    deadline = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M:%S")
+                deadline = None
+                # 尝试多种日期格式
+                for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"]:
+                    try:
+                        deadline = datetime.strptime(deadline_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+
+                if deadline:
                     if now > deadline:
                         task["status"] = "已超时"
-                        # 更新CSV中的状态
-                        _update_task_status(task["task_id"], "已超时")
-                except ValueError:
-                    pass
+                        # 异步更新CSV中的状态
+                        try:
+                            _update_task_status(task["task_id"], "已超时")
+                            logger.info(f"[TASK] 任务 {task['task_id']} 已更新为超时")
+                        except Exception as e:
+                            logger.error(f"[TASK] 更新任务状态失败: {e}")
+                else:
+                    logger.warning(f"[TASK] 任务 {task['task_id']} deadline 格式无法识别: {deadline_str}")
+            else:
+                logger.debug(f"[TASK] 任务 {task['task_id']} 无 feedback_deadline 设置")
 
     if employee_id:
         users = read_csv_file("users.csv")
@@ -325,8 +353,6 @@ async def chat(request: Request):
             logger.info(f"[API] 共收到 {len(files)} 个文件")
 
         # 保存文件到临时目录
-        import tempfile
-        import os
         temp_dir = tempfile.mkdtemp()
         saved_files = []
         for f in files:
@@ -362,19 +388,306 @@ async def chat(request: Request):
     else:
         try:
             agent = await get_or_create_manager_agent(employee_id, username)
-            response_text = await agent.chat(message, files=saved_files if saved_files else None)
+            response = await agent.chat(message, files=saved_files if saved_files else None)
+
+            # 处理两种响应格式：
+            # 1. 简单字符串响应（旧格式）
+            # 2. 包含消息类型的结构化响应（新格式）
+            if isinstance(response, dict):
+                response_data = response
+            else:
+                # 兼容旧格式：直接返回文本
+                response_data = {
+                    "type": "text",
+                    "message": response,
+                    "sender": "agent"
+                }
+
             logger.info(f"[API] ManagerAgent 回复成功")
+            return response_data
         except Exception as e:
             logger.error(f"[ERROR] ManagerAgent 调用失败: {str(e)}")
-            response_text = "抱歉，我现在无法回答您的问题，请稍后再试。"
+            return {
+                "type": "text",
+                "message": "抱歉，我现在无法回答您的问题，请稍后再试。",
+                "sender": "agent",
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
 
     return {
+        "type": "text",
         "message": response_text,
+        "sender": "agent",
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
-# ============ 风险数据接口 ============
+# ============ 表单处理接口 ============
+
+
+@app.post("/api/form/submit")
+async def submit_form(request: Request):
+    """处理表单提交
+
+    现在支持FormData格式（包含文件上传）
+
+    前端发送：
+    FormData {
+        "form_id": "form_xxx",
+        "data_field1": "value1",
+        "data_field2": File,
+        "employee_id": "EMP_010",
+        "username": "周芳",
+        "task_id": "004-xxx"
+    }
+    """
+    try:
+        # Fix 17: 支持FormData格式（包含文件）
+        content_type = request.headers.get("content-type", "")
+
+        form_id = ""
+        form_data = {}
+        employee_id = "manager_default"
+        username = "业务负责人"
+        task_id = ""
+        upload_dir = None
+
+        if "multipart/form-data" in content_type:
+            # 处理FormData格式
+            form = await request.form()
+            form_id = form.get("form_id", "")
+            employee_id = form.get("employee_id", employee_id)
+            username = form.get("username", username)
+            task_id = form.get("task_id", "")
+
+            # 提取表单字段 (data_xxx 格式)
+            from fastapi import UploadFile
+            import tempfile
+            import os
+
+            for key, value in form.items():
+                if key.startswith("data_"):
+                    field_name = key[5:]  # 移除 "data_" 前缀
+
+                    try:
+                        # Fix 18: 严格检查UploadFile类型，安全处理二进制数据
+                        if isinstance(value, UploadFile):
+                            # 保存文件
+                            temp_dir = tempfile.mkdtemp()
+                            file_path = os.path.join(temp_dir, value.filename or f"file_{field_name}")
+                            content = await value.read()
+                            with open(file_path, 'wb') as f:
+                                f.write(content)
+                            form_data[field_name] = {
+                                "type": "file",
+                                "filename": value.filename,
+                                "path": file_path,
+                                "size": len(content)
+                            }
+                            logger.info(f"[API] 收到文件: {field_name} = {value.filename} ({len(content)} bytes)")
+                        else:
+                            # 处理普通文本字段（不试图转换其他类型对象）
+                            if isinstance(value, str):
+                                form_data[field_name] = value
+                            else:
+                                # 其他类型忽略或转为空
+                                form_data[field_name] = ""
+                                logger.warning(f"[API] 跳过非字符串字段: {field_name} (type={type(value).__name__})")
+                    except Exception as e:
+                        logger.error(f"[API] 处理字段 {field_name} 失败: {e}")
+                        form_data[field_name] = ""
+        else:
+            # 处理JSON格式（向后兼容）
+            body = await request.json()
+            form_id = body.get("form_id", "")
+            form_data = body.get("data", {})
+            employee_id = body.get("employee_id", "manager_default")
+            username = body.get("username", "业务负责人")
+            task_id = body.get("task_id", "")
+
+        logger.info(f"[API] 表单提交: {form_id} by {username}, task_id={task_id}, 字段数={len(form_data)}")
+
+        if not form_id:
+            return {
+                "success": False,
+                "error": "缺少form_id"
+            }
+
+        # Fix 16: 保存表单数据到任务反馈文件
+        from pathlib import Path
+        import json as json_module
+        from datetime import datetime as dt_now
+
+        if task_id:
+            try:
+                data_dir = Path(__file__).parent.parent / "data" / "feedback"
+                feedback_file = data_dir / f"{task_id}.json"
+
+                feedback_data = {}
+                if feedback_file.exists():
+                    with open(feedback_file, "r", encoding="utf-8") as f:
+                        feedback_data = json_module.load(f)
+
+                if "chat_history" not in feedback_data:
+                    feedback_data["chat_history"] = []
+
+                # 添加表单提交记录（文件信息只保存元数据，不保存路径）
+                form_submission = {
+                    "timestamp": dt_now.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "sender": username,
+                    "sender_type": "user",
+                    "message": f"提交表单: {form_id}",
+                    "message_type": "form_submission",
+                    "form_id": form_id,
+                    "form_data": {
+                        k: v.get("filename") if isinstance(v, dict) and v.get("type") == "file" else v
+                        for k, v in form_data.items()
+                    }
+                }
+                feedback_data["chat_history"].append(form_submission)
+                feedback_data["last_updated"] = dt_now.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                # 保存回文件
+                with open(feedback_file, "w", encoding="utf-8") as f:
+                    json_module.dump(feedback_data, f, ensure_ascii=False, indent=2)
+
+                logger.info(f"[API] 表单数据已保存到 {task_id}")
+            except Exception as e:
+                logger.error(f"[API] 保存表单数据失败: {e}")
+
+        # Fix 16: 调用StaffAgent处理表单数据并生成回复
+        try:
+            from agents.session_manager import get_or_create_staff_agent
+
+            agent = await get_or_create_staff_agent(employee_id, username)
+            agent.current_task_id = task_id
+
+            # 构建表单提交的AI处理提示
+            form_data_str = "\n".join([
+                f"- {k}: {v.get('filename') if isinstance(v, dict) and v.get('type') == 'file' else v}"
+                for k, v in form_data.items()
+            ])
+
+            ai_prompt = f"""用户已提交表单反馈，请确认收到并简要总结提交的内容。
+
+表单ID: {form_id}
+提交的数据:
+{form_data_str}
+
+请用友好、简洁的语气确认收到这些信息，并根据需要给出下一步建议。"""
+
+            # 调用Agent生成回复
+            ai_response = await agent.chat(
+                ai_prompt,
+                context={"task_id": task_id, "form_id": form_id}
+            )
+
+            logger.info(f"[API] Agent已处理表单数据: {form_id}")
+
+            # 保存Agent回复到反馈文件
+            if task_id:
+                try:
+                    data_dir = Path(__file__).parent.parent / "data" / "feedback"
+                    feedback_file = data_dir / f"{task_id}.json"
+                    feedback_data = {}
+                    if feedback_file.exists():
+                        with open(feedback_file, "r", encoding="utf-8") as f:
+                            feedback_data = json_module.load(f)
+
+                    if "chat_history" not in feedback_data:
+                        feedback_data["chat_history"] = []
+
+                    agent_reply = {
+                        "timestamp": dt_now.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "sender": "Agent",
+                        "sender_type": "agent",
+                        "message": ai_response,
+                        "message_type": "text",
+                        "form_id": form_id
+                    }
+                    feedback_data["chat_history"].append(agent_reply)
+
+                    with open(feedback_file, "w", encoding="utf-8") as f:
+                        json_module.dump(feedback_data, f, ensure_ascii=False, indent=2)
+
+                    logger.info(f"[API] Agent回复已保存到 {task_id}")
+                except Exception as e:
+                    logger.error(f"[API] 保存Agent回复失败: {e}")
+
+            return {
+                "success": True,
+                "message": f"表单已收到并处理",
+                "agent_reply": ai_response,
+                "form_id": form_id
+            }
+
+        except Exception as e:
+            logger.error(f"[API] Agent处理表单失败: {e}")
+            return {
+                "success": True,
+                "message": f"表单已保存",
+                "error": f"处理失败: {str(e)}",
+                "form_id": form_id
+            }
+
+    except Exception as e:
+        logger.error(f"[ERROR] 表单提交失败: {str(e)}")
+        return {
+            "success": False,
+            "error": f"表单提交失败: {str(e)}"
+        }
+
+
+@app.post("/api/form/validate")
+async def validate_form(request: Request):
+    """验证表单数据
+
+    请求体：
+    {
+        "form_id": "form_xxx",
+        "schema": {...},
+        "data": {...}
+    }
+    """
+    try:
+        body = await request.json()
+        form_id = body.get("form_id", "")
+        form_data = body.get("data", {})
+        schema = body.get("schema", {})
+
+        logger.info(f"[API] 验证表单: {form_id}")
+
+        if not form_id:
+            return {
+                "success": False,
+                "error": "缺少form_id"
+            }
+
+        # 从 Agent 获取 form_generator Skill
+        from agents.skills.form_generator.skill import FormGeneratorSkill
+
+        form_skill = FormGeneratorSkill()
+
+        # 执行表单验证
+        result = await form_skill.execute(
+            {
+                "action": "validate",
+                "form_id": form_id,
+                "data": form_data,
+                "schema": schema
+            },
+            {}
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"[ERROR] 表单验证失败: {str(e)}")
+        return {
+            "success": False,
+            "error": f"表单验证失败: {str(e)}"
+        }
+
 
 
 @app.get("/api/risk-data")
@@ -597,15 +910,39 @@ async def upload_task_file(task_id: str, request: Request):
 
         filename = form.get("filename")
         if not filename:
-            filename = getattr(file, "filename", "uploaded_file")
+            filename = getattr(file, "filename", f"file_{datetime.now().timestamp()}")
 
+        # 验证文件扩展名
+        file_ext = Path(filename).suffix.lower()
+        if file_ext not in ALLOWED_FILE_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"不支持的文件类型: {file_ext}")
+
+        # 验证文件大小 (在读取前检查)
         upload_dir = DATA_DIR / "uploads" / task_id
         upload_dir.mkdir(parents=True, exist_ok=True)
 
+        file_content = await file.read()
+        if len(file_content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"文件过大（{len(file_content)/1024/1024:.1f}MB > {MAX_FILE_SIZE/1024/1024:.0f}MB）"
+            )
+
+        # 验证文件名安全性（防路径穿越）
+        filename = os.path.basename(filename)
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise HTTPException(status_code=400, detail="文件名非法")
+
         file_path = upload_dir / filename
-        content = await file.read()
+
+        # 最终安全检查：确认路径在安全区域内
+        try:
+            file_path.resolve().relative_to(upload_dir.resolve())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="文件保存路径非法")
+
         with open(file_path, "wb") as f:
-            f.write(content)
+            f.write(file_content)
 
         feedback_path = DATA_DIR / "feedback" / f"{task_id}.json"
         feedback_data = {}
@@ -628,6 +965,7 @@ async def upload_task_file(task_id: str, request: Request):
         with open(feedback_path, "w", encoding="utf-8") as f:
             json.dump(feedback_data, f, ensure_ascii=False, indent=2)
 
+        logger.info(f"[API] 文件上传成功: {filename} ({len(file_content)/1024:.1f}KB)")
         return {
             "success": True,
             "message": f"文件 {filename} 上传成功",
@@ -703,8 +1041,6 @@ async def send_message(task_id: str, request: Request):
         # 处理文件上传
         files = form.getlist("files")
         if files:
-            import tempfile
-            import os
             temp_dir = tempfile.mkdtemp()
             saved_files = []
             file_info_list = []  # 保存文件名和类型信息
@@ -773,6 +1109,40 @@ async def send_message(task_id: str, request: Request):
         "message_type": "text",
     }
 
+    # Fix 4: Extract form JSON from ai_response (if present)
+    import re
+    agent_reply_type = "text"
+    agent_reply_schema = None
+    agent_reply_form_id = None
+    agent_reply_text = ai_response
+
+    # 尝试从markdown代码块中提取JSON表单定义
+    pattern = r'```json\s*([\s\S]*?)\s*```'
+    match = re.search(pattern, ai_response)
+
+    if match:
+        json_text = match.group(1).strip()
+        try:
+            schema = json.loads(json_text)
+            # 验证必需字段
+            if all(key in schema for key in ['form_id', 'title', 'state', 'sections']):
+                agent_reply_schema = schema
+                agent_reply_form_id = schema.get('form_id')
+                agent_reply_type = "form_card"
+                # 移除JSON代码块，仅保留文本消息
+                agent_reply_text = re.sub(pattern, '', ai_response).strip()
+                logger.info(f"[API] 消息端点提取表单: form_id={agent_reply_form_id}")
+        except json.JSONDecodeError as e:
+            logger.debug(f"[API] JSON解析失败: {e}")
+
+    # 更新agent_reply结构
+    agent_reply["message"] = agent_reply_text
+    agent_reply["type"] = agent_reply_type
+    agent_reply["message_type"] = agent_reply_type  # Fix 13: 同时更新 message_type，确保持久化时一致
+    if agent_reply_type == "form_card":
+        agent_reply["schema"] = agent_reply_schema
+        agent_reply["form_id"] = agent_reply_form_id
+
     feedback_path = DATA_DIR / "feedback" / f"{task_id}.json"
     feedback_data = {}
 
@@ -790,6 +1160,24 @@ async def send_message(task_id: str, request: Request):
     feedback_data["chat_history"].append(agent_reply)
     feedback_data["task_id"] = task_id
     feedback_data["last_updated"] = timestamp
+
+    # 更新任务状态为"反馈中"（一线人员开始反馈）
+    current_status = feedback_data.get("status", "已下发")
+    if current_status == "已下发":
+        # 仅当状态为"已下发"时才转换为"反馈中"
+        feedback_data["status"] = "反馈中"
+        try:
+            from agents.tools.task_manager import update_task_status
+            result = update_task_status(
+                task_id=task_id,
+                status="反馈中"
+            )
+            if "error" not in result:
+                logger.info(f"[API] 任务 {task_id} 状态已更新为：反馈中")
+            else:
+                logger.error(f"[API] 更新任务状态失败: {result.get('error')}")
+        except Exception as e:
+            logger.error(f"[API] 更新任务状态异常: {str(e)}")
 
     feedback_path.parent.mkdir(parents=True, exist_ok=True)
     with open(feedback_path, "w", encoding="utf-8") as f:
@@ -1012,8 +1400,6 @@ async def send_chat_message(chat_id: str, request: Request):
         username = form.get("username", "业务负责人")
         
         files = form.getlist("files")
-        import tempfile
-        import os
         temp_dir = tempfile.mkdtemp()
         saved_files = []
         for f in files:
@@ -1205,11 +1591,20 @@ async def notify_staff_task(task_id: str, request: Request):
 
         if result.get("success"):
             logger.info(f"[API] >>> notify-staff 成功: {result.get('message')[:100]}...")
-            return {
+            # Fix 3: Forward complete structure with type, schema, form_id
+            response_data = {
                 "success": True,
+                "type": result.get("type", "text"),
                 "message": result.get("message"),
-                "task_id": task_id
+                "task_id": task_id,
+                "timestamp": result.get("timestamp")
             }
+            # 如果是表单类型，添加schema和form_id
+            if result.get("type") == "form_card":
+                response_data["schema"] = result.get("schema")
+                response_data["form_id"] = result.get("form_id")
+                logger.info(f"[API] 返回表单卡片: form_id={response_data.get('form_id')}")
+            return response_data
         else:
             logger.error(f"[API] >>> notify-staff 失败: {result.get('error')}")
             raise HTTPException(status_code=500, detail=result.get("error", "发送失败"))

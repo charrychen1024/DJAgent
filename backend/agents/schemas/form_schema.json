@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FormSchema Definition",
+  "description": "JSON Schema for form rendering configuration in IM chat bubbles",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["id", "title", "state", "sections"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the form",
+      "pattern": "^form_[a-z0-9_]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Form title displayed in the card",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional form description or instructions",
+      "maxLength": 500
+    },
+    "state": {
+      "type": "string",
+      "enum": ["editable", "readonly"],
+      "description": "Form state: editable or readonly (after deadline or submission)"
+    },
+    "sections": {
+      "type": "array",
+      "description": "Array of form sections",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "fields"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the section",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "title": {
+            "type": "string",
+            "description": "Section title",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional section description",
+            "maxLength": 300
+          },
+          "fields": {
+            "type": "array",
+            "description": "Array of form fields in this section",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/definitions/FormField"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "description": "Form action buttons configuration",
+      "properties": {
+        "showSubmit": {
+          "type": "boolean",
+          "default": true
+        },
+        "showCancel": {
+          "type": "boolean",
+          "default": true
+        },
+        "showModify": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show modify button for readonly forms"
+        },
+        "submitText": {
+          "type": "string",
+          "default": "提交"
+        },
+        "cancelText": {
+          "type": "string",
+          "default": "取消"
+        },
+        "modifyText": {
+          "type": "string",
+          "default": "修改"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "FormField": {
+      "type": "object",
+      "required": ["id", "type", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique field identifier",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "email",
+            "textarea",
+            "number",
+            "select",
+            "radio",
+            "checkbox",
+            "file_upload",
+            "hidden"
+          ],
+          "description": "Field type"
+        },
+        "label": {
+          "type": "string",
+          "description": "Field label displayed to user",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Placeholder text for input fields",
+          "maxLength": 200
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the field is required"
+        },
+        "readonly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the field is read-only"
+        },
+        "helpText": {
+          "type": "string",
+          "description": "Help text displayed below the field",
+          "maxLength": 300
+        },
+        "defaultValue": {
+          "type": ["string", "number", "boolean", "null"],
+          "description": "Default value for the field"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["text", "email", "textarea", "number"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "minLength": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxLength": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regex pattern for validation"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["select", "radio", "checkbox"]
+              }
+            }
+          },
+          "then": {
+            "required": ["options"],
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["value", "label"],
+                  "properties": {
+                    "value": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "multiple": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "file_upload"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "accept": {
+                "type": "string",
+                "description": "Accepted file types (MIME types or extensions)",
+                "examples": ["image/*", ".pdf", "image/*, .pdf, .docx"]
+              },
+              "maxSize": {
+                "type": "integer",
+                "description": "Maximum file size in bytes",
+                "minimum": 1
+              },
+              "multiple": {
+                "type": "boolean",
+                "default": false,
+                "description": "Allow multiple file uploads"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
