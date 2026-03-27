@@ -1,0 +1,24 @@
+{
+  "chat_id": "CHAT_6968c120ae16",
+  "user_id": "001",
+  "username": "王经理",
+  "title": "测试消息",
+  "created_at": "2026-03-19 08:54:46",
+  "updated_at": "2026-03-19 08:56:34",
+  "messages": [
+    {
+      "timestamp": "2026-03-19 08:56:28",
+      "sender": "王经理",
+      "message": "测试消息",
+      "message_type": "text",
+      "sender_type": "user"
+    },
+    {
+      "timestamp": "2026-03-19 08:56:34",
+      "sender": "Agent",
+      "message": "我已收到您的请求，正在处理中...",
+      "message_type": "text",
+      "sender_type": "agent"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "task_id": "004-20260325221921729-0001",
+  "assigned_to_id": "EMP_012",
+  "assigned_to_name": "陈娜",
+  "chat_history": [
+    {
+      "timestamp": "2026-03-25 22:19:37",
+      "sender": "Agent",
+      "sender_type": "agent",
+      "message": "你好，陈娜！👋\n\n我是你的风控核查助手，现在有一个新的任务需要你处理。\n\n📋 **任务详情：**\n\n您有一个运单号为 **WLYD3197566** 的核查任务。这份运单存在几个异常情况：\n- ❌ 派送超时且已退回\n- ❌ 时间数据错乱（发货、揽收、签收时间逻辑混乱）\n- ❌ 运费结算异常（结算金额异常高，增幅163%）\n\n**我们需要你核查以下内容：**\n1. 运单的实际派送情况\n2. 为什么会退回\n3. 结算金额是否合理\n\n---\n\n**📤 请您提交以下材料：**\n\n1. **运单截图** 📸 - 提供运单详情页面的截图（包含时间信息、金额等）\n2. **派送单据** 📄 - 如有相关的签收单、退回单等凭证，请上传\n3. **情况说明** ✍️ - 简要说明：\n   - 实际派送经过（是否确实超时？）\n   - 为什么退回（客户原因还是其他？）\n   - 结算金额有何异常（你了解的情况）\n\n---\n\n**⏰ 请尽快完成反馈** - 这样可以帮助我们快速处理这个异常订单！\n\n请开始上传材料，或如有疑问可以直接告诉我。👇",
+      "message_type": "form_card",
+      "schema": {
+        "form_id": "form_check_004-20260325221921",
+        "title": "运单异常核查表",
+        "description": "请提交运单截图、派送单据及情况说明，帮助完成核查",
+        "state": "editable",
+        "sections": [
+          {
+            "title": "任务基本信息",
+            "fields": [
+              {
+                "id": "task_id",
+                "label": "任务编号",
+                "type": "text",
+                "required": true,
+                "readonly": true,
+                "value": "004-20260325221921729-0001"
+              },
+              {
+                "id": "waybill_no",
+                "label": "运单号",
+                "type": "text",
+                "required": true,
+                "readonly": true,
+                "value": "WLYD3197566"
+              }
+            ]
+          },
+          {
+            "title": "核查材料提交",
+            "fields": [
+              {
+                "id": "waybill_screenshot",
+                "label": "运单截图",
+                "type": "file_upload",
+                "required": true,
+                "accept": "image/*",
+                "description": "请上传运单详情页面的截图，包含时间、金额等信息"
+              },
+              {
+                "id": "delivery_documents",
+                "label": "派送单据（签收单/退回单等）",
+                "type": "file_upload",
+                "required": false,
+                "accept": ".pdf,.doc,.docx,.jpg,.jpeg,.png",
+                "description": "如有相关单据，请上传"
+              },
+              {
+                "id": "situation_explanation",
+                "label": "情况说明",
+                "type": "textarea",
+                "required": true,
+                "placeholder": "请说明：1) 实际派送情况 2) 退回原因 3) 对结算异常的了解",
+                "validation": {
+                  "maxLength": 1000
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "form_id": "form_check_004-20260325221921"
+    },
+    {
+      "timestamp": "2026-03-25 22:29:51",
+      "sender": "陈娜",
+      "message": "1",
+      "message_type": "text",
+      "files": null
+    },
+    {
+      "timestamp": "2026-03-25 22:29:51",
+      "sender": "Agent",
+      "message": "你好陈娜，我看到你发了\"1\"，是想开始提交材料吗？👋\n\n没问题！我来帮你逐步完成这个核查任务。\n\n**现在请你依次提交以下材料：**\n\n1️⃣ **运单截图** - 请拍照或截图运单WLYD3197566的详情页面，包含：\n   - 发货时间、揽收时间、签收时间\n   - 运费金额和结算金额\n   - 运单状态（已退回）\n\n2️⃣ **派送单据** - 如果有签收单、退回单等单据，请一起上传\n\n3️⃣ **情况说明** - 用文字简要说明：\n   - 这份运单实际派送经过如何？\n   - 为什么会退回？\n   - 你了解的结算异常情况\n\n**可以先从上传运单截图开始，有问题随时告诉我！** 📸",
+      "message_type": "text",
+      "type": "text"
+    },
+    {
+      "timestamp": "2026-03-25 22:34:50",
+      "sender": "陈娜",
+      "sender_type": "user",
+      "message": "提交表单: form_check_004-20260325221921",
+      "message_type": "form_submission",
+      "form_id": "form_check_004-20260325221921",
+      "form_data": {
+        "task_id": "004-20260325221921729-0001",
+        "waybill_no": "WLYD3197566",
+        "waybill_screenshot": "",
+        "situation_explanation": "无异常"
+      }
+    },
+    {
+      "timestamp": "2026-03-25 22:34:59",
+      "sender": "Agent",
+      "sender_type": "agent",
+      "message": "我收到您的反馈了！让我确认一下提交的内容：\n\n**反馈内容摘要：**\n- 运单号：WLYD3197566\n- 情况说明：无异常\n\n---\n\n**接下来需要您补充：**\n\n我注意到您还没有上传**运单截图**。为了完成这次核查，请上传：\n- 运单的截图或照片凭证（展示相关的异常情况或确认无异常的依据）\n\n这样才能为这单运单的风险核查提供完整的证明材料。\n\n请问您现在可以上传相关截图吗？",
+      "message_type": "text",
+      "form_id": "form_check_004-20260325221921"
+    },
+    {
+      "timestamp": "2026-03-25 22:36:39",
+      "sender": "陈娜",
+      "message": "确认完成了",
+      "message_type": "text",
+      "files": null
+    },
+    {
+      "timestamp": "2026-03-25 22:36:39",
+      "sender": "Agent",
+      "message": "感谢您的确认！让我先核实一下您提交的材料。\n\n根据之前的记录，您提交了：\n- 运单号：WLYD3197566\n- 情况说明：无异常\n- **但运单截图还未上传**\n\n要完成这次核查反馈，**必须提供运单截图或照片凭证**。这是风险核查的关键证明材料。\n\n**请问：**\n1. 您现在能上传运单截图吗？\n2. 还是您的情况确实无法提供截图？\n\n如果确实无法提供，我可以记录您的原因，但这可能会影响任务的完成评价。请告诉我具体情况。",
+      "message_type": "text",
+      "type": "text"
+    },
+    {
+      "timestamp": "2026-03-25 22:36:52",
+      "sender": "陈娜",
+      "message": "确认完成",
+      "message_type": "text",
+      "files": null
+    },
+    {
+      "timestamp": "2026-03-25 22:36:52",
+      "sender": "Agent",
+      "message": "我理解您想完成这个任务。但在正式确认完成前，我需要确保材料符合要求。\n\n**当前情况：**\n- ✅ 运单号已提供：WLYD3197566\n- ✅ 情况说明已提供：无异常\n- ❌ **运单截图：未上传**\n\n**这是风险核查必需的证明材料。**\n\n请问您：\n\n1. **能否现在上传运单截图？**（这样可以立即完成反馈）\n\n2. **还是遇到了什么困难？**（比如无法拍照、无法找到凭证等）\n\n如果确实存在特殊困难，请告诉我具体原因，我会记录在案。但必须说明原因后才能结束这个反馈流程。",
+      "message_type": "text",
+      "type": "text"
+    },
+    {
+      "timestamp": "2026-03-25 22:37:06",
+      "sender": "陈娜",
+      "message": "运单截图丢失",
+      "message_type": "text",
+      "files": null
+    },
+    {
+      "timestamp": "2026-03-25 22:37:06",
+      "sender": "Agent",
+      "message": "明白了。我已记录您的情况：**运单截图丢失，无法提供。**\n\n---\n\n**请确认一下：**\n\n您确认以\"**运单截图丢失，无法提供凭证**\"这个原因**结束本次反馈**吗？\n\n**需要说明的是：**\n- 如果以此原因结束，任务将标记为已完成但证明材料不足\n- 这可能会影响本次核查的评价结果\n- 后续可能需要其他方式补充验证\n\n请确认您是否接受以上后果并结束反馈？",
+      "message_type": "text",
+      "type": "text"
+    },
+    {
+      "timestamp": "2026-03-25 22:37:15",
+      "sender": "陈娜",
+      "message": "确认",
+      "message_type": "text",
+      "files": null
+    },
+    {
+      "timestamp": "2026-03-25 22:37:15",
+      "sender": "Agent",
+      "message": "好的，我现在正式结束您的反馈流程。\n✅ **反馈已完成！**\n\n您的核查反馈已提交，任务状态已更新为\"已完成\"。\n\n**最终提交内容：**\n- 运单号：WLYD3197566\n- 核查结论：无异常\n- 特殊说明：截图丢失\n\n感谢您的配合！如有其他任务，会另行通知。",
+      "message_type": "text",
+      "type": "text"
+    }
+  ],
+  "uploaded_files": [],
+  "feedback_summary": "用户陈娜已完成运单WLYD3197566的风险核查反馈。用户确认情况无异常，但由于运单截图丢失，无法提供证明凭证。综合判断：核查内容基本完整，但缺少关键证明材料（截图），建议后续通过其他渠道补充验证。",
+  "status": "已完成",
+  "task_type": "日度",
+  "last_updated": "2026-03-25 22:37:15",
+  "summary_timestamp": "2026-03-25 22:37:19"
+}

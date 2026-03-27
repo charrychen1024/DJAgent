@@ -1,0 +1,190 @@
+/**
+ * TodoCard Component Styles
+ *
+ * Displays todo items in the left sidebar with priority-based color coding
+ * and interactive selection state
+ */
+
+.todo-card {
+  padding: var(--spacing-sm);
+  margin-bottom: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add left border indicator (4px) for priority visualization */
+.todo-card-border {
+  display: none;
+}
+
+
+/* Card content with left padding for border */
+.todo-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Hover state */
+.todo-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Selected state - matching task-card.selected style */
+.todo-card.selected {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
+}
+
+/* Header: priority + type + status */
+.todo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.todo-left-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+/* Priority badge */
+.todo-priority {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.todo-priority.priority-p0 {
+  background: #ff4d4f;
+  color: white;
+}
+
+.todo-priority.priority-p1 {
+  background: #faad14;
+  color: white;
+}
+
+.todo-priority.priority-p2 {
+  background: #1890ff;
+  color: white;
+}
+
+.todo-priority.priority-p3 {
+  background: #52c41a;
+  color: white;
+}
+
+/* Type label */
+.todo-type {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status badge */
+.todo-status {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.todo-status.unhandled {
+  background: #e8e8e8;
+  color: var(--text-secondary);
+}
+
+.todo-status.handled {
+  background: var(--success-color);
+  color: white;
+}
+
+/* Title */
+.todo-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Description - max 2 lines */
+.todo-description {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Footer: assignee */
+.todo-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: 2px;
+}
+
+.todo-assignee {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  padding: 0.15rem 0.4rem;
+  background: var(--bg-gray);
+  border-radius: 3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Responsive: smaller screens */
+@media (max-width: 600px) {
+  .todo-card {
+    padding: 6px 8px;
+  }
+
+  .todo-card-content {
+    gap: 4px;
+  }
+
+  .todo-title {
+    font-size: 0.8rem;
+  }
+
+  .todo-description {
+    font-size: 0.7rem;
+  }
+
+  .todo-priority,
+  .todo-status,
+  .todo-assignee {
+    font-size: 0.65rem;
+  }
+}

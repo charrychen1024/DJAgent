@@ -1,0 +1,24 @@
+{
+  "chat_id": "CHAT_3657a4c8d71d",
+  "employee_id": "EMP_000",
+  "username": "总部管理员",
+  "title": "请帮我分析今天的风险运单明细数据，对这些数据进行各个维度的分析",
+  "created_at": "2026-03-27 23:03:29",
+  "updated_at": "2026-03-27 23:04:44",
+  "messages": [
+    {
+      "timestamp": "2026-03-27 23:03:29",
+      "sender": "总部管理员",
+      "message": "请帮我分析今天的风险运单明细数据，对这些数据进行各个维度的分析",
+      "message_type": "text",
+      "sender_type": "user"
+    },
+    {
+      "timestamp": "2026-03-27 23:04:44",
+      "sender": "Agent",
+      "message": "\n\n我来帮您分析今天的风险运单明细数据。首先获取当前时间并查找相关数据文件。\n\n<invoke name=\"get_current_time\">\n</invoke>\n<invoke name=\"Glob\">\n<parameter name=\"pattern\">data/risk_data_*.csv</parameter>\n</invoke>\n</minimax:tool_call>",
+      "message_type": "text",
+      "sender_type": "agent"
+    }
+  ]
+}

@@ -1,0 +1,370 @@
+/* FormField.css - Individual form field styles */
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Field header */
+.field-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+}
+
+.field-required {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Input wrapper */
+.field-input-wrapper {
+  position: relative;
+}
+
+/* Common input styles */
+.form-field-input,
+.form-field-textarea,
+.form-field-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.form-field-input::placeholder,
+.form-field-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.form-field-input:focus,
+.form-field-textarea:focus,
+.form-field-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-field-input:disabled,
+.form-field-textarea:disabled,
+.form-field-select:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Error state */
+.form-field--error .form-field-input,
+.form-field--error .form-field-textarea,
+.form-field--error .form-field-select {
+  border-color: #ef4444;
+}
+
+.form-field--error .form-field-input:focus,
+.form-field--error .form-field-textarea:focus,
+.form-field--error .form-field-select:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Textarea specific */
+.form-field-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+/* Select specific */
+.form-field-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234b5563' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+/* Radio group */
+.form-field-radio-group,
+.form-field-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-label,
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: #374151;
+}
+
+.radio-label input[type="radio"],
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.radio-label input[type="radio"]:disabled,
+.checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.radio-label:hover input[type="radio"]:not(:disabled),
+.checkbox-label:hover input[type="checkbox"]:not(:disabled) {
+  accent-color: #2563eb;
+}
+
+/* File upload */
+.form-field-file-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.file-input-label {
+  cursor: pointer;
+}
+
+.file-input-button {
+  display: inline-block;
+  padding: 8px 12px;
+  background: #3b82f6;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-align: center;
+  width: fit-content;
+}
+
+.file-input-label:hover .file-input-button {
+  background: #2563eb;
+  border-color: #2563eb;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+
+.file-display-value {
+  display: inline-block;
+  padding: 6px 10px;
+  background: #f0fdf4;
+  color: #059669;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Help text */
+.field-help-text {
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+/* Fix 11B: Readonly field display style */
+.form-field-readonly-display {
+  display: block;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  word-break: break-word;
+  user-select: text;  /* Allow users to select and copy the text */
+}
+
+/* Dark mode support for readonly */
+@media (prefers-color-scheme: dark) {
+  .form-field-readonly-display {
+    background: #2d3748;
+    color: #e2e8f0;
+    border-color: #4b5563;
+  }
+}
+
+/* Error message */
+.field-error-message {
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  color: #ef4444;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-error-message::before {
+  content: '⚠';
+  display: inline-block;
+}
+
+/* Field type specific styles */
+
+/* Text field */
+.form-field--text .form-field-input {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Email field */
+.form-field--email .form-field-input {
+  font-family: monospace;
+}
+
+/* Number field */
+.form-field--number .form-field-input {
+  font-family: monospace;
+}
+
+/* Textarea */
+.form-field--textarea {
+  /* Already covered above */
+}
+
+/* Select */
+.form-field--select .form-field-select {
+  /* Already covered above */
+}
+
+/* Radio group */
+.form-field--radio {
+  /* Radio group styling handled by radio-label */
+}
+
+/* Checkbox group */
+.form-field--checkbox {
+  /* Checkbox group styling handled by checkbox-label */
+}
+
+/* File upload */
+.form-field--file_upload {
+  /* File upload styling handled above */
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .form-field {
+    gap: 4px;
+  }
+
+  .field-label {
+    font-size: 13px;
+  }
+
+  .form-field-input,
+  .form-field-textarea,
+  .form-field-select {
+    font-size: 16px; /* Prevent auto zoom on iOS */
+    padding: 10px 12px;
+  }
+
+  .form-field-textarea {
+    min-height: 100px;
+  }
+
+  .radio-label,
+  .checkbox-label {
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .radio-label input[type="radio"],
+  .checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .field-label {
+    color: #e5e7eb;
+  }
+
+  .form-field-input,
+  .form-field-textarea,
+  .form-field-select {
+    background: #1f2937;
+    color: #f3f4f6;
+    border-color: #4b5563;
+  }
+
+  .form-field-input::placeholder,
+  .form-field-textarea::placeholder {
+    color: #6b7280;
+  }
+
+  .form-field-input:focus,
+  .form-field-textarea:focus,
+  .form-field-select:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  }
+
+  .form-field-input:disabled,
+  .form-field-textarea:disabled,
+  .form-field-select:disabled {
+    background: #111827;
+    color: #6b7280;
+  }
+
+  .radio-label,
+  .checkbox-label {
+    color: #d1d5db;
+  }
+
+  .field-help-text {
+    color: #6b7280;
+  }
+
+  .file-display-value {
+    background: #064e3b;
+    color: #86efac;
+  }
+}
+
+/* Focus visible for accessibility */
+.form-field-input:focus-visible,
+.form-field-textarea:focus-visible,
+.form-field-select:focus-visible,
+.radio-label input:focus-visible,
+.checkbox-label input:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}

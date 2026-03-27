@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { ChatMessage, ChatInput, FormCardBubble, SkillSelector } from './components'
+import TodoTabs from './components/TodoTabs'
+import { mockTodos } from './data/mockTodos'
 import './App.css'
 
 const API_BASE = '/api'
+// EventSource 需要完整的 URL 指向后端，不能使用相对路径
+const SSE_BASE = 'http://localhost:5005/api'
 
 // 登录页面组件 - 带角色卡片
 function LoginPage({ users, onLogin, loading }) {
@@ -144,16 +149,28 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
   const [tasksCollapsed, setTasksCollapsed] = useState(false)
   // 添加右侧面板展开状态
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
-  
+  // 待办项系统 - Phase 1
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false) // 左侧面板展开/折叠
+  const [selectedTodoId, setSelectedTodoId] = useState(null) // 当前选中的待办项ID
+  const [selectedTodo, setSelectedTodo] = useState(null) // 当前选中的待办项详情
+  const [todoTabsWidth, setTodoTabsWidth] = useState(400) // TodoTabs面板宽度（像素）
+
   // 对话相关状态（Web端 Manager 独立存储）
   const [chatList, setChatList] = useState([])  // 对话列表
   const [currentChatId, setCurrentChatId] = useState(null)  // 当前对话ID
   const [showSidebar, setShowSidebar] = useState(false)  // 是否显示历史对话列表（弹窗）
   // 对话左侧边栏状态
-  const [chatSidebarOpen, setChatSidebarOpen] = useState(false)  // 是否展开对话左侧栏
+  const [chatSidebarOpen, setChatSidebarOpen] = useState(true)  // 是否展开对话左侧栏
   const [chatSidebarWidth, setChatSidebarWidth] = useState(280)  // 对话左侧栏宽度
   // 删除对话确认
   const [deleteConfirm, setDeleteConfirm] = useState(null)  // 要删除的对话ID
+
+  // SkillSelector 状态和 ref
+  const [showSkillSelector, setShowSkillSelector] = useState(false)
+  const skillButtonRef = useRef(null)
+
+  // SSE 连接 ref - 用于正确管理生命周期
+  const eventSourceRef = useRef(null)
 
   useEffect(() => {
     const userId = currentUser?.employee_id || currentUser?.user_id
@@ -175,12 +192,18 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     }
   }, [chatList])
 
-  // SSE 事件监听 - 实时接收任务通知
+  // SSE 事件监听 - 实时接收任务通知（改进版：正确的连接管理）
   useEffect(() => {
     const userId = currentUser?.employee_id || currentUser?.user_id
     if (!userId) return
 
-    const eventSource = new EventSource(`${API_BASE}/events/${userId}`)
+    // 关闭旧连接
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+    }
+
+    const eventSource = new EventSource(`${SSE_BASE}/events/${userId}`)
+    eventSourceRef.current = eventSource
 
     eventSource.onmessage = (event) => {
       try {
@@ -207,27 +230,47 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
     eventSource.onerror = (err) => {
       console.error('[SSE] 连接错误:', err)
-      // 自动重连
       eventSource.close()
-      console.log('[SSE] 3秒后尝试重新连接...')
-      setTimeout(() => {
-        const userId = currentUser?.employee_id || currentUser?.user_id
-        if (userId) {
-          const newSource = new EventSource(`${API_BASE}/events/${userId}`)
+      eventSourceRef.current = null
+      console.log('[SSE] 5秒后尝试重新连接...')
+
+      const retryTimer = setTimeout(() => {
+        const currentUserId = currentUser?.employee_id || currentUser?.user_id
+        if (currentUserId && !eventSourceRef.current) {
+          const newSource = new EventSource(`${SSE_BASE}/events/${currentUserId}`)
+          eventSourceRef.current = newSource
           console.log('[SSE] 重新连接成功')
         }
-      }, 3000)
+      }, 5000)
+
+      return () => clearTimeout(retryTimer)
     }
 
     return () => {
-      eventSource.close()
-      console.log('[SSE] Manager 断开连接')
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+        console.log('[SSE] Manager 断开连接')
+      }
     }
   }, [currentUser?.employee_id, currentUser?.user_id, selectedTask])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
+
+  // 待办项选择处理 - 当选中ID变化时，更新selectedTodo
+  useEffect(() => {
+    if (selectedTodoId) {
+      const todo = mockTodos.find(t => t.id === selectedTodoId)
+      if (todo) {
+        setSelectedTodo(todo)
+        setRightPanelOpen(true) // 选中时自动打开右侧面板
+      }
+    } else {
+      setSelectedTodo(null)
+    }
+  }, [selectedTodoId])
 
   // 自动调整输入框高度
   useEffect(() => {
@@ -737,225 +780,47 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
 
   return (
     <div className="workspace manager-workspace">
-      <div className="sidebar left" style={{ width: `${leftWidth}%` }}>
-        <div className="risk-data-section">
-          {/* 全局搜索栏 */}
-          <div className="global-search-bar">
-            <input
-              type="text"
-              value={globalSearch}
-              onChange={e => setGlobalSearch(e.target.value)}
-              onKeyDown={handleGlobalSearchKeyDown}
-              placeholder="搜索风险明细和任务..."
-            />
-            <button onClick={handleGlobalSearch}>搜索</button>
-          </div>
+      {/* TodoTabs for left sidebar - Phase 2: 集成风险数据和任务追踪 */}
+      <TodoTabs
+        // Tab 1: Todos
+        todos={mockTodos}
+        selectedTodoId={selectedTodoId}
+        onSelectTodo={setSelectedTodoId}
+        isOpen={leftPanelOpen}
+        onToggleOpen={setLeftPanelOpen}
+        // Tab 2: Risk Data
+        riskData={filteredRiskData}
+        riskStats={riskStats}
+        riskColumns={columns}
+        dataTab={dataTab}
+        onDataTabChange={setDataTab}
+        selectedRiskRows={selectedRows}
+        onSelectRiskRow={handleSelectRow}
+        onSelectAllRiskRows={handleSelectAll}
+        globalSearch={globalSearch}
+        onGlobalSearchChange={setGlobalSearch}
+        onGlobalSearch={handleGlobalSearch}
+        onAddToChat={handleAddSelectedToChat}
+        riskLoading={loading.riskData}
+        filteredRiskData={filteredRiskData}
+        riskCurrentPage={currentPage}
+        riskPageSize={pageSize}
+        onRiskPageChange={handlePageChange}
+        onRiskPageSizeChange={handlePageSizeChange}
+        onRiskRowClick={() => {}} // TODO: implement detail panel for risk data
+        // Tab 3: Task Tracking
+        tasks={tasks}
+        selectedTask={selectedTask}
+        onSelectTask={handleTaskClick}
+        tasksCollapsed={tasksCollapsed}
+        onToggleTasks={setTasksCollapsed}
+        filteredTasks={filteredTasks}
+        tasksLoading={loading.tasks}
+        // Resize props
+        width={todoTabsWidth}
+        onWidthChange={setTodoTabsWidth}
+      />
 
-          {/* Tab切换：每日/每月 */}
-          <div className="data-tab-switch">
-            <button 
-              className={`tab-btn ${dataTab === 'daily' ? 'active' : ''}`}
-              onClick={() => setDataTab('daily')}
-            >
-              日度数据
-            </button>
-            <button 
-              className={`tab-btn ${dataTab === 'monthly' ? 'active' : ''}`}
-              onClick={() => setDataTab('monthly')}
-            >
-              月度数据
-            </button>
-          </div>
-
-          {/* 风险统计看板 */}
-          <div className="risk-stats">
-            <div className="stat-card high">
-              <div className="stat-value">{riskStats.high}</div>
-              <div className="stat-label">高风险</div>
-            </div>
-            <div className="stat-card medium">
-              <div className="stat-value">{riskStats.medium}</div>
-              <div className="stat-label">中风险</div>
-            </div>
-            <div className="stat-card low">
-              <div className="stat-value">{riskStats.low}</div>
-              <div className="stat-label">低风险</div>
-            </div>
-          </div>
-
-          <div className="section-header">
-            <h3>风险明细数据</h3>
-            <div className="action-buttons">
-              <button
-                className="action-btn"
-                onClick={handleAddSelectedToChat}
-                disabled={selectedRows.length === 0}
-              >
-                📤 添加到对话 ({selectedRows.length})
-              </button>
-            </div>
-          </div>
-          {loading.riskData ? (
-            <div className="loading-tip">加载中...</div>
-          ) : filteredRiskData.length > 0 ? (
-            <div className="risk-data-container">
-              <div className="risk-table-wrapper">
-                <table className="risk-table">
-                  <thead>
-                    <tr>
-                      <th className="checkbox-col">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedRows.length === currentPageData.length && currentPageData.length > 0}
-                          onChange={handleSelectAll}
-                        />
-                      </th>
-                      {columns.map(col => (
-                        <th key={col}>{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentPageData.map((row, i) => {
-                      const globalIndex = (currentPage - 1) * pageSize + i
-                      return (
-                        <tr key={globalIndex} className={selectedRows.includes(globalIndex) ? 'selected-row' : ''}>
-                          <td className="checkbox-col">
-                            <input 
-                              type="checkbox" 
-                              checked={selectedRows.includes(globalIndex)}
-                              onChange={() => handleSelectRow(globalIndex)}
-                            />
-                          </td>
-                          {columns.map(col => (
-                            <td key={col}>
-                              {col === '风险等级' ? (
-                                <span className={`risk-level ${row[col]}`}>{row[col] || '-'}</span>
-                              ) : (
-                                row[col] || '-'
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              {/* 分页组件 */}
-              <div className="pagination">
-                <div className="page-info">
-                  共 {filteredRiskData.length} 条数据，每页显示 
-                  <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))} className="page-size-select">
-                    <option value={5}>5条</option>
-                    <option value={10}>10条</option>
-                    <option value={20}>20条</option>
-                    <option value={50}>50条</option>
-                    <option value={100}>100条</option>
-                  </select>
-                </div>
-                <div className="page-controls">
-                  <button 
-                    className="page-btn" 
-                    disabled={currentPage === 1} 
-                    onClick={() => handlePageChange(currentPage - 1)}
-                  >
-                    上一页
-                  </button>
-                  <div className="page-numbers">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum
-                      if (totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i
-                      } else {
-                        pageNum = currentPage - 2 + i
-                      }
-                      return (
-                        <button
-                          key={pageNum}
-                          className={`page-btn ${currentPage === pageNum ? 'active' : ''}`}
-                          onClick={() => handlePageChange(pageNum)}
-                        >
-                          {pageNum}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <button 
-                    className="page-btn" 
-                    disabled={currentPage === totalPages} 
-                    onClick={() => handlePageChange(currentPage + 1)}
-                  >
-                    下一页
-                  </button>
-                </div>
-                <div className="page-jump">
-                  第 <input 
-                    type="number" 
-                    min={1} 
-                    max={totalPages} 
-                    value={currentPage} 
-                    onChange={(e) => {
-                      const num = Number(e.target.value)
-                      if (num >= 1 && num <= totalPages) {
-                        handlePageChange(num)
-                      }
-                    }}
-                    className="page-input"
-                  /> 页
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="empty-tip">暂无风险数据</div>
-          )}
-        </div>
-        <div className={`task-list-section ${tasksCollapsed ? 'collapsed' : ''}`}>
-          <div className="task-list-header">
-            <h3>下发任务</h3>
-            <button 
-              className="collapse-btn icon-only" 
-              onClick={() => setTasksCollapsed(!tasksCollapsed)}
-              title={tasksCollapsed ? '展开' : '折叠'}
-            >
-              <span className={`collapse-icon ${tasksCollapsed ? 'collapsed' : ''}`}>
-                ▼
-              </span>
-            </button>
-          </div>
-          {!tasksCollapsed && (
-            <>
-              {loading.tasks ? <div className="loading-tip">加载中...</div> : tasks.length === 0 ? (
-                <div className="empty-tip">暂无任务</div>
-              ) : filteredTasks.length === 0 ? (
-                <div className="empty-tip">无搜索结果</div>
-              ) : (
-                <div className="task-list">
-                  {filteredTasks.map(task => (
-                    <div key={task.task_id} className={`task-card ${selectedTask?.task_id === task.task_id ? 'selected' : ''}`} onClick={() => handleTaskClick(task)}>
-                      <div className="task-header"><span className="task-id">{task.task_id}</span><span className={`task-status ${task.status}`}>{task.status}</span></div>
-                      <div className="task-summary">{task.risk_summary}</div>
-                      <div className="task-info">
-                        <span>创建: {task.creator_name || task.creator_id}</span>
-                        <span>→ {task.assigned_to_name}</span>
-                        {task.feedback_deadline && (
-                          <span className="task-deadline">截止: {new Date(task.feedback_deadline).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-      <div className={`resize-handle ${isDraggingLeft ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingLeft(true)} />
-      
       {/* 对话左侧栏 - 可折叠 */}
       <div className={`chat-sidebar ${chatSidebarOpen ? 'open' : 'collapsed'}`} style={{ width: chatSidebarOpen ? chatSidebarWidth : 0 }}>
         <div className="sidebar-header">
@@ -1092,65 +957,67 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
             </div>
           ) : null}
           {chatMessages.map((msg, i) => (
-            <div key={i} className={`message ${msg.sender}`}>
-              <div className="message-header"><span className="sender">{msg.sender === 'user' ? '👤 我' : '🤖 Agent'}</span><span className="timestamp">{msg.timestamp}</span></div>
-              <div className="message-content">
-                {msg.sender === 'user' ? (
-                  <>
-                    {msg.files && msg.files.length > 0 && (
-                      <div className="msg-files">
-                        {msg.files.map((f, idx) => (
-                          <div key={idx} className="msg-file">📄 {f.name}</div>
-                        ))}
-                      </div>
-                    )}
-                    {msg.message}
-                  </>
-                ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
-                )}
-              </div>
-            </div>
+            <ChatMessage
+              key={i}
+              message={{
+                type: msg.type || 'text',
+                sender: msg.sender === 'user' ? 'user' : 'agent',
+                timestamp: msg.timestamp,
+                content: msg.message,
+                // Backward compatibility: support message field as fallback
+                message: msg.message,
+                files: msg.files || [],
+                // Form fields if present
+                schema: msg.schema,
+                form_id: msg.form_id,
+                task_id: msg.task_id,
+                title: msg.title,
+                summary: msg.summary,
+                status: msg.status,
+                data: msg.data
+              }}
+              onFormSubmit={(data) => console.log('Form submitted:', data)}
+              onFormCancel={() => console.log('Form canceled')}
+              onFormModify={(data) => console.log('Form modified:', data)}
+            />
           ))}
-          {loading.chat && <div className="message agent loading"><div className="message-content">正在思考...</div></div>}
+          {loading.chat && (
+            <ChatMessage
+              message={{
+                type: 'text',
+                sender: 'agent',
+                content: '正在思考...',
+                timestamp: new Date().toISOString()
+              }}
+            />
+          )}
           <div ref={messagesEndRef} />
         </div>
-        <div className="chat-input">
-          {/* 待发送文件列表 */}
-          {pendingFiles.length > 0 && (
-            <div className="pending-files">
-              {pendingFiles.map(f => (
-                <div key={f.id} className="pending-file">
-                  <span className="file-icon">📄</span>
-                  <span className="file-name">{f.name}</span>
-                  <button className="remove-file" onClick={() => handleRemovePendingFile(f.id)}>×</button>
-                </div>
-              ))}
-            </div>
-          )}
-          {/* 输入框行 */}
-          <div className="input-row">
-            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} multiple />
-            <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>📎</button>
-            <textarea 
-              ref={inputTextareaRef}
-              value={inputMessage} 
-              onChange={e => setInputMessage(e.target.value)} 
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  if (!loading.chat && (inputMessage.trim() || pendingFiles.length > 0)) {
-                    handleSendMessage()
-                  }
-                }
-              }}
-              placeholder="输入消息... (Enter发送，Shift+Enter换行)" 
-              rows={1}
-              style={{ height: 'auto', minHeight: '44px' }}
-            />
-            <button onClick={handleSendMessage} disabled={loading.chat || (!inputMessage.trim() && pendingFiles.length === 0)} className="send-btn">➤</button>
-          </div>
-        </div>
+        <ChatInput
+          value={inputMessage}
+          onChange={setInputMessage}
+          onSend={handleSendMessage}
+          onFileSelect={(files) => {
+            // Handle file selection
+            const newFiles = Array.from(files).map((file, idx) => ({
+              id: Date.now() + idx,
+              file,
+              name: file.name,
+              size: file.size,
+              type: file.type
+            }))
+            setPendingFiles([...pendingFiles, ...newFiles])
+          }}
+          onFileRemove={(file) => {
+            setPendingFiles(pendingFiles.filter(f => f.name !== file.name))
+          }}
+          files={pendingFiles.map(f => ({ name: f.name }))}
+          disabled={loading.chat}
+          loading={loading.chat}
+          placeholder="输入消息... (Shift+Enter 换行)"
+          onSkillButtonClick={() => setShowSkillSelector(!showSkillSelector)}
+          skillButtonRef={skillButtonRef}
+        />
 
         {/* 历史对话列表弹窗 */}
         {showSidebar && (
@@ -1191,8 +1058,22 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
             </div>
           </div>
         )}
+
+        {/* SkillSelector 下拉框 - 在App根层级渲染，避免position:fixed的z-index问题 */}
+        <SkillSelector
+          visible={showSkillSelector}
+          onClose={() => setShowSkillSelector(false)}
+          onSelect={(skill, insertText) => {
+            setInputMessage(inputMessage + (inputMessage ? '\n' : '') + insertText)
+            setShowSkillSelector(false)
+          }}
+          anchorEl={skillButtonRef.current}
+          userRole={currentUser?.role === '业务负责人' || currentUser?.role === '普通分析人员' ? 'manager' : 'staff'}
+        />
       </div>
-      <div className={`resize-handle ${isDraggingRight ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingRight(true)} />
+      {rightPanelOpen && (
+        <div className={`resize-handle ${isDraggingRight ? 'dragging' : ''}`} onMouseDown={() => setIsDraggingRight(true)} />
+      )}
       <div
         className={`sidebar right ${rightPanelOpen ? 'open' : 'collapsed'}`}
         style={rightPanelOpen ? { width: `${rightWidth}%` } : {}}
@@ -1209,7 +1090,53 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                 <span className="toggle-icon">▶</span>
               </button>
             </div>
-            {selectedTask ? (
+            {selectedTodo ? (
+              <div className="task-detail">
+                <h4>待办项详情</h4>
+
+                {/* Quick action buttons */}
+                <div className="quick-action-buttons">
+                  <button
+                    className="quick-action-btn add-to-chat"
+                    title="添加到对话"
+                    onClick={() => {
+                      // Add selected todo to chat message
+                      const todoInfo = `待办项: ${selectedTodo.title}\n优先级: ${selectedTodo.priority}\n类型: ${selectedTodo.type}`;
+                      setInputMessage(prev => prev + (prev ? '\n' : '') + todoInfo);
+                    }}
+                  >
+                    💬
+                  </button>
+                  <button
+                    className="quick-action-btn dispatch"
+                    title="一键下发"
+                    onClick={() => {
+                      // Quick dispatch action
+                      console.log('Quick dispatch:', selectedTodo.id);
+                    }}
+                  >
+                    ⚡
+                  </button>
+                </div>
+
+                <p><strong>优先级:</strong> <span className={`priority-tag priority-${selectedTodo.priority?.toLowerCase()}`}>{selectedTodo.priority}</span></p>
+                <p><strong>标题:</strong> {selectedTodo.title}</p>
+                <p><strong>类型:</strong> {selectedTodo.type}</p>
+                <p><strong>描述:</strong> {selectedTodo.description}</p>
+                <p><strong>分类:</strong> {selectedTodo.category}</p>
+                <p><strong>状态:</strong> <span className={`status-tag ${selectedTodo.status === '已处理' ? 'completed' : 'pending'}`}>{selectedTodo.status}</span></p>
+                <p><strong>严重程度:</strong> {selectedTodo.severity}</p>
+                <p><strong>推荐分配人:</strong> {typeof selectedTodo.recommended_assignee === 'object' ? selectedTodo.recommended_assignee?.name : selectedTodo.recommended_assignee}</p>
+                <p><strong>预期处理时间:</strong> {typeof selectedTodo.expected_handling_time === 'object' ? selectedTodo.expected_handling_time?.due_date : selectedTodo.expected_handling_time}</p>
+
+                {typeof selectedTodo.analysis === 'object' && selectedTodo.analysis && (
+                  <div className="analysis-section">
+                    <h5>📊 分析结果</h5>
+                    <p>{JSON.stringify(selectedTodo.analysis)}</p>
+                  </div>
+                )}
+              </div>
+            ) : selectedTask ? (
               <div className="task-detail">
                 <h4>任务详情</h4>
                 <p><strong>任务ID:</strong> {selectedTask.task_id}</p>
@@ -1234,7 +1161,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                     <div className="empty-tip">暂无反馈总结</div>
                   )}
                 </div>
-                
+
                 <div className="files-section">
                   <h5>📎 上传文件</h5>
                   {taskFeedback?.uploaded_files && taskFeedback.uploaded_files.length > 0 ? (
@@ -1250,7 +1177,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                   )}
                 </div>
               </div>
-            ) : <div className="placeholder">点击左侧任务查看详情</div>}
+            ) : <div className="placeholder">点击左侧任务或待办项查看详情</div>}
           </>
         ) : (
           <button
@@ -1274,6 +1201,8 @@ function StaffWorkspace({ currentUser }) {
   const [pendingFiles, setPendingFiles] = useState([]) // 待发送的文件列表
   const [loading, setLoading] = useState({ chat: false, init: true })
   const [tasks, setTasks] = useState([])
+  const [submittedForms, setSubmittedForms] = useState({}) // Fix 19: 记录已提交的表单状态 {form_id: true}
+  const [editingForms, setEditingForms] = useState({}) // Fix 19: 记录正在编辑的表单状态 {form_id: true}
   const tasksRef = useRef([])  // 使用 ref 存储最新任务列表，解决 SSE 闭包问题
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -1324,7 +1253,7 @@ function StaffWorkspace({ currentUser }) {
     const userId = currentUser?.employee_id || currentUser?.user_id
     if (!userId) return
 
-    const eventSource = new EventSource(`${API_BASE}/events/${userId}`)
+    const eventSource = new EventSource(`${SSE_BASE}/events/${userId}`)
 
     eventSource.onmessage = (event) => {
       try {
@@ -1391,15 +1320,28 @@ function StaffWorkspace({ currentUser }) {
             console.log('[SSE Staff] 设置当前任务:', data.task_info.task_id)
           }
 
-          // 直接追加新消息到当前对话，不获取历史记录（IM端是持续会话）
+          // Fix 9 & Fix 10: 从 SSE 事件数据中构建完整的消息对象，包括 message_type、schema、form_id
+          // Fix 10: 使用 message_type 替代 type，避免与 SSE 事件类型冲突
           const newMessage = data.message
           if (newMessage) {
-            setChatMessages(prev => [...prev, {
+            const messageObj = {
               sender: 'agent',
               message: newMessage,
+              type: data.message_type === 'form_card' ? 'form_card' : 'text',  // 改为检查 message_type
               timestamp: new Date().toLocaleString(),
-              messageType: 'text'
-            }])
+            }
+
+            // 如果是表单卡片，添加 schema 和 form_id
+            if (data.message_type === 'form_card' && data.schema) {
+              messageObj.type = 'form_card'
+              messageObj.schema = data.schema
+              messageObj.form_id = data.form_id
+              console.log('[SSE Staff] 追加表单卡片消息，form_id=', data.form_id)
+            } else {
+              console.log('[SSE Staff] 追加普通文本消息')
+            }
+
+            setChatMessages(prev => [...prev, messageObj])
             console.log('[SSE Staff] 追加新消息到对话')
           }
         }
@@ -1416,7 +1358,7 @@ function StaffWorkspace({ currentUser }) {
       setTimeout(() => {
         const userId = currentUser?.employee_id || currentUser?.user_id
         if (userId) {
-          const newSource = new EventSource(`${API_BASE}/events/${userId}`)
+          const newSource = new EventSource(`${SSE_BASE}/events/${userId}`)
           console.log('[SSE Staff] 重新连接成功')
         }
       }, 3000)
@@ -1459,11 +1401,14 @@ function StaffWorkspace({ currentUser }) {
           const historyRes = await fetch(`${API_BASE}/tasks/${task.task_id}/chat-history?employee_id=${userId}`)
           const historyData = await historyRes.json()
           if (Array.isArray(historyData) && historyData.length > 0) {
+            // Fix 12: 确保历史消息完整恢复 type、schema、form_id 字段，与 SSE 新消息字段保持一致
             const msgs = historyData.map(msg => ({
               sender: msg.sender === 'Agent' ? 'agent' : 'user',
               message: msg.message,
               timestamp: msg.timestamp,
-              messageType: msg.message_type,
+              type: msg.message_type === 'form_card' ? 'form_card' : 'text',  // 统一为 type 字段
+              schema: msg.schema,  // 恢复表单 schema
+              form_id: msg.form_id,  // 恢复表单 ID
               files: msg.files,
               taskId: task.task_id  // 标记消息所属任务
             }))
@@ -1499,9 +1444,13 @@ function StaffWorkspace({ currentUser }) {
           })
           const initData = await initResponse.json()
           if (initData.agent_reply) {
+            // Fix 5: Preserve type, schema, form_id from initData
             setChatMessages([{
               sender: 'agent',
+              type: initData.agent_reply.type,
               message: initData.agent_reply.message,
+              schema: initData.agent_reply.schema,
+              form_id: initData.agent_reply.form_id,
               timestamp: initData.agent_reply.timestamp
             }])
           }
@@ -1558,7 +1507,17 @@ function StaffWorkspace({ currentUser }) {
         body: formData
       })
       const data = await response.json()
-      if (data.agent_reply) setChatMessages(prev => [...prev, { sender: 'agent', message: data.agent_reply.message, timestamp: data.agent_reply.timestamp }])
+      // Fix 6: Preserve type, schema, form_id from agent_reply
+      if (data.agent_reply) {
+        setChatMessages(prev => [...prev, {
+          sender: 'agent',
+          type: data.agent_reply.type,
+          message: data.agent_reply.message,
+          schema: data.agent_reply.schema,
+          form_id: data.agent_reply.form_id,
+          timestamp: data.agent_reply.timestamp
+        }])
+      }
     } catch (err) { console.error('[ERROR] 发送消息失败:', err) }
     finally { setLoading(prev => ({ ...prev, chat: false })) }
   }
@@ -1587,6 +1546,115 @@ function StaffWorkspace({ currentUser }) {
   // 移除待发送文件
   const handleRemovePendingFile = (fileId) => {
     setPendingFiles(prev => prev.filter(f => f.id !== fileId))
+  }
+
+  // Fix 16: 处理表单提交
+  const handleFormSubmit = async (formId, schema, formData) => {
+    if (!selectedTask) {
+      alert('暂无任务，请先获取任务')
+      return
+    }
+
+    const userId = currentUser?.employee_id || currentUser?.user_id
+    setLoading(prev => ({ ...prev, chat: true }))
+
+    try {
+      console.log('[Staff] 提交表单:', { formId, formData })
+
+      // Fix 17: 使用FormData而不是JSON.stringify，以支持文件上传
+      const requestFormData = new FormData()
+      requestFormData.append('form_id', formId)
+      requestFormData.append('employee_id', userId)
+      requestFormData.append('username', currentUser.username)
+      requestFormData.append('task_id', selectedTask.task_id)
+
+      // 遍历formData中的所有字段
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value instanceof File) {
+          // File对象直接append
+          requestFormData.append(`data_${key}`, value)
+          console.log(`[Staff] 附加文件: ${key} = ${value.name}`)
+        } else if (Array.isArray(value)) {
+          // 数组处理（多个文件或多选）
+          value.forEach((item, index) => {
+            if (item instanceof File) {
+              requestFormData.append(`data_${key}_${index}`, item)
+            } else {
+              requestFormData.append(`data_${key}_${index}`, String(item))
+            }
+          })
+        } else {
+          // 普通字段
+          requestFormData.append(`data_${key}`, String(value || ''))
+        }
+      })
+
+      // 调用后端表单提交API
+      const response = await fetch(`${API_BASE}/form/submit`, {
+        method: 'POST',
+        body: requestFormData  // 使用FormData而不是JSON
+      })
+
+      const result = await response.json()
+      console.log('[Staff] 表单提交结果:', result)
+
+      if (result.success) {
+        // Fix 19: 表单提交成功后，标记为已提交（禁止编辑），并清除编辑状态
+        setSubmittedForms(prev => ({ ...prev, [formId]: true }))
+        setEditingForms(prev => {
+          const newState = { ...prev }
+          delete newState[formId]
+          return newState
+        })
+
+        // 添加用户提交的表单数据到对话（作为用户消息）
+        const dataDisplay = Object.entries(formData)
+          .map(([k, v]) => {
+            if (v instanceof File) return `- ${k}: ${v.name} (文件)`
+            if (Array.isArray(v)) return `- ${k}: [${v.length}项]`
+            return `- ${k}: ${v}`
+          })
+          .join('\n')
+
+        const submissionMessage = {
+          sender: 'user',
+          message: `提交表单数据:\n${dataDisplay}`,
+          timestamp: new Date().toLocaleString(),
+          formData: formData,
+          form_id: formId
+        }
+        setChatMessages(prev => [...prev, submissionMessage])
+
+        // 如果有Agent回复，也添加到对话
+        if (result.agent_reply) {
+          const agentMessage = {
+            sender: 'agent',
+            message: result.agent_reply,
+            type: 'text',
+            timestamp: new Date().toLocaleString(),
+            form_id: formId
+          }
+          setChatMessages(prev => [...prev, agentMessage])
+        }
+
+        alert('表单提交成功！')
+      } else {
+        // 处理验证失败或其他错误
+        if (result.errors) {
+          const errorMsg = Object.entries(result.errors)
+            .map(([field, error]) => `${field}: ${error}`)
+            .join('\n')
+          alert(`表单验证失败:\n${errorMsg}`)
+        } else {
+          alert(`表单提交失败: ${result.error || result.message}`)
+        }
+      }
+    } catch (err) {
+      console.error('[ERROR] 表单提交失败:', err)
+      alert(`表单提交失败: ${err.message}`)
+    } finally {
+      setLoading(prev => ({ ...prev, chat: false }))
+    }
   }
 
   // 完成任务也可以通过对话完成，不需要单独按钮
@@ -1672,7 +1740,54 @@ function StaffWorkspace({ currentUser }) {
                       {msg.message}
                     </>
                   ) : (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
+                    <>
+                      {/* Fix 11A: 同时显示文本和表单 - 先显示文本描述 */}
+                      {msg.message && (
+                        <div className="message-text">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.message}</ReactMarkdown>
+                        </div>
+                      )}
+                      {/* 再显示表单卡片 */}
+                      {msg.type === 'form_card' && msg.schema ? (
+                        <FormCardBubble
+                          schema={{
+                            ...msg.schema,
+                            // Fix 19: 根据表单状态设置 schema.state 和 actions
+                            state: editingForms[msg.form_id] ? 'editable' : (submittedForms[msg.form_id] ? 'readonly' : 'editable'),
+                            actions: {
+                              // 初始状态（未提交）：只显示提交
+                              // 编辑中（修改已提交的表单）：显示取消和确认
+                              // readonly（已提交）：只显示修改
+                              showSubmit: !submittedForms[msg.form_id] || editingForms[msg.form_id],
+                              showCancel: editingForms[msg.form_id],
+                              showModify: submittedForms[msg.form_id] && !editingForms[msg.form_id],
+                              submitText: editingForms[msg.form_id] ? '确认' : '提交',
+                              cancelText: '取消',
+                              modifyText: '修改'
+                            }
+                          }}
+                          onSubmit={(formData) => {
+                            console.log('Form submitted:', msg.form_id, formData)
+                            // Fix 16: 实现表单提交API调用
+                            handleFormSubmit(msg.form_id, msg.schema, formData)
+                          }}
+                          onCancel={() => {
+                            console.log('Form cancelled:', msg.form_id)
+                            // Fix 19: 取消编辑，回到 readonly 状态
+                            setEditingForms(prev => {
+                              const newState = { ...prev }
+                              delete newState[msg.form_id]
+                              return newState
+                            })
+                          }}
+                          onModify={() => {
+                            console.log('Form modify:', msg.form_id)
+                            // Fix 19: 进入编辑模式
+                            setEditingForms(prev => ({ ...prev, [msg.form_id]: true }))
+                          }}
+                        />
+                      ) : null}
+                    </>
                   )}
                 </div>
                 <div className="message-time">
@@ -1681,7 +1796,16 @@ function StaffWorkspace({ currentUser }) {
               </div>
             )
           })}
-          {loading.chat && <div className="message agent loading"><div className="message-content">正在思考...</div></div>}
+          {loading.chat && (
+            <ChatMessage
+              message={{
+                type: 'text',
+                sender: 'agent',
+                content: '正在思考...',
+                timestamp: new Date().toISOString()
+              }}
+            />
+          )}
           <div ref={messagesEndRef} />
         </div>
         <div className="chat-input">
@@ -1832,6 +1956,20 @@ function App() {
       <header className="App-header">
         <h1>🛡️ 风控数字员工</h1>
         <div className="header-right">
+          {/* 搜索框 */}
+          <div className="header-search">
+            <input
+              type="text"
+              placeholder="🔍 搜索..."
+              className="search-input"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  // Handle search
+                }
+              }}
+            />
+          </div>
+
           {/* 地区选择下拉框 - 所有用户都显示，地区用户不可切换 */}
           <div className="region-selector">
             <select 

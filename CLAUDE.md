@@ -20,6 +20,8 @@ cd backend
 source .venv/bin/activate  # 激活虚拟环境（关键！）
 unset CLAUDE  # 重要：必须取消设置 CLAUDE 环境变量，否则 Claude Agent SDK 无法正常工作
 python -m uvicorn app_fastapi:app --host 0.0.0.0 --port 5005
+# windows 下运行：
+python -m uvicorn app_fastapi:app --loop=auto --host 0.0.0.0 --port 5005
 
 # Frontend (port 5173)
 cd frontend
@@ -98,69 +100,56 @@ Backend (FastAPI)
 - Use `getattr(block, 'input', None)` to safely access ThinkingBlock
 - Complex issues: Analyze from global to local, explain root cause before fixing
 
-## Project Branches
+## CSS 常见陷阱（经验教训）
 
-- `main` - Production branch
-- `feature/ui-optimization` - UI improvements (current)
-- `feature/skill-based-agent` - Skill-based agent implementation
+### 问题：短文本消息换行
+**症状**："正在思考"、"收到"等2-3字短文本强制换行成多行，而长文本只有2-3行
 
-## 任务自动通知方案（经验总结）
+**根本原因**：
+1. `word-break: break-word` + `overflow-wrap: break-word` 导致字符级别强行换行
+2. `max-width: 80%` 相对于宽度过小的父容器
 
-### 问题背景
-Manager 创建任务后，需要自动通知 Staff（一线人员）有新任务需要核查。
+**解决方案**：
+```css
+/* ❌ 错误 - 字符级别断行 */
+word-break: break-word;
+overflow-wrap: break-word;
 
-### 问题1：Staff 收不到消息
-**原因**：原方案依赖前端 SSE 连接推送消息，但 SSE 连接不稳定，导致消息无法送达。
-
-**解决方案**：后端自动触发
-1. Manager 创建任务时，在 `mcp_server.py` 的 `tool_create_task` 函数中
-2. 任务创建成功后，自动获取 StaffAgent
-3. 调用 `staff_agent.notify_new_task()` 发送引导消息
-4. 推送 SSE 事件通知前端刷新
-
-**关键代码** (`backend/agents/mcp_server.py`):
-```python
-if result.get("success"):
-    task_id = result.get("task_id")
-    assigned_to_id = task_info.get("assigned_to_id")
-    assigned_to_name = task_info.get("assigned_to_name")
-
-    if assigned_to_id and assigned_to_name:
-        from .session_manager import get_or_create_staff_agent
-        staff_agent = await get_or_create_staff_agent(assigned_to_id, assigned_to_name)
-        notify_result = await staff_agent.notify_new_task(task_id, task_info)
-
-        # 推送 SSE 事件通知前端
-        if SSE_AVAILABLE:
-            await sse_manager.publish_to_staff(
-                assigned_to_id,
-                "task_message_received",
-                {"task_id": task_id, "task_info": task_info, "message": notify_result.get("message", "")}
-            )
+/* ✅ 正确 - 仅在单词空格处换行 */
+word-wrap: break-word;
 ```
 
-### 问题2：前端 SSE 连接频繁断开
-**原因**：
-1. Uvicorn 热重载时断开所有连接
-2. 前端 useEffect 重新执行导致重新连接
+关键改动（ChatMessage.css）：
+```css
+/* 1. 确保容器宽度正确传递 */
+.chat-message {
+  width: 100%;  /* 占满父容器 */
+}
 
-**解决方案**：前端添加自动重连机制
-```javascript
-eventSource.onerror = (err) => {
-  eventSource.close()
-  setTimeout(() => {
-    const newSource = new EventSource(`${API_BASE}/events/${user_id}`)
-  }, 3000)
+.message-body {
+  width: 100%;  /* 让max-width正确计算 */
+  min-width: 0;  /* 允许flex收缩 */
+}
+
+/* 2. 使用fit-content + max-width组合 */
+.message-content {
+  box-sizing: border-box;  /* padding计入width */
+  width: fit-content;      /* 根据内容宽度 */
+  max-width: 80%;          /* 不超过容器80% */
+  word-wrap: break-word;   /* 仅在空格处换行 */
+  /* ❌ 删除word-break和overflow-wrap */
+}
+
+/* 3. 删除所有冲突的word-break规则 */
+.text-content {
+  /* ❌ 删除 word-break: break-word; */
+  word-wrap: break-word;
 }
 ```
 
-### 问题3：组件缺少函数定义
-**原因**：StaffWorkspace 组件没有自己的 `fetchTasks` 函数
+**调试技巧**：
+- 用DevTools检查computed style中的word-break值
+- 检查是否有多层CSS定义冲突（特别是App.css和ChatMessage.css）
+- 记住：`word-break: break-word` 是CSS 3规范中最不推荐的属性，避免使用
+- 使用`max-width: 80%`而不是`max-width: 80vw`（vw会导致气泡充满屏幕）
 
-**解决方案**：在 StaffWorkspace 组件中添加 `fetchTasks` 函数和 `tasks` 状态
-
-### SSE 推送事件类型
-- `task_created`: Manager 创建新任务
-- `new_task`: 有新任务分配给 Staff（原始事件）
-- `task_message_received`: StaffAgent 自动发送消息后推送（新增）
-- `task_completed`: 任务反馈完成

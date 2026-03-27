@@ -124,12 +124,7 @@ class UnifiedAgent:
             # 没有文本消息，可能是只有工具调用
             reply = "我已收到您的请求，正在处理中..."
             logger.info("[UnifiedAgent] 只有工具调用，无文本消息")
-        
-        return reply
 
-        reply = "\n".join(responses) if responses else "好的，请继续。"
-
-        logger.info(f"[UnifiedAgent] 回复: {reply[:100]}...")
         return reply
 
     def _build_prompt(
@@ -364,7 +359,73 @@ class UnifiedAgent:
 
 **重要**：你是告知用户需要提交什么材料来完成任务，**不是教用户怎么核查**。
 
-直接回复用户即可，不需要调用工具。"""
+========================================
+【表单生成约束】- **必须执行，不可跳过**
+
+在您的回复末尾，必须添加以下JSON格式的核查表单定义。使用```json和```包装，格式如下：
+
+```json
+{{
+  "form_id": "form_check_000-20260325155513",
+  "title": "核查信息收集表",
+  "description": "请填写以下信息完成核查",
+  "state": "editable",
+  "sections": [
+    {{
+      "title": "任务基本信息",
+      "fields": [
+        {{
+          "id": "task_id",
+          "label": "任务编号",
+          "type": "text",
+          "required": true,
+          "readonly": true,
+          "value": "{task_id}"
+        }}
+      ]
+    }},
+    {{
+      "title": "核查材料提交",
+      "fields": [
+        {{
+          "id": "photos",
+          "label": "现场照片",
+          "type": "file_upload",
+          "required": true,
+          "accept": "image/*"
+        }},
+        {{
+          "id": "materials",
+          "label": "相关单据",
+          "type": "file_upload",
+          "required": false,
+          "accept": ".pdf,.doc,.docx,.jpg,.jpeg,.png"
+        }},
+        {{
+          "id": "notes",
+          "label": "核查说明",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "请输入核查的详细情况...",
+          "validation": {{"maxLength": 500}}
+        }}
+      ]
+    }}
+  ]
+}}
+```
+
+⚠️ **重要提示**：
+- 表单JSON必须直接出现在回复末尾，用```json```包装
+- form_id 格式：form_check_ + 任务编号前15位
+- 必需字段：form_id、title、state、sections（缺一不可）
+- 根据实际任务类型动态调整字段（不要照搬模板，要定制）
+- JSON 必须完全有效且可被解析
+- 表单必须包含任务编号readonly字段，引导用户上传相关材料
+
+========================================
+
+现在请按照上述要求发送友好的任务通知消息，同时在末尾附加表单 JSON。"""
 
             logger.info(f"[UnifiedAgent] 发送通知消息给用户...")
             logger.info(f"[UnifiedAgent] 提示词: {notification_prompt[:200]}...")
@@ -395,8 +456,7 @@ class UnifiedAgent:
                         task_id,
                         "已下发",  # 设置状态为"已下发"
                         "",
-                        sent_time=sent_time_str,  # 设置 sent_time
-                        feedback_deadline=""  # 不设置 feedback_deadline（保护已有值）
+                        sent_time=sent_time_str  # 设置 sent_time，不修改 feedback_deadline 保护已有值
                     )
                     logger.info(f"[UnifiedAgent] 消息发送成功，已设置 sent_time={sent_time_str}, status=已下发")
 
@@ -417,23 +477,65 @@ class UnifiedAgent:
 
             logger.info(f"[UnifiedAgent] >>> notify_new_task 完成: 回复={reply[:100]}...")
 
-            # 5. 保存聊天记录到数据库
+            # 6. 从回复中提取表单JSON (Fix 1+2: JSON Extraction)
+            import re
+            import json
+
+            text_message = reply
+            form_schema = None
+            form_id = None
+            message_type = "text"
+
+            # 尝试从markdown代码块中提取JSON表单定义
+            pattern = r'```json\s*([\s\S]*?)\s*```'
+            match = re.search(pattern, reply)
+
+            if match:
+                json_text = match.group(1).strip()
+                try:
+                    schema = json.loads(json_text)
+                    # 验证必需字段
+                    if all(key in schema for key in ['form_id', 'title', 'state', 'sections']):
+                        form_schema = schema
+                        form_id = schema.get('form_id')
+                        message_type = "form_card"
+                        # 移除JSON代码块，仅保留文本消息
+                        text_message = re.sub(pattern, '', reply).strip()
+                        logger.info(f"[UnifiedAgent] 成功提取表单: form_id={form_id}, message_type={message_type}")
+                    else:
+                        logger.warning(f"[UnifiedAgent] 表单JSON缺少必需字段")
+                except json.JSONDecodeError as e:
+                    logger.warning(f"[UnifiedAgent] JSON解析失败: {e}")
+
+            logger.debug(f"[UnifiedAgent] 消息类型: {message_type}, 文本长度: {len(text_message)}")
+
+            # 7. 保存聊天记录到数据库 (保存纯文本部分和表单信息)
             try:
                 from .tools import save_chat_message
+                # Fix 14: 传入表单信息到保存函数
                 save_chat_message(
                     task_id=task_id,
                     sender="Agent",
-                    message=reply,
-                    sender_type="agent"
+                    message=text_message,
+                    sender_type="agent",
+                    message_type=message_type,  # 传入消息类型
+                    schema=form_schema,          # 传入表单schema
+                    form_id=form_id              # 传入表单ID
                 )
-                logger.info(f"[UnifiedAgent] 聊天记录已保存")
+                logger.info(f"[UnifiedAgent] 聊天记录已保存，包括表单数据")
             except Exception as e:
                 logger.error(f"[UnifiedAgent] 保存聊天记录失败: {e}")
 
+            # 8. 返回结构化数据 (Fix 2: New Return Structure)
+            from datetime import datetime as dt
             return {
                 "success": True,
-                "message": reply,
-                "task_id": task_id
+                "type": message_type,
+                "message": text_message,
+                "schema": form_schema,
+                "form_id": form_id,
+                "task_id": task_id,
+                "timestamp": dt.now().isoformat()
             }
 
         except Exception as e:

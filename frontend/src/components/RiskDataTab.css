@@ -1,0 +1,380 @@
+/**
+ * RiskDataTab Component Styles
+ *
+ * Displays risk data table with search, statistics, and pagination
+ */
+
+.risk-data-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  background: white;
+}
+
+/* Global search bar */
+.global-search-bar {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.global-search-bar input {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.global-search-bar input:focus {
+  border-color: var(--primary-color);
+}
+
+/* Data tab switch */
+.data-tab-switch {
+  display: flex;
+  gap: 0;
+  padding: 0 var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.data-tab-switch .tab-btn {
+  flex: 1;
+  padding: var(--spacing-sm);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.data-tab-switch .tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.data-tab-switch .tab-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* Risk statistics dashboard */
+.risk-stats {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.stat-card {
+  flex: 1;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  color: white;
+}
+
+.stat-card.high {
+  background: var(--danger-color);
+}
+
+.stat-card.medium {
+  background: var(--warning-color);
+}
+
+.stat-card.low {
+  background: var(--success-color);
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+/* Section header */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.action-btn {
+  padding: 4px 8px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: white;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Risk data container */
+.risk-data-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.risk-table-wrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.risk-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg-gray);
+  z-index: 10;
+}
+
+.risk-table th {
+  padding: var(--spacing-xs);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.risk-table td {
+  padding: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.risk-table .checkbox-col {
+  width: 40px;
+  text-align: center;
+}
+
+.risk-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.risk-table tbody tr:hover {
+  background: var(--bg-gray);
+}
+
+.risk-table tbody tr.selected-row {
+  background: var(--primary-light);
+}
+
+.risk-table tbody tr.selected-row td {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.risk-level {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.risk-level.高 {
+  background: var(--danger-color);
+  color: white;
+}
+
+.risk-level.中 {
+  background: var(--warning-color);
+  color: white;
+}
+
+.risk-level.低 {
+  background: var(--success-color);
+  color: white;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-gray);
+  flex-shrink: 0;
+}
+
+.page-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.page-size-select {
+  padding: 2px 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.page-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.page-btn {
+  padding: 4px 8px;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.page-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+.page-jump {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.page-input {
+  width: 40px;
+  padding: 2px 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* Loading and empty states */
+.loading-tip,
+.empty-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Scrollbar styling */
+.risk-data-tab::-webkit-scrollbar {
+  width: 6px;
+}
+
+.risk-data-tab::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.risk-data-tab::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+}
+
+.risk-data-tab::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Firefox scrollbar */
+.risk-data-tab {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .global-search-bar {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .risk-stats {
+    gap: 4px;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .risk-table {
+    font-size: 0.75rem;
+  }
+
+  .risk-table th,
+  .risk-table td {
+    padding: 4px;
+  }
+}

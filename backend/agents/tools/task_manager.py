@@ -16,6 +16,16 @@ logger = logging.getLogger(__name__)
 # 数据目录
 DATA_DIR = None
 
+# 允许的任务状态值 - 严格定义，防止Agent创造新状态
+ALLOWED_TASK_STATUSES = {
+    "已创建",   # 任务刚创建，未分配给执行人
+    "已下发",   # 任务已分配给执行人，等待开始反馈
+    "反馈中",   # 执行人正在反馈/核查
+    "已完成",   # 任务已完成
+    "已超时",   # 任务超过截止时间
+    "下发失败", # 任务发送/分配失败，需要重新处理
+}
+
 
 def set_data_dir(data_dir: Path):
     """设置数据目录"""
@@ -238,6 +248,12 @@ def update_task_status(task_id: str, status: str, summary: str = "", sent_time: 
     """
     logger.info(f"[工具] update_task_status 调用: {task_id} -> {status}")
 
+    # 验证状态值是否合法
+    if status not in ALLOWED_TASK_STATUSES:
+        error_msg = f"状态值非法: '{status}'. 允许的状态值: {sorted(ALLOWED_TASK_STATUSES)}"
+        logger.error(f"[工具] update_task_status {error_msg}")
+        return {"error": error_msg}
+
     try:
         data_dir = get_data_dir()
         tasks_file = data_dir / "tasks.csv"
@@ -341,6 +357,12 @@ def assign_task(
     """
     logger.info(f"[工具] assign_task 调用: {task_id} -> {assigned_to_name}")
 
+    # 验证状态值是否合法
+    if status not in ALLOWED_TASK_STATUSES:
+        error_msg = f"状态值非法: '{status}'. 允许的状态值: {sorted(ALLOWED_TASK_STATUSES)}"
+        logger.error(f"[工具] assign_task {error_msg}")
+        return {"error": error_msg}
+
     try:
         data_dir = get_data_dir()
         tasks_file = data_dir / "tasks.csv"
@@ -434,7 +456,13 @@ def assign_task(
 
 
 def save_chat_message(
-    task_id: str, message: str, sender: str, sender_type: str = "user"
+    task_id: str,
+    message: str,
+    sender: str,
+    sender_type: str = "user",
+    message_type: str = None,
+    schema: Dict[str, Any] = None,
+    form_id: str = None
 ) -> Dict[str, Any]:
     """
     保存聊天消息到反馈
@@ -444,11 +472,14 @@ def save_chat_message(
         message: 消息内容
         sender: 发送者名称
         sender_type: 发送者类型（user/agent）
+        message_type: 消息类型（text/form_card）- Fix 14
+        schema: 表单schema对象（当message_type=form_card时） - Fix 14
+        form_id: 表单ID（当message_type=form_card时） - Fix 14
 
     Returns:
         保存结果
     """
-    logger.info(f"[工具] save_chat_message 调用: {task_id}")
+    logger.info(f"[工具] save_chat_message 调用: {task_id}, message_type={message_type}")
 
     try:
         data_dir = get_data_dir()
@@ -462,18 +493,32 @@ def save_chat_message(
         if "chat_history" not in feedback_data:
             feedback_data["chat_history"] = []
 
-        feedback_data["chat_history"].append(
-            {
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "sender": sender,
-                "sender_type": sender_type,
-                "message": message,
-            }
-        )
+        # Fix 14: 构建完整的消息对象，包含表单信息
+        msg_obj = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "sender": sender,
+            "sender_type": sender_type,
+            "message": message,
+        }
+
+        # 添加message_type字段
+        if message_type:
+            msg_obj["message_type"] = message_type
+        else:
+            msg_obj["message_type"] = "text"
+
+        # 添加表单数据
+        if schema:
+            msg_obj["schema"] = schema
+        if form_id:
+            msg_obj["form_id"] = form_id
+
+        feedback_data["chat_history"].append(msg_obj)
 
         with open(feedback_file, "w", encoding="utf-8") as f:
             json.dump(feedback_data, f, ensure_ascii=False, indent=2)
 
+        logger.info(f"[工具] 消息已保存: message_type={message_type}, form_id={form_id}")
         return {"success": True, "message": "消息已保存"}
 
     except Exception as e:
@@ -489,4 +534,5 @@ __all__ = [
     "save_chat_message",
     "set_data_dir",
     "get_data_dir",
+    "ALLOWED_TASK_STATUSES",
 ]

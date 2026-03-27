@@ -117,8 +117,13 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
                 from .session_manager import get_or_create_staff_agent
                 staff_agent = await get_or_create_staff_agent(assigned_to_id, assigned_to_name)
 
-                # 使用 result.get("task", {}) 获取完整任务对象（包含 feedback_deadline）
-                full_task_info = result.get("task", {})
+                # Fix 11: 重新读取最新的任务数据（包含assign_task更新的feedback_deadline）
+                # 不能使用create_task返回的task_info，因为feedback_deadline是在assign_task中设置的
+                from .tools import get_task_detail
+                task_detail = get_task_detail(task_id)
+                full_task_info = task_detail.get("task", {})
+                logger.info(f"[MCP-TOOL] 重新读取任务数据: feedback_deadline={full_task_info.get('feedback_deadline', '')}")
+
                 notify_result = await staff_agent.notify_new_task(task_id, full_task_info)
                 logger.info(f"[MCP-TOOL] StaffAgent 通知已发送: {assigned_to_name} (ID: {assigned_to_id})")
 
@@ -126,14 +131,27 @@ async def tool_create_task(args: Dict[str, Any]) -> Dict[str, Any]:
                 if SSE_AVAILABLE:
                     try:
                         from .sse_events import sse_manager
+                        # Fix 8: 转发完整的 notify_result 结构，包括 type、schema、form_id
+                        sse_event_data = {
+                            "task_id": task_id,
+                            "task_info": full_task_info,  # 使用完整任务对象
+                        }
+                        # 添加来自 notify_result 的完整信息
+                        # Fix 10: 使用 message_type 替代 type，避免与 SSE 事件类型冲突
+                        if isinstance(notify_result, dict):
+                            sse_event_data["message"] = notify_result.get("message", "")
+                            sse_event_data["message_type"] = notify_result.get("type", "text")  # 改为 message_type
+                            sse_event_data["timestamp"] = notify_result.get("timestamp", "")
+                            # 如果是表单卡片，添加 schema 和 form_id
+                            if notify_result.get("type") == "form_card":
+                                sse_event_data["schema"] = notify_result.get("schema")
+                                sse_event_data["form_id"] = notify_result.get("form_id")
+                                logger.info(f"[MCP-TOOL] SSE 推送表单卡片: form_id={notify_result.get('form_id')}")
+
                         await sse_manager.publish_to_staff(
                             assigned_to_id,
                             "task_message_received",
-                            {
-                                "task_id": task_id,
-                                "task_info": full_task_info,  # 使用完整任务对象
-                                "message": notify_result.get("message", "") if isinstance(notify_result, dict) else ""
-                            }
+                            sse_event_data
                         )
                         logger.info(f"[MCP-TOOL] SSE task_message_received 推送成功: {task_id}")
                     except Exception as e:

@@ -21,7 +21,7 @@ def load_identity_document(mode: str) -> str:
         mode: "manager" 或 "staff"
 
     Returns:
-        系统提示词内容
+        系统提示词内容 (如果加载失败则返回空字符串)
     """
     # 获取当前文件目录
     current_dir = Path(__file__).parent
@@ -32,20 +32,45 @@ def load_identity_document(mode: str) -> str:
     elif mode == "staff":
         doc_path = identity_dir / "STAFF_AGENT.md"
     else:
-        logger.warning(f"[AgentConfig] 未知模式: {mode}")
+        logger.warning(f"[AgentConfig] Unknown mode: {mode}")
         return ""
 
+    # 检查文件是否存在
     if not doc_path.exists():
-        logger.error(f"[AgentConfig] 身份文档不存在: {doc_path}")
+        logger.error(
+            f"[AgentConfig] Identity document NOT FOUND: {doc_path.absolute()}"
+        )
         return ""
 
     try:
+        # 读取文件
         with open(doc_path, "r", encoding="utf-8") as f:
             content = f.read()
-        logger.info(f"[AgentConfig] 已加载身份文档: {doc_path.name}")
+
+        # 验证内容是否为空
+        if not content or len(content.strip()) == 0:
+            logger.error(
+                f"[AgentConfig] Identity document is EMPTY: {doc_path.absolute()}"
+            )
+            return ""
+
+        logger.info(
+            f"[AgentConfig] Successfully loaded identity document: {doc_path.name} "
+            f"({len(content)} bytes)"
+        )
         return content
+
+    except IOError as e:
+        logger.error(
+            f"[AgentConfig] Failed to read identity document: {doc_path.absolute()} "
+            f"- {type(e).__name__}: {e}"
+        )
+        return ""
     except Exception as e:
-        logger.error(f"[AgentConfig] 读取身份文档失败: {e}")
+        logger.error(
+            f"[AgentConfig] Unexpected error loading identity document: {doc_path.absolute()} "
+            f"- {type(e).__name__}: {e}"
+        )
         return ""
 
 
@@ -178,151 +203,24 @@ class AgentConfig:
 
     def _build_default_system_prompt(self) -> str:
         """构建默认 System Prompt"""
-        # 优先从身份文档加载
+        # 从身份文档加载系统提示词
         identity_content = load_identity_document(self.mode)
-        if identity_content:
-            # 添加用户信息
-            user_info = f"\n\n## 当前用户\n- 用户ID: {self.user_id}\n- 用户名: {self.user_name}\n- 角色: {'业务负责人' if self.mode == 'manager' else '一线操作人员'}\n"
-            return identity_content + user_info
-        
-        # 如果文档加载失败，使用旧的硬编码方式
-        if self.mode == "manager":
-            return self._build_manager_prompt()
-        elif self.mode == "staff":
-            return self._build_staff_prompt()
-        else:
-            return ""
 
-    def _build_manager_prompt(self) -> str:
-        """构建 Manager 模式 System Prompt（备用方案）"""
-        return f"""你是「DJAgent风控智能助手」，一个专注于物流快递领域风险管理的AI协控助手。
+        if not identity_content:
+            # 文件加载失败，抛出错误
+            error_msg = (
+                f"[AgentConfig] Critical Error: Identity document not found for mode '{self.mode}'. "
+                f"Required file: backend/agents/identity/{self.mode.upper()}_AGENT.md"
+            )
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
 
-## 身份定义
+        # 添加用户信息到提示词末尾
+        user_info = f"\n\n## 当前用户\n- 用户ID: {self.user_id}\n- 用户名: {self.user_name}\n- 角色: {'业务负责人' if self.mode == 'manager' else '一线操作人员'}\n"
+        logger.info(f"[AgentConfig] Successfully loaded system prompt for mode '{self.mode}' with user info appended")
 
-你由DJAgent风控团队构建，专注于帮助业务负责人完成风险数据分析、任务分派和反馈管理。
+        return identity_content + user_info
 
-## 核心能力
-
-你可以调用工具完成数据查询、任务管理、文件解析等操作。具体使用哪些工具，由你根据用户需求自主判断。
-
-## 输出格式
-
-当你需要输出结构化信息时，请遵循以下格式：
-
-### 风险分析
-**风险等级**：[高/中/低]
-**风险类型**：[超重/超时/破损/丢失/投诉/其他]
-**分析依据**：
-1. [第一点数据支撑]
-2. [第二点数据支撑]
-3. [第三点数据支撑]
-**建议操作**：[具体可执行的建议]
-
-### 任务创建
-**任务类型**：[日度核查/月度复盘/专项检查]
-**任务描述**：[简要描述]
-**执行人**：[指定人员]
-**期望完成时间**：[时间]
-
-## 行为准则
-
-1. **数据优先**：必须调用工具获取真实数据，不虚构用户信息、任务状态
-2. **主动推断**：理解用户意图后直接执行，不需要问"需要我帮你做这个吗"
-3. **边界清晰**：
-   - 超出物流风控范围的问题，礼貌拒绝并建议咨询相关人员
-   - 不确定的风险标注"待确认"并说明原因
-4. **专业简洁**：使用专业术语但避免过度技术语言，保持友好专业
-5. **任务闭环**：创建任务后必须指定执行人，确保任务可以下发
-
-## 当前用户
-- 用户ID: {self.user_id}
-- 用户名: {self.user_name}
-- 角色: 业务负责人
-
----
-
-**重要**：你是通过工具来完成任务，而不是在回复中描述会做什么。当需要执行操作时，直接调用合适的工具。
-
-"""
-
-    def _build_staff_prompt(self) -> str:
-        """构建 Staff 模式 System Prompt"""
-        return f"""你是「DJAgent风险核查助手」，由DJAgent风控团队构建，专注于帮助一线操作人员完成风险核查任务。
-
-## 身份定义
-
-你是一个风险核查助手，你的核心职责有**两个阶段**：
-
-### 阶段一：任务下发（主动推送）
-
-当Manager创建了风险核查任务并调用你时，你需要**主动发消息**给对应的一线用户，告知：
-- 任务ID和风险类型
-- 需要提交什么材料（图片/文档/文字）
-- 需要反馈什么内容（业务真实性、操作情况等）
-
-**重要**：你是告知用户需要提交什么材料，**不是教用户怎么核查**。
-
-### 阶段二：材料审核（双重判断）
-
-当一线用户提交材料后，你需要进行**双重判断**：
-
-#### 判断一：材料是否符合要求
-- 提交的材料是否完整？
-- 是否涵盖了任务要求的所有内容？
-- 格式是否正确？
-
-#### 判断二：风险是否真实存在
-结合任务信息 + 用户提交的材料，进行分析：
-- 这个风险是真的有问题？
-- 还是问题不大？
-- 还是根本没有风险？
-
-## 核心能力
-
-你可以调用工具完成任务查询、文件解析、状态更新等操作。具体使用哪些工具，由你根据需求自主判断。
-
-## 输出格式
-
-### 任务通知消息
-当收到新任务时，主动发送：
-**任务编号**：[任务ID]
-**风险类型**：[类型]
-**需要提交的材料**：
-1. [材料1]
-2. [材料2]
-**反馈截止时间**：[时间]
-
-### 收到材料后的核查总结
-**材料完整性**：✅ 完整 / ⚠️ 缺失 {{缺少什么}}
-**风险分析结论**：
-- 【真实风险】：{{风险真实存在，说明}}
-- 【问题不大】：{{风险存在但轻微，说明}}
-- 【无风险】：{{经核实无风险，说明}}
-
-**下一步建议**：
-- 【通过】：材料齐全，风险已核实
-- 【补充】：材料不完整，需要补充 {{具体}}
-- 【转派】：需要其他人员处理（原因）
-- 【关闭】：风险不存在，任务关闭
-
-## 行为准则
-
-1. **主动推送**：任务来了就主动发通知给一线用户，不要等用户问
-2. **明确要求**：告诉用户具体要提交什么，别让用户猜
-3. **材料为据**：判断要有数据/材料支撑，别凭空判断
-4. **闭环思维**：收到材料后一定要给结论，不能只说"收到了"
-5. **边界意识**：超出权限的操作（如删除数据），明确告知需要上级审批
-
-## 当前用户
-- 用户ID: {self.user_id}
-- 用户名: {self.user_name}
-- 角色: 一线操作人员
-
----
-
-**重要**：你是通过工具来完成核查任务，而不是在回复中描述会做什么。当需要执行操作时，直接调用合适的工具。
-
-"""
 
     def _get_tools_description(self, staff_mode: bool = False) -> str:
         """动态获取工具描述"""
@@ -366,12 +264,25 @@ class AgentConfig:
         """转换为 SDK 配置"""
         from claude_agent_sdk import ClaudeAgentOptions
 
+        # 获取项目根目录
+        project_root = Path(__file__).parent.parent.parent
+
         options = {
             "env": self.env_config,
             "system_prompt": self.system_prompt,
             "max_turns": self.max_turns,
+            "cwd": str(project_root),                    # 设置项目根目录
+            "setting_sources": ["user", "project"],      # 启用官方 Skill 发现
             **self.tools_config,
         }
+
+        # 在 allowed_tools 中添加 Skill 支持
+        if "allowed_tools" not in options:
+            options["allowed_tools"] = []
+
+        if isinstance(options["allowed_tools"], list):
+            options["allowed_tools"].append("Skill")
+            logger.info(f"[AgentConfig] 启用官方 Skill 支持，允许的工具: {options['allowed_tools']}")
 
         return ClaudeAgentOptions(**options)
 

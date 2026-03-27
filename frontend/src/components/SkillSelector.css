@@ -1,0 +1,143 @@
+/* SkillSelector Dropdown 样式 */
+
+.skill-selector-dropdown {
+  position: fixed;
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 320px;
+  /* 关键：限制最大高度为 300px，约显示 5 个列表项 */
+  /* 每个项: padding(8px上+8px下) + 内容高度(约18-20px) ≈ 34-36px */
+  /* 搜索框: padding(6px) + input(28px) + padding(6px) ≈ 40px */
+  /* 5个项 * 36px = 180px + 搜索框40px ≈ 220px, 300px 足够显示5个完整项目并有滚动 */
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  /* 移除 slideDown animation，改用 opacity transition 由 React 状态控制 */
+  margin: 0;
+  padding: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+/* 保留 slideDown 动画定义但不使用 */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 搜索框 */
+.skill-dropdown-search {
+  padding: 6px;
+  border-bottom: 1px solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.skill-dropdown-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.skill-dropdown-input:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.1);
+}
+
+/* 下拉列表 */
+.skill-dropdown-list {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 200px;
+}
+
+.skill-dropdown-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.skill-dropdown-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.skill-dropdown-list::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.skill-dropdown-list::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* 列表项 */
+.skill-dropdown-item {
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+.skill-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.skill-dropdown-item:hover,
+.skill-dropdown-item--highlighted {
+  background-color: #f0f7ff;
+}
+
+.skill-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-item-desc {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+}
+
+/* 空状态 */
+.skill-dropdown-empty {
+  padding: 16px 10px;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+/* 滚动条优化 */
+.skill-dropdown-list {
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
