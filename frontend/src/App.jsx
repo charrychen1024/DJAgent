@@ -592,32 +592,9 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     }
   }
 
-  // 发送消息
+  // 发送消息 - 流式版本
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && pendingFiles.length === 0) return
-
-    // 如果没有当前对话，先创建一个
-    let activeChatId = currentChatId
-    if (!activeChatId) {
-      const userId = currentUser?.employee_id || currentUser?.user_id
-      const response = await fetch(`${API_BASE}/chats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employee_id: userId,
-          username: currentUser.username
-        })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        activeChatId = data.chat.chat_id
-        setCurrentChatId(activeChatId)
-        await fetchChatList()
-      } else {
-        console.error('[ERROR] 创建对话失败:', data.message)
-        return
-      }
-    }
 
     const messageToSend = inputMessage
     const filesToSend = [...pendingFiles]
@@ -640,40 +617,182 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     setPendingFiles([])
     setLoading(prev => ({ ...prev, chat: true }))
 
+    // 添加空的agent消息占位
+    const agentMessageId = `agent-${Date.now()}`
+    setChatMessages(prev => [...prev, {
+      sender: 'agent',
+      message: '',
+      messageId: agentMessageId,
+      content: [],  // 存储content blocks
+      isStreaming: true,
+      timestamp: new Date().toLocaleString()
+    }])
+
+    const userId = currentUser?.employee_id || currentUser?.user_id
+
     try {
-      // 构建 FormData 发送到对话 API
-      const userId = currentUser?.employee_id || currentUser?.user_id
-      const formData = new FormData()
-      formData.append('message', messageToSend)
-      formData.append('employee_id', userId)
-      formData.append('username', currentUser.username)
-
-      // 添加文件
-      filesToSend.forEach(f => {
-        formData.append('files', f.file, f.name)
-      })
-
-      const response = await fetch(`${API_BASE}/chats/${activeChatId}/messages`, {
+      // 使用流式API
+      const response = await fetch(`${API_BASE}/chat/stream`, {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: messageToSend,
+          employee_id: userId,
+          username: currentUser.username
+        })
       })
 
-      const data = await response.json()
-      if (data.status === 'success') {
-        setChatMessages(prev => [...prev, { 
-          sender: 'agent', 
-          message: data.agent_reply.message, 
-          timestamp: data.agent_reply.timestamp 
-        }])
-        // 更新对话列表中的标题（第一条消息）
-        fetchChatList()
-      } else {
-        throw new Error(data.message || '发送失败')
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
       }
-      fetchTasks()
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let currentEventType = null
+      let currentContent = ''
+      let currentBlockIndex = -1
+      let currentBlockType = null
+      let messageContent = []
+      let accumulatedText = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop()
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEventType = line.slice(7).trim()
+          } else if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6).trim())
+              const eventData = data.delta || data
+
+              // 处理不同事件类型
+              if (currentEventType === 'content_block_start') {
+                currentBlockIndex = data.index || 0
+                currentBlockType = data.content_block?.type
+                currentContent = ''
+
+                // 添加新block
+                messageContent.push({
+                  type: currentBlockType,
+                  text: '',
+                  thinking: '',
+                  name: data.content_block?.name || '',
+                  input: data.content_block?.input || {},
+                  id: data.content_block?.id || ''
+                })
+              } else if (currentEventType === 'content_block_delta') {
+                if (eventData.type === 'text_delta' && eventData.text) {
+                  accumulatedText += eventData.text
+                  // 更新最后一个block
+                  if (messageContent.length > 0) {
+                    const lastBlock = messageContent[messageContent.length - 1]
+                    lastBlock.text = accumulatedText
+                  }
+                } else if (eventData.type === 'thinking_delta' && eventData.thinking) {
+                  if (messageContent.length > 0) {
+                    const lastBlock = messageContent[messageContent.length - 1]
+                    lastBlock.thinking = (lastBlock.thinking || '') + eventData.thinking
+                  }
+                }
+              }
+
+              // 更新UI
+              setChatMessages(prev => prev.map(msg => {
+                if (msg.messageId === agentMessageId) {
+                  return {
+                    ...msg,
+                    content: [...messageContent],
+                    message: accumulatedText  // 兼容旧字段
+                  }
+                }
+                return msg
+              }))
+            } catch (e) {
+              // 解析JSON失败，跳过
+            }
+          }
+        }
+      }
+
+      // 流式结束
+      setChatMessages(prev => prev.map(msg => {
+        if (msg.messageId === agentMessageId) {
+          return { ...msg, isStreaming: false }
+        }
+        return msg
+      }))
+
     } catch (err) {
       console.error('[ERROR] 发送消息失败:', err)
-      setChatMessages(prev => [...prev, { sender: 'agent', message: '抱歉，发送消息失败，请稍后重试。', timestamp: new Date().toLocaleString() }])
+      // 降级：使用非流式API
+      console.log('[INFO] 回退到非流式API')
+      try {
+        // 先创建对话
+        let activeChatId = currentChatId
+        if (!activeChatId) {
+          const createRes = await fetch(`${API_BASE}/chats`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              employee_id: userId,
+              username: currentUser.username
+            })
+          })
+          const createData = await createRes.json()
+          if (createData.status === 'success') {
+            activeChatId = createData.chat.chat_id
+            setCurrentChatId(activeChatId)
+          }
+        }
+
+        if (activeChatId) {
+          const formData = new FormData()
+          formData.append('message', messageToSend)
+          formData.append('employee_id', userId)
+          formData.append('username', currentUser.username)
+          filesToSend.forEach(f => formData.append('files', f.file, f.name))
+
+          const response = await fetch(`${API_BASE}/chats/${activeChatId}/messages`, {
+            method: 'POST',
+            body: formData
+          })
+          const data = await response.json()
+          if (data.status === 'success') {
+            // 替换占位消息
+            setChatMessages(prev => prev.map(msg => {
+              if (msg.messageId === agentMessageId) {
+                return {
+                  sender: 'agent',
+                  message: data.agent_reply.message,
+                  timestamp: data.agent_reply.timestamp
+                }
+              }
+              return msg
+            }))
+            fetchChatList()
+            fetchTasks()
+          }
+        }
+      } catch (fallbackErr) {
+        console.error('[ERROR] 降级API也失败:', fallbackErr)
+        setChatMessages(prev => prev.map(msg => {
+          if (msg.messageId === agentMessageId) {
+            return {
+              ...msg,
+              message: '抱歉，发送消息失败，请稍后重试。',
+              isStreaming: false
+            }
+          }
+          return msg
+        }))
+      }
     } finally {
       setLoading(prev => ({ ...prev, chat: false }))
     }
