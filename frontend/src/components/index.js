@@ -13,6 +13,9 @@ export { default as FormCardBubble } from './FormCardBubble';
 export { default as ChatMessage } from './ChatMessage';
 export { default as ChatInput } from './ChatInput';
 export { default as SkillSelector } from './SkillSelector';
+export { default as ToolCallCard } from './ToolCallCard';
+export { default as ThinkingBlock } from './ThinkingBlock';
+export { default as ToolResultCard } from './ToolResultCard';
 
 // Re-export constants and types if needed
 export const FIELD_TYPES = {

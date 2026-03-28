@@ -422,6 +422,76 @@ async def chat(request: Request):
     }
 
 
+@app.post("/api/chat/stream")
+async def chat_stream(request: Request):
+    """
+    Anthropic 标准流式聊天端点
+    
+    返回完整的事件流，包括：
+    - thinking: 思考过程
+    - tool_use: 工具调用
+    - text: 正文内容
+    - tool_result: 工具结果
+    
+    SSE 事件格式完全符合 Anthropic Messages API Streaming 规范
+    """
+    from fastapi.responses import StreamingResponse
+    from agents.session_manager import get_or_create_manager_agent
+    
+    # 解析请求
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    
+    message = data.get("message", "")
+    employee_id = data.get("employee_id", "manager_default")
+    username = data.get("username", "业务负责人")
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="缺少 message 参数")
+    
+    if not HAS_AGENT_SDK:
+        # 返回简化响应
+        async def simple_event_generator():
+            yield "event: message_start\ndata: {'type': 'message_start'}\n\n"
+            yield "event: content_block_start\ndata: {'type': 'content_block_start', 'content_block': {'type': 'text'}}\n\n"
+            yield f"event: content_block_delta\ndata: {{'type': 'content_block_delta', 'delta': {{'type': 'text_delta', 'text': '当前为简化模式，未连接 Agent SDK'}}}}\n\n"
+            yield "event: message_stop\ndata: {'type': 'message_stop'}\n\n"
+        
+        return StreamingResponse(
+            simple_event_generator(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+        )
+    
+    # 获取 Agent
+    try:
+        agent = await get_or_create_manager_agent(employee_id, username)
+        
+        async def event_stream():
+            """事件流生成器"""
+            try:
+                async for sse_event in agent.chat_stream_with_events(message=message):
+                    yield sse_event
+            except Exception as e:
+                logger.error(f"[API] 流式事件生成失败: {e}")
+                yield f"event: error\ndata: {{'error': '{str(e)}'}}\n\n"
+        
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+            }
+        )
+    except Exception as e:
+        logger.error(f"[API] 获取 Agent 失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============ 表单处理接口 ============
 
 
