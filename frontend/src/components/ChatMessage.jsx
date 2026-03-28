@@ -3,6 +3,10 @@ import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import FormCardBubble from './FormCardBubble';
+import { MessageBlockType } from '../utils/messageTypes';
+import ThinkingBlock from './ThinkingBlock';
+import ToolCallCard from './ToolCallCard';
+import ToolResultCard from './ToolResultCard';
 import './ChatMessage.css';
 
 /**
@@ -68,6 +72,50 @@ const ChatMessage = ({
     }
   };
 
+  // Render content block based on type
+  const renderContentBlock = (block, index) => {
+    switch (block.type) {
+      case MessageBlockType.THINKING:
+        return (
+          <ThinkingBlock
+            key={`block-${index}`}
+            thinking={block.thinking}
+            signature={block.signature}
+          />
+        );
+      
+      case MessageBlockType.TOOL_USE:
+        return (
+          <ToolCallCard
+            key={`block-${index}`}
+            toolUseId={block.id}
+            name={block.name}
+            input={block.input}
+          />
+        );
+      
+      case MessageBlockType.TOOL_RESULT:
+        return (
+          <ToolResultCard
+            key={`block-${index}`}
+            toolUseId={block.tool_use_id}
+            content={block.content}
+            isError={block.is_error}
+          />
+        );
+      
+      case MessageBlockType.TEXT:
+      default:
+        return (
+          <div key={`block-${index}`} className="text-block">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {block.text}
+            </ReactMarkdown>
+          </div>
+        );
+    }
+  };
+
   const baseClass = `chat-message chat-message--${sender} chat-message--${type}`;
   const senderLabel = sender === 'user' ? '👤 我' : sender === 'system' ? '⚙️ 系统' : '🤖 Agent';
 
@@ -98,9 +146,15 @@ const ChatMessage = ({
               </>
             ) : (
               <div className="markdown-content">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {displayContent}
-                </ReactMarkdown>
+                {/* New content array structure (block-based rendering) */}
+                {Array.isArray(content) ? (
+                  content.map((block, index) => renderContentBlock(block, index))
+                ) : (
+                  /* Legacy string content (backward compatible) */
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {displayContent}
+                  </ReactMarkdown>
+                )}
               </div>
             )}
           </div>

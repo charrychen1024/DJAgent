@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, AsyncIterator
 from claude_agent_sdk import ClaudeSDKClient, AssistantMessage, TextBlock, ResultMessage
 
 from .config import AgentConfig
@@ -126,6 +126,59 @@ class UnifiedAgent:
             logger.info("[UnifiedAgent] 只有工具调用，无文本消息")
 
         return reply
+
+    async def chat_stream_with_events(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        files: Optional[List[str]] = None,
+    ) -> AsyncIterator[str]:
+        """
+        流式聊天 + 完整事件区分（Anthropic 标准）
+        
+        返回完整的事件流，包括：
+        - thinking blocks (思考过程）
+        - tool_use blocks (工具调用）
+        - text blocks (正文）
+        - tool_result blocks (工具结果）
+        
+        Returns:
+            AsyncIterator[str]: SSE 格式的事件流
+        """
+        from .anthropic_event_generator import AnthropicEventGenerator
+        from .sdk_message_parser import SDKMessageParser
+        
+        # 创建事件生成器
+        event_gen = AnthropicEventGenerator()
+        
+        # 发送 message_start
+        yield event_gen.message_start()
+        
+        try:
+            # 构建提示词
+            prompt = self._build_prompt(message, context, files)
+            
+            # 调用 SDK
+            await self.client.query(prompt)
+            
+            # 使用解析器处理消息
+            parser = SDKMessageParser(
+                self.client.receive_response(),
+                event_gen
+            )
+            
+            async for sse_event in parser.parse():
+                yield sse_event
+            
+            # 发送 message_delta 和 message_stop
+            yield event_gen.message_delta(stop_reason="end_turn")
+            yield event_gen.message_stop()
+            
+        except Exception as e:
+            logger.error(f"[UnifiedAgent] 流式处理失败: {e}", exc_info=True)
+            # 发送错误事件
+            yield event_gen.message_delta(stop_reason="error")
+            yield event_gen.message_stop()
 
     def _build_prompt(
         self,
