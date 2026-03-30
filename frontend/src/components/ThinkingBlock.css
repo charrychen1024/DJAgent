@@ -1,74 +1,45 @@
-/* Thinking Block 样式 */
+/* Thinking Block 样式 - 简约版 */
 
+/* 思考过程使用行内徽章样式 */
 .thinking-block {
-  margin: 12px 0;
-  background: #f8f9fa;
-  border-left: 3px solid #6c757d;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.thinking-header {
-  padding: 10px 16px;
-  cursor: pointer;
-  display: flex;
+  margin: 8px 0;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: #e9ecef;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background 0.2s;
+  gap: 6px;
 }
 
-.thinking-header:hover {
-  background: #dee2e6;
+.thinking-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--bg-primary-light, #e6f7ff);
+  border: 1px solid var(--border-color, #e8e8e8);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text-secondary, #8c8c8c);
+  cursor: pointer;
+}
+
+.thinking-badge:hover {
+  background: var(--bg-gray, #f5f5f5);
 }
 
 .thinking-icon {
-  font-size: 18px;
-}
-
-.thinking-title {
-  flex: 1;
+  font-size: 14px;
 }
 
 .thinking-toggle {
-  font-size: 12px;
-  color: #6c757d;
+  font-size: 10px;
+  color: var(--text-secondary, #8c8c8c);
 }
 
+/* 隐藏详细内容，默认收起 */
 .thinking-content {
-  padding: 12px 16px;
-  background: #fff;
+  display: none;
 }
 
-.thinking-text {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.thinking-line {
-  padding: 2px 0;
-  color: #495057;
-}
-
-.thinking-signature {
-  margin-top: 12px;
-  padding: 8px 12px;
-  background: #f1f3f5;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-
-.signature-label {
-  color: #6c757d;
-}
-
-.signature-value {
-  font-family: monospace;
-  color: #495057;
+/* 展开时显示 */
+.thinking-block.expanded .thinking-content {
+  display: block;
 }

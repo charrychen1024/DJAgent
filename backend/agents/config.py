@@ -273,6 +273,7 @@ class AgentConfig:
             "max_turns": self.max_turns,
             "cwd": str(project_root),                    # 设置项目根目录
             "setting_sources": ["user", "project"],      # 启用官方 Skill 发现
+            "include_partial_messages": True,            # 🔥 关键：开启流式输出
             **self.tools_config,
         }
 
