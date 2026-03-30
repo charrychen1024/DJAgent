@@ -10,6 +10,125 @@ const API_BASE = '/api'
 // EventSource 需要完整的 URL 指向后端，不能使用相对路径
 const SSE_BASE = 'http://localhost:5005/api'
 
+// 处理流式响应的辅助函数
+async function processStreamingResponse(response, agentMessageId, setChatMessagesFn, setLoadingFn) {
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let currentEventType = null
+  let messageContent = {}  // 改为对象，用 id 作为 key
+  let accumulatedText = ''
+  let lastUpdateTime = 0
+  const MIN_UPDATE_INTERVAL = 50  // 最小更新间隔 50ms，让 UI 有时间渲染
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop()
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7).trim()
+        } else if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6).trim())
+            const eventData = data.delta || data
+
+            // 获取 block 的唯一 ID
+            const blockId = data.content_block?.id || `block_${data.index || 0}`
+
+            // 处理 message_start - 初始化消息
+            if (currentEventType === 'message_start') {
+              messageContent = {}
+              accumulatedText = ''
+              continue
+            }
+
+            // 处理 content_block_start - 创建新 block
+            if (currentEventType === 'content_block_start') {
+              const contentBlock = data.content_block || {}
+              const blockType = contentBlock.type || 'text'
+              messageContent[blockId] = {
+                type: blockType,
+                id: blockId,
+                text: '',
+                thinking: '',
+                name: contentBlock.name || '',
+                input: contentBlock.input || {},
+              }
+              continue
+            }
+
+            // 处理 content_block_delta - 更新 block 内容
+            if (currentEventType === 'content_block_delta') {
+              // 尝试从数据中获取 blockId
+              const targetId = data.delta?.tool_use_id || data.content_block?.id || blockId
+
+              if (!messageContent[targetId]) {
+                messageContent[targetId] = { type: 'text', id: targetId, text: '', thinking: '' }
+              }
+
+              const targetBlock = messageContent[targetId]
+
+              if (eventData.type === 'text_delta' && eventData.text) {
+                targetBlock.text = (targetBlock.text || '') + eventData.text
+                accumulatedText += eventData.text
+              } else if (eventData.type === 'thinking_delta' && eventData.thinking) {
+                targetBlock.thinking = (targetBlock.thinking || '') + eventData.thinking
+                targetBlock.type = 'thinking'
+              } else if (eventData.type === 'signature_delta' && eventData.signature) {
+                targetBlock.signature = (targetBlock.signature || '') + eventData.signature
+                targetBlock.type = 'thinking'
+              } else if (eventData.type === 'input_json_delta' && eventData.partial_json) {
+                targetBlock.input_partial = (targetBlock.input_partial || '') + eventData.partial_json
+                targetBlock.type = 'tool_use'
+                try {
+                  targetBlock.input = JSON.parse('{' + targetBlock.input_partial + '}')
+                } catch {}
+              }
+            }
+
+            // 节流更新 UI：限制更新频率，让渲染跟上流式节奏
+            const now = Date.now()
+            if (now - lastUpdateTime >= MIN_UPDATE_INTERVAL) {
+              lastUpdateTime = now
+              const contentArray = Object.values(messageContent)
+              setChatMessagesFn(prev => prev.map(msg => {
+                if (msg.messageId === agentMessageId) {
+                  return { ...msg, content: contentArray, message: accumulatedText }
+                }
+                return msg
+              }))
+            }
+          } catch {}
+        }
+      }
+    }
+
+    // 最后一次更新：确保完整内容渲染
+    const finalContent = Object.values(messageContent)
+    setChatMessagesFn(prev => prev.map(msg => {
+      if (msg.messageId === agentMessageId) {
+        return { ...msg, content: finalContent, message: accumulatedText }
+      }
+      return msg
+    }))
+  } finally {
+    // 流式结束，关闭 loading 状态
+    setChatMessagesFn(prev => prev.map(msg => {
+      if (msg.messageId === agentMessageId) {
+        return { ...msg, isStreaming: false }
+      }
+      return msg
+    }))
+    setLoadingFn(prev => ({ ...prev, chat: false }))
+  }
+}
+
 // 登录页面组件 - 带角色卡片
 function LoginPage({ users, onLogin, loading }) {
   const [selectedRole, setSelectedRole] = useState(null)
@@ -617,13 +736,16 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
     setPendingFiles([])
     setLoading(prev => ({ ...prev, chat: true }))
 
-    // 添加空的agent消息占位
+    // 添加空的agent消息占位（包含初始思考提示）
     const agentMessageId = `agent-${Date.now()}`
     setChatMessages(prev => [...prev, {
       sender: 'agent',
       message: '',
       messageId: agentMessageId,
-      content: [],  // 存储content blocks
+      content: [{
+        type: 'thinking',
+        thinking: '正在思考...'
+      }],  // 初始包含思考提示
       isStreaming: true,
       timestamp: new Date().toLocaleString()
     }])
@@ -646,93 +768,13 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
         throw new Error(`HTTP ${response.status}`)
       }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let currentEventType = null
-      let currentContent = ''
-      let currentBlockIndex = -1
-      let currentBlockType = null
-      let messageContent = []
-      let accumulatedText = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop()
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEventType = line.slice(7).trim()
-          } else if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6).trim())
-              const eventData = data.delta || data
-
-              // 处理不同事件类型
-              if (currentEventType === 'content_block_start') {
-                currentBlockIndex = data.index || 0
-                currentBlockType = data.content_block?.type
-                currentContent = ''
-
-                // 添加新block
-                messageContent.push({
-                  type: currentBlockType,
-                  text: '',
-                  thinking: '',
-                  name: data.content_block?.name || '',
-                  input: data.content_block?.input || {},
-                  id: data.content_block?.id || ''
-                })
-              } else if (currentEventType === 'content_block_delta') {
-                if (eventData.type === 'text_delta' && eventData.text) {
-                  accumulatedText += eventData.text
-                  // 更新最后一个block
-                  if (messageContent.length > 0) {
-                    const lastBlock = messageContent[messageContent.length - 1]
-                    lastBlock.text = accumulatedText
-                  }
-                } else if (eventData.type === 'thinking_delta' && eventData.thinking) {
-                  if (messageContent.length > 0) {
-                    const lastBlock = messageContent[messageContent.length - 1]
-                    lastBlock.thinking = (lastBlock.thinking || '') + eventData.thinking
-                  }
-                }
-              }
-
-              // 更新UI
-              setChatMessages(prev => prev.map(msg => {
-                if (msg.messageId === agentMessageId) {
-                  return {
-                    ...msg,
-                    content: [...messageContent],
-                    message: accumulatedText  // 兼容旧字段
-                  }
-                }
-                return msg
-              }))
-            } catch (e) {
-              // 解析JSON失败，跳过
-            }
-          }
-        }
-      }
-
-      // 流式结束
-      setChatMessages(prev => prev.map(msg => {
-        if (msg.messageId === agentMessageId) {
-          return { ...msg, isStreaming: false }
-        }
-        return msg
-      }))
+      // 调用辅助函数处理流式响应
+      await processStreamingResponse(response, agentMessageId, setChatMessages, setLoading)
 
     } catch (err) {
-      console.error('[ERROR] 发送消息失败:', err)
-      // 降级：使用非流式API
-      console.log('[INFO] 回退到非流式API')
+        console.error('[ERROR] 发送消息失败:', err)
+        // 降级：使用非流式API
+        console.log('[INFO] 回退到非流式API')
       try {
         // 先创建对话
         let activeChatId = currentChatId
@@ -1082,7 +1124,8 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
                 type: msg.type || 'text',
                 sender: msg.sender === 'user' ? 'user' : 'agent',
                 timestamp: msg.timestamp,
-                content: msg.message,
+                // 流式内容使用 content 数组，否则使用 msg.message 文本
+                content: msg.content || msg.message,
                 // Backward compatibility: support message field as fallback
                 message: msg.message,
                 files: msg.files || [],
@@ -1099,17 +1142,7 @@ function ManagerWorkspace({ currentUser, selectedRegion, onAddToChat }) {
               onFormCancel={() => console.log('Form canceled')}
               onFormModify={(data) => console.log('Form modified:', data)}
             />
-          ))}
-          {loading.chat && (
-            <ChatMessage
-              message={{
-                type: 'text',
-                sender: 'agent',
-                content: '正在思考...',
-                timestamp: new Date().toISOString()
-              }}
-            />
-          )}
+            ))}
           <div ref={messagesEndRef} />
         </div>
         <ChatInput
@@ -2026,6 +2059,18 @@ function App() {
   // 个人中心下拉菜单状态
   const [showProfileMenu, setShowProfileMenu] = useState(false)
 
+  // 主题状态（浅色/深色）
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true'
+  })
+
+  // 切换主题
+  const toggleDarkMode = () => {
+    const newMode = !darkMode
+    setDarkMode(newMode)
+    localStorage.setItem('darkMode', newMode)
+  }
+
   // 地区下拉框状态
   // 总部用户可以切换地区，地区用户只能看自己的地区（不可切换但仍显示下拉框）
   const isHQUser = currentUser?.region === '总部'
@@ -2071,7 +2116,7 @@ function App() {
   const isManager = currentUser.role === '业务负责人' || currentUser.role === '普通分析人员'
 
   return (
-    <div className="App">
+    <div className={`App${darkMode ? ' dark-mode' : ''}`}>
       <header className="App-header">
         <h1>🛡️ 风控数字员工</h1>
         <div className="header-right">
@@ -2088,6 +2133,15 @@ function App() {
               }}
             />
           </div>
+
+          {/* 主题切换按钮 */}
+          <button
+            className="theme-toggle-btn"
+            onClick={toggleDarkMode}
+            title={darkMode ? "切换到浅色模式" : "切换到深色模式"}
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </button>
 
           {/* 地区选择下拉框 - 所有用户都显示，地区用户不可切换 */}
           <div className="region-selector">

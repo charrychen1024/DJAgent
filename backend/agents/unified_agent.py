@@ -3,6 +3,7 @@
 完全信任 SDK 的 ReAct 循环，不做任何预处理或手动工具调用
 """
 
+import json
 import logging
 from typing import Dict, Any, Optional, List, AsyncIterator
 from claude_agent_sdk import ClaudeSDKClient, AssistantMessage, TextBlock, ResultMessage
@@ -135,50 +136,68 @@ class UnifiedAgent:
     ) -> AsyncIterator[str]:
         """
         流式聊天 + 完整事件区分（Anthropic 标准）
-        
+
         返回完整的事件流，包括：
         - thinking blocks (思考过程）
         - tool_use blocks (工具调用）
         - text blocks (正文）
         - tool_result blocks (工具结果）
-        
+
         Returns:
             AsyncIterator[str]: SSE 格式的事件流
         """
-        from .anthropic_event_generator import AnthropicEventGenerator
+        import asyncio
         from .sdk_message_parser import SDKMessageParser
-        
-        # 创建事件生成器
-        event_gen = AnthropicEventGenerator()
-        
-        # 发送 message_start
-        yield event_gen.message_start()
-        
+
         try:
             # 构建提示词
             prompt = self._build_prompt(message, context, files)
-            
-            # 调用 SDK
-            await self.client.query(prompt)
-            
-            # 使用解析器处理消息
-            parser = SDKMessageParser(
-                self.client.receive_response(),
-                event_gen
-            )
-            
-            async for sse_event in parser.parse():
-                yield sse_event
-            
-            # 发送 message_delta 和 message_stop
-            yield event_gen.message_delta(stop_reason="end_turn")
-            yield event_gen.message_stop()
-            
+
+            # 关键修复：并发启动 query 和 receive_response
+            # query 会产生事件，receive_response 消费事件
+            # 我们需要同时运行它们，而不是等待 query 完成后再 receive
+
+            # 创建队列用于传递事件
+            event_queue = asyncio.Queue()
+
+            async def query_task():
+                """在后台线程中运行 query"""
+                try:
+                    await self.client.query(prompt)
+                except Exception as e:
+                    logger.error(f"[UnifiedAgent] queryTask 失败: {e}")
+                    await event_queue.put(None)  # 发送结束信号
+
+            async def receive_task():
+                """接收并转换事件"""
+                try:
+                    parser = SDKMessageParser(self.client.receive_response())
+                    async for sse_event in parser.parse():
+                        await event_queue.put(sse_event)
+                except Exception as e:
+                    logger.error(f"[UnifiedAgent] receiveTask 失败: {e}")
+                finally:
+                    await event_queue.put(None)  # 发送结束信号
+
+            # 并发启动两个任务
+            query_coroutine = asyncio.create_task(query_task())
+            receive_coroutine = asyncio.create_task(receive_task())
+
+            # 从队列中获取事件并 yield
+            while True:
+                event = await event_queue.get()
+                if event is None:
+                    break
+                yield event
+
+            # 确保两个任务都完成
+            await asyncio.gather(query_coroutine, receive_coroutine, return_exceptions=True)
+
         except Exception as e:
             logger.error(f"[UnifiedAgent] 流式处理失败: {e}", exc_info=True)
             # 发送错误事件
-            yield event_gen.message_delta(stop_reason="error")
-            yield event_gen.message_stop()
+            yield f"event: error\ndata: {json.dumps({'type': 'error', 'error': str(e)}, ensure_ascii=False)}\n\n"
+            yield "event: message_stop\ndata: {'type': 'message_stop'}\n\n"
 
     def _build_prompt(
         self,

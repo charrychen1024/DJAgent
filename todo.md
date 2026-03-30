@@ -2,6 +2,31 @@
 
 ## ✅ 已完成工作
 
+### 流式输出实现 (SSE Streaming)
+- [x] **后端 SSE 事件流**
+  - 配置 `include_partial_messages: True` 启用流式输出
+  - sdk_message_parser.py 处理 StreamEvent → SSE 格式转换
+  - 发送 thinking_delta, text_delta, input_json_delta 事件
+  - 位置：backend/agents/config.py, backend/agents/sdk_message_parser.py
+
+- [x] **前端流式响应处理**
+  - processStreamingResponse 辅助函数处理 SSE 事件
+  - 处理内容块：thinking (思考), text (文本), tool_use (工具调用)
+  - 使用 setChatMessages 更新流式内容到消息气泡
+  - 位置：frontend/src/App.jsx:14-123
+
+- [x] **流式内容渲染**
+  - ChatMessage 组件支持 content 数组渲染
+  - ThinkingBlock 组件：可折叠显示思考过程
+  - ToolCallCard 组件：可折叠显示工具调用
+  - ToolResultCard 组件：显示工具执行结果
+  - 位置：frontend/src/components/ChatMessage.jsx:75-117
+
+- [x] **避免内容覆盖问题**
+  - 合并之前的内容与新到达的内容块
+  - 确保所有 block 都被正确保留
+  - 位置：frontend/src/App.jsx:93-108
+
 ### UI 优化（最近完成）
 - [x] 在待办项详情栏添加两个快捷操作按钮
   - 添加到对话（💬）- 将待办项信息追加到聊天输入框

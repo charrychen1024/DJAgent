@@ -3,34 +3,25 @@ import PropTypes from 'prop-types';
 import './ToolCallCard.css';
 
 /**
- * 工具调用渲染器
+ * 工具调用渲染器 - 简约版
  *
- * 显示 AI 调用的工具及其参数
- * 遵循 Anthropic Tool Use 规范
+ * 显示 AI 调用的工具，使用行内徽章样式
  */
 const ToolCallCard = ({ toolUseId, name, input }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // 判断是否是特殊工具
-  const isFormTool = name === 'display_form';
-  const isSearchTool = name.includes('search');
-
-  // 获取工具图标
-  const getToolIcon = () => {
-    if (isFormTool) return '📋';
-    if (isSearchTool) return '🔍';
-    if (name.includes('weather')) return '🌤';
-    return '🔧';
-  };
+  // 安全获取 tool name
+  const toolName = name || ''
 
   return (
-    <div className="tool-call-card">
-      <div className="tool-header" onClick={() => setIsExpanded(!isExpanded)}>
-        <span className="tool-icon">{getToolIcon()}</span>
-        <span className="tool-name">{name}</span>
-        <span className="tool-id" title={toolUseId}>
-          #{toolUseId?.substring(-8)}
-        </span>
+    <div className={`tool-call-card ${isExpanded ? 'expanded' : ''}`}>
+      <div
+        className="tool-badge"
+        onClick={() => setIsExpanded(!isExpanded)}
+        title={toolUseId}
+      >
+        <span className="tool-icon">🔧</span>
+        <span className="tool-name">{toolName}</span>
         <span className="tool-toggle">
           {isExpanded ? '▼' : '▶'}
         </span>
@@ -38,12 +29,17 @@ const ToolCallCard = ({ toolUseId, name, input }) => {
 
       {isExpanded && (
         <div className="tool-content">
-          <div className="tool-input">
-            <div className="tool-input-label">参数：</div>
-            <pre className="tool-input-json">
-              {JSON.stringify(input, null, 2)}
-            </pre>
-          </div>
+          <pre style={{
+            margin: '8px 0',
+            padding: '8px',
+            background: 'var(--bg-gray, #f5f5f5)',
+            borderRadius: '4px',
+            fontSize: '11px',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
+          }}>
+            {input ? JSON.stringify(input, null, 2) : '{}'}
+          </pre>
         </div>
       )}
     </div>
@@ -51,9 +47,9 @@ const ToolCallCard = ({ toolUseId, name, input }) => {
 };
 
 ToolCallCard.propTypes = {
-  toolUseId: PropTypes.string.isRequired,
-  name: PropTypes.string.isRequired,
-  input: PropTypes.object.isRequired
+  toolUseId: PropTypes.string,
+  name: PropTypes.string,
+  input: PropTypes.object
 };
 
 export default ToolCallCard;

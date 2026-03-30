@@ -93,17 +93,11 @@ const ChatMessage = ({
             input={block.input}
           />
         );
-      
+
+      // 工具结果不单独显示（内部执行结果）
       case MessageBlockType.TOOL_RESULT:
-        return (
-          <ToolResultCard
-            key={`block-${index}`}
-            toolUseId={block.tool_use_id}
-            content={block.content}
-            isError={block.is_error}
-          />
-        );
-      
+        return null;
+
       case MessageBlockType.TEXT:
       default:
         return (
