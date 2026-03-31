@@ -563,3 +563,29 @@
     opacity: 1;
   }
 }
+
+/* 思考过程和工具调用 - 放在消息气泡上方 */
+.thinking-blocks,
+.tool-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+/* 每个思考过程/工具单独一行 */
+.thinking-blocks > .thinking-block,
+.tool-blocks > .tool-call-card {
+  display: block;
+  width: 100%;
+}
+
+/* 调整消息气泡样式 - 固定最小高度防止抖动 */
+.message-body {
+  min-height: 20px;
+}
+
+.message-content {
+  min-height: 20px;
+}

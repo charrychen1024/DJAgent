@@ -72,46 +72,25 @@ const ChatMessage = ({
     }
   };
 
-  // Render content block based on type
-  const renderContentBlock = (block, index) => {
-    switch (block.type) {
-      case MessageBlockType.THINKING:
-        return (
-          <ThinkingBlock
-            key={`block-${index}`}
-            thinking={block.thinking}
-            signature={block.signature}
-          />
-        );
-      
-      case MessageBlockType.TOOL_USE:
-        return (
-          <ToolCallCard
-            key={`block-${index}`}
-            toolUseId={block.id}
-            name={block.name}
-            input={block.input}
-          />
-        );
-
-      // 工具结果不单独显示（内部执行结果）
-      case MessageBlockType.TOOL_RESULT:
-        return null;
-
-      case MessageBlockType.TEXT:
-      default:
-        return (
-          <div key={`block-${index}`} className="text-block">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {block.text}
-            </ReactMarkdown>
-          </div>
-        );
-    }
-  };
-
   const baseClass = `chat-message chat-message--${sender} chat-message--${type}`;
   const senderLabel = sender === 'user' ? '👤 我' : sender === 'system' ? '⚙️ 系统' : '🤖 Agent';
+
+  // 分离内容：思考过程和工具调用在气泡外，正文在气泡内
+  const thinkingBlocks = []
+  const toolUseBlocks = []
+  const textBlocks = []
+
+  if (Array.isArray(content)) {
+    content.forEach(block => {
+      if (block.type === 'thinking') {
+        thinkingBlocks.push(block)
+      } else if (block.type === 'tool_use') {
+        toolUseBlocks.push(block)
+      } else if (block.type === 'text') {
+        textBlocks.push(block)
+      }
+    })
+  }
 
   return (
     <div className={`${baseClass} ${className}`}>
@@ -121,8 +100,35 @@ const ChatMessage = ({
       </div>
 
       <div className="message-body">
-        {/* Text message */}
-        {type === 'text' && (
+        {/* 思考过程 - 放在消息气泡上方 */}
+        {thinkingBlocks.length > 0 && (
+          <div className="thinking-blocks">
+            {thinkingBlocks.map((block, index) => (
+              <ThinkingBlock
+                key={`thinking-${index}`}
+                thinking={block.thinking}
+                signature={block.signature}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* 工具调用 - 放在消息气泡上方，每个工具一行 */}
+        {toolUseBlocks.length > 0 && (
+          <div className="tool-blocks">
+            {toolUseBlocks.map((block, index) => (
+              <ToolCallCard
+                key={`tool-${index}`}
+                toolUseId={block.id}
+                name={block.name}
+                input={block.input}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Text message - 使用消息气泡样式 */}
+        {(type === 'text' || textBlocks.length > 0) && (
           <div className="message-content message-text">
             {sender === 'user' ? (
               <>
@@ -140,11 +146,16 @@ const ChatMessage = ({
               </>
             ) : (
               <div className="markdown-content">
-                {/* New content array structure (block-based rendering) */}
-                {Array.isArray(content) ? (
-                  content.map((block, index) => renderContentBlock(block, index))
+                {/* 有 text block 时渲染 text blocks，否则渲染原始内容 */}
+                {textBlocks.length > 0 ? (
+                  textBlocks.map((block, index) => (
+                    <div key={`text-${index}`} className="text-block">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {block.text}
+                      </ReactMarkdown>
+                    </div>
+                  ))
                 ) : (
-                  /* Legacy string content (backward compatible) */
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {displayContent}
                   </ReactMarkdown>

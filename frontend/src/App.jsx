@@ -91,11 +91,13 @@ async function processStreamingResponse(response, agentMessageId, setChatMessage
                 targetBlock.type = 'text'
                 accumulatedText += eventData.text
               } else if (eventData.type === 'thinking_delta' && eventData.thinking) {
+                // 思考过程增量追加
                 targetBlock.thinking = (targetBlock.thinking || '') + eventData.thinking
                 targetBlock.type = 'thinking'
               } else if (eventData.type === 'signature_delta' && eventData.signature) {
                 targetBlock.signature = (targetBlock.signature || '') + eventData.signature
               } else if (eventData.type === 'input_json_delta' && eventData.partial_json) {
+                // 工具参数增量追加
                 targetBlock.input_partial = (targetBlock.input_partial || '') + eventData.partial_json
                 targetBlock.type = 'tool_use'
                 try {
@@ -103,6 +105,10 @@ async function processStreamingResponse(response, agentMessageId, setChatMessage
                 } catch {
                   // 解析失败，保留原始字符串
                 }
+              } else if (eventData.type === 'tool_use_input_json_delta') {
+                // 另一种工具输入 delta 格式
+                targetBlock.input_partial = (targetBlock.input_partial || '') + eventData.partial_json
+                targetBlock.type = 'tool_use'
               }
             }
 
