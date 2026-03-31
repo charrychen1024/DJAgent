@@ -209,14 +209,14 @@
   user-select: text;  /* Allow users to select and copy the text */
 }
 
-/* Dark mode support for readonly */
-@media (prefers-color-scheme: dark) {
+/* Dark mode support for readonly - disabled, always use light mode */
+/* @media (prefers-color-scheme: dark) {
   .form-field-readonly-display {
     background: #2d3748;
     color: #e2e8f0;
     border-color: #4b5563;
   }
-}
+} */
 
 /* Error message */
 .field-error-message {
@@ -311,8 +311,8 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
+/* Dark mode support - disabled, always use light mode */
+/* @media (prefers-color-scheme: dark) {
   .field-label {
     color: #e5e7eb;
   }
@@ -357,7 +357,7 @@
     background: #064e3b;
     color: #86efac;
   }
-}
+} */
 
 /* Focus visible for accessibility */
 .form-field-input:focus-visible,

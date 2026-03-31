@@ -69,8 +69,8 @@
   --form-transition-slow: 0.3s ease;
 }
 
-/* Dark mode variables */
-@media (prefers-color-scheme: dark) {
+/* Dark mode variables - disabled, always use light mode */
+/* @media (prefers-color-scheme: dark) {
   :root {
     --form-text-primary: #f3f4f6;
     --form-text-secondary: #d1d5db;
@@ -84,7 +84,7 @@
     --form-border-light: #374151;
     --form-border-lighter: #2d3748;
   }
-}
+} */
 
 /* Base form styles */
 .form-renderer {

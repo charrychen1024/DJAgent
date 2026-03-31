@@ -215,8 +215,8 @@
   }
 }
 
-/* Dark mode support (optional) */
-@media (prefers-color-scheme: dark) {
+/* Dark mode support (optional) - disabled, always use light mode */
+/* @media (prefers-color-scheme: dark) {
   .form-renderer {
     background: #1f2937;
     border-color: #374151;
@@ -266,7 +266,7 @@
     background: #374151;
     border-color: #6b7280;
   }
-}
+} */
 
 /* Animation for form load */
 @keyframes slideIn {
