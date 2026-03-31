@@ -445,8 +445,8 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
+/* Dark mode support - disabled, always use light mode */
+/* @media (prefers-color-scheme: dark) {
   .chat-message--agent .message-content {
     background: #1f2937;
     border-color: #374151;
@@ -532,7 +532,7 @@
   .markdown-content tbody tr:hover {
     background: #2d3748;
   }
-}
+} */
 
 /* Loading state */
 .chat-message.loading .message-content {

@@ -108,8 +108,8 @@
   }
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
+/* Dark mode - disabled, always use light mode */
+/* @media (prefers-color-scheme: dark) {
   .form-card-bubble--user .form-renderer {
     background: #1e3a5f;
     border-color: #0d47a1;
@@ -118,4 +118,4 @@
   .bubble-timestamp {
     color: #666;
   }
-}
+} */

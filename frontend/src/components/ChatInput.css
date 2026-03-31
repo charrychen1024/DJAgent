@@ -436,8 +436,8 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
+/* Dark mode support - disabled, always use light mode */
+/* @media (prefers-color-scheme: dark) {
   .chat-input {
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(10px);
@@ -577,4 +577,4 @@
   .helper-text {
     color: #9ca3af;
   }
-}
+} */
