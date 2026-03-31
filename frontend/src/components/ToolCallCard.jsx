@@ -13,12 +13,15 @@ const ToolCallCard = ({ toolUseId, name, input }) => {
   // 安全获取 tool name
   const toolName = name || ''
 
+  // 没有工具名就不显示
+  if (!toolName) return null;
+
   return (
     <div className={`tool-call-card ${isExpanded ? 'expanded' : ''}`}>
       <div
         className="tool-badge"
         onClick={() => setIsExpanded(!isExpanded)}
-        title={toolUseId}
+        title={toolUseId || '点击查看工具参数'}
       >
         <span className="tool-icon">🔧</span>
         <span className="tool-name">{toolName}</span>
@@ -29,15 +32,7 @@ const ToolCallCard = ({ toolUseId, name, input }) => {
 
       {isExpanded && (
         <div className="tool-content">
-          <pre style={{
-            margin: '8px 0',
-            padding: '8px',
-            background: 'var(--bg-gray, #f5f5f5)',
-            borderRadius: '4px',
-            fontSize: '11px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word'
-          }}>
+          <pre className="tool-input-json">
             {input ? JSON.stringify(input, null, 2) : '{}'}
           </pre>
         </div>

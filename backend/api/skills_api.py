@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/skills", tags=["skills"])
 
+# 导入 SkillService 用于正确的 YAML 解析
+from services.skill_service import SkillService
+
+# 创建 SkillService 实例
+_skill_service = SkillService()
+
 
 def get_skills_directory():
     """获取 Skills 目录路径"""
@@ -32,15 +38,8 @@ def load_skill_metadata(skill_name: str) -> Dict[str, Any]:
     """
     从 SKILL.md 中加载 Skill 元数据
 
-    假设未来的 SKILL.md 格式包含 YAML frontmatter:
-    ---
-    name: task-creator
-    description: Create and assign verification tasks
-    tags: [task-management, workflow]
-    available_for_manager: true
-    available_for_staff: false
-    when_to_use: User wants to create a new verification task
-    ---
+    使用 SkillService 进行正确的 YAML Frontmatter 解析，
+    支持多行文本（| 语法）和正确的类型转换
     """
     skills_dir = get_skills_directory()
     skill_path = skills_dir / skill_name
@@ -53,33 +52,14 @@ def load_skill_metadata(skill_name: str) -> Dict[str, Any]:
         with open(skill_md, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # 解析 YAML frontmatter (简单实现)
-        if content.startswith('---'):
-            lines = content.split('\n')
-            end_idx = None
-            for i in range(1, len(lines)):
-                if lines[i].strip() == '---':
-                    end_idx = i
-                    break
+        # 使用 SkillService 正确解析 YAML Frontmatter
+        metadata, _ = _skill_service._parse_yaml_frontmatter(content)
 
-            if end_idx:
-                frontmatter_str = '\n'.join(lines[1:end_idx])
-                metadata = {}
-                for line in frontmatter_str.strip().split('\n'):
-                    if ':' in line:
-                        key, value = line.split(':', 1)
-                        key = key.strip()
-                        value = value.strip()
-                        # 简单的类型转换
-                        if value.lower() == 'true':
-                            value = True
-                        elif value.lower() == 'false':
-                            value = False
-                        elif value.startswith('[') and value.endswith(']'):
-                            # 解析数组
-                            value = [v.strip() for v in value[1:-1].split(',')]
-                        metadata[key] = value
-                return metadata
+        if metadata:
+            # 确保 name 字段存在
+            metadata['name'] = metadata.get('name', skill_name)
+            return metadata
+
         return None
     except Exception as e:
         logger.error(f"Error loading skill metadata: {e}")

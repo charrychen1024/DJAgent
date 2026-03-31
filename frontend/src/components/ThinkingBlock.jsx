@@ -10,17 +10,14 @@ import './ThinkingBlock.css';
 const ThinkingBlock = ({ thinking, signature, defaultExpanded = false }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // 只显示前50字符作为预览
-  const previewText = thinking.length > 50
-    ? thinking.substring(0, 50) + '...'
-    : thinking;
+  if (!thinking) return null;
 
   return (
     <div className={`thinking-block ${isExpanded ? 'expanded' : ''}`}>
       <div
         className="thinking-badge"
         onClick={() => setIsExpanded(!isExpanded)}
-        title={thinking}
+        title="点击展开思考过程"
       >
         <span className="thinking-icon">💭</span>
         <span>思考</span>
@@ -31,24 +28,12 @@ const ThinkingBlock = ({ thinking, signature, defaultExpanded = false }) => {
 
       {isExpanded && (
         <div className="thinking-content">
-          <pre style={{
-            margin: '8px 0',
-            padding: '8px',
-            background: 'var(--bg-gray, #f5f5f5)',
-            borderRadius: '4px',
-            fontSize: '12px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word'
-          }}>
+          <div className="thinking-text">
             {thinking}
-          </pre>
+          </div>
 
           {signature && (
-            <div style={{
-              fontSize: '10px',
-              color: 'var(--text-secondary, #8c8c8c)',
-              marginTop: '4px'
-            }}>
+            <div className="thinking-signature">
               ID: {signature.substring(0, 16)}
             </div>
           )}
@@ -59,7 +44,7 @@ const ThinkingBlock = ({ thinking, signature, defaultExpanded = false }) => {
 };
 
 ThinkingBlock.propTypes = {
-  thinking: PropTypes.string.isRequired,
+  thinking: PropTypes.string,
   signature: PropTypes.string,
   defaultExpanded: PropTypes.bool
 };

@@ -34,12 +34,36 @@
   color: var(--text-secondary, #8c8c8c);
 }
 
-/* 隐藏详细内容，默认收起 */
+/* 展开的内容区域 - 白色背景，灰色文字 */
 .thinking-content {
   display: none;
+  margin-top: 8px;
+  padding: 12px;
+  background: #ffffff;  /* 白色背景 */
+  border: 1px solid var(--border-color, #e8e8e8);
+  border-radius: 6px;
+  max-width: 80%;
 }
 
 /* 展开时显示 */
 .thinking-block.expanded .thinking-content {
   display: block;
+}
+
+/* 思考内容文字 - 灰色 */
+.thinking-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #595959;  /* 灰色文字 */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 签名区域 */
+.thinking-signature {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color, #e8e8e8);
+  font-size: 11px;
+  color: #8c8c8c;
 }
