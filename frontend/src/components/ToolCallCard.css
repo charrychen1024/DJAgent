@@ -37,12 +37,32 @@
   font-size: 10px;
 }
 
-/* 隐藏详细内容，默认收起 */
+/* 展开的内容区域 - 白色背景，灰色文字 */
 .tool-content {
   display: none;
+  margin-top: 8px;
+  padding: 12px;
+  background: #ffffff;  /* 白色背景 */
+  border: 1px solid var(--border-color, #e8e8e8);
+  border-radius: 6px;
+  max-width: 80%;
 }
 
 /* 展开时显示 */
 .tool-call-card.expanded .tool-content {
   display: block;
+}
+
+/* 工具参数 - 灰色文字 */
+.tool-input-json {
+  margin: 0;
+  padding: 8px;
+  background: #fafafa;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Monaco', 'Menlo', monospace;
+  color: #595959;  /* 灰色文字 */
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
 }

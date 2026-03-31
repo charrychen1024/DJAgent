@@ -16,10 +16,11 @@ async function processStreamingResponse(response, agentMessageId, setChatMessage
   const decoder = new TextDecoder()
   let buffer = ''
   let currentEventType = null
-  let messageContent = {}  // 改为对象，用 id 作为 key
+  let messageContent = []  // 使用数组保持顺序
+  let currentBlockIndex = -1
   let accumulatedText = ''
   let lastUpdateTime = 0
-  const MIN_UPDATE_INTERVAL = 50  // 最小更新间隔 50ms，让 UI 有时间渲染
+  const MIN_UPDATE_INTERVAL = 50  // 最小更新间隔
 
   try {
     while (true) {
@@ -35,26 +36,39 @@ async function processStreamingResponse(response, agentMessageId, setChatMessage
           currentEventType = line.slice(7).trim()
         } else if (line.startsWith('data: ')) {
           try {
-            const data = JSON.parse(line.slice(6).trim())
-            const eventData = data.delta || data
+            const rawData = line.slice(6).trim()
+            // 跳过空行
+            if (!rawData.trim()) continue
 
-            // 获取 block 的唯一 ID
-            const blockId = data.content_block?.id || `block_${data.index || 0}`
+            const data = JSON.parse(rawData)
+            const eventData = data.delta || data
 
             // 处理 message_start - 初始化消息
             if (currentEventType === 'message_start') {
-              messageContent = {}
+              messageContent = []
               accumulatedText = ''
+              currentBlockIndex = -1
               continue
             }
+
+            // 获取当前 block 的索引
+            const blockIndex = data.index ?? currentBlockIndex
 
             // 处理 content_block_start - 创建新 block
             if (currentEventType === 'content_block_start') {
               const contentBlock = data.content_block || {}
               const blockType = contentBlock.type || 'text'
-              messageContent[blockId] = {
+              currentBlockIndex = blockIndex
+
+              // 确保数组足够长
+              while (messageContent.length <= blockIndex) {
+                messageContent.push({ type: 'placeholder', text: '', thinking: '' })
+              }
+
+              messageContent[blockIndex] = {
                 type: blockType,
-                id: blockId,
+                id: contentBlock.id || `block_${blockIndex}`,
+                index: blockIndex,  // 保留原始索引用于排序
                 text: '',
                 thinking: '',
                 name: contentBlock.name || '',
@@ -65,52 +79,57 @@ async function processStreamingResponse(response, agentMessageId, setChatMessage
 
             // 处理 content_block_delta - 更新 block 内容
             if (currentEventType === 'content_block_delta') {
-              // 尝试从数据中获取 blockId
-              const targetId = data.delta?.tool_use_id || data.content_block?.id || blockId
-
-              if (!messageContent[targetId]) {
-                messageContent[targetId] = { type: 'text', id: targetId, text: '', thinking: '' }
+              // 确保 block 存在
+              while (messageContent.length <= blockIndex) {
+                messageContent.push({ type: 'text', text: '', thinking: '', index: messageContent.length })
               }
 
-              const targetBlock = messageContent[targetId]
+              const targetBlock = messageContent[blockIndex]
 
               if (eventData.type === 'text_delta' && eventData.text) {
                 targetBlock.text = (targetBlock.text || '') + eventData.text
+                targetBlock.type = 'text'
                 accumulatedText += eventData.text
               } else if (eventData.type === 'thinking_delta' && eventData.thinking) {
                 targetBlock.thinking = (targetBlock.thinking || '') + eventData.thinking
                 targetBlock.type = 'thinking'
               } else if (eventData.type === 'signature_delta' && eventData.signature) {
                 targetBlock.signature = (targetBlock.signature || '') + eventData.signature
-                targetBlock.type = 'thinking'
               } else if (eventData.type === 'input_json_delta' && eventData.partial_json) {
                 targetBlock.input_partial = (targetBlock.input_partial || '') + eventData.partial_json
                 targetBlock.type = 'tool_use'
                 try {
                   targetBlock.input = JSON.parse('{' + targetBlock.input_partial + '}')
-                } catch {}
+                } catch {
+                  // 解析失败，保留原始字符串
+                }
               }
             }
 
-            // 节流更新 UI：限制更新频率，让渲染跟上流式节奏
+            // 节流更新 UI
             const now = Date.now()
             if (now - lastUpdateTime >= MIN_UPDATE_INTERVAL) {
               lastUpdateTime = now
-              const contentArray = Object.values(messageContent)
+
+              // 按原始索引排序
+              const sortedContent = [...messageContent].sort((a, b) => (a.index || 0) - (b.index || 0))
+
               setChatMessagesFn(prev => prev.map(msg => {
                 if (msg.messageId === agentMessageId) {
-                  return { ...msg, content: contentArray, message: accumulatedText }
+                  return { ...msg, content: sortedContent, message: accumulatedText }
                 }
                 return msg
               }))
             }
-          } catch {}
+          } catch (e) {
+            // 静默跳过解析错误，避免中断流
+          }
         }
       }
     }
 
     // 最后一次更新：确保完整内容渲染
-    const finalContent = Object.values(messageContent)
+    const finalContent = [...messageContent].sort((a, b) => (a.index || 0) - (b.index || 0))
     setChatMessagesFn(prev => prev.map(msg => {
       if (msg.messageId === agentMessageId) {
         return { ...msg, content: finalContent, message: accumulatedText }
