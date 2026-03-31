@@ -56,8 +56,8 @@ const ChatMessage = ({
     message: messageText // For backward compatibility with old message structure
   } = message;
 
-  // For backward compatibility
-  const displayContent = content || messageText;
+  // For backward compatibility - 只有非数组时才使用
+  const displayContent = !Array.isArray(content) ? (content || messageText) : '';
 
   // Format timestamp
   const formatTime = (isoString) => {
