@@ -1,34 +1,34 @@
 ---
 name: task-creator
-description: Create and assign verification tasks based on risk analysis results. Use when users want to create a new task, assign work to staff, or initiate a verification workflow.
+description: 基于风险分析结果创建和分配核查任务
 version: "1.0"
-author: "DJAgent Team"
+author: "DJAgent 团队"
 tags: [task-management, workflow, automation, risk-verification]
 category: task
 priority: high
 available_for_manager: true
 available_for_staff: false
 when_to_use: |
-  - User wants to create a new verification task
-  - User mentions assigning work to specific staff
-  - User wants to initiate a risk verification workflow
-  - User says "创建任务", "分配任务", "下发任务" or similar
+  - 用户想要创建新的核查任务
+  - 用户提及分配工作给具体员工
+  - 用户想要发起风险核查流程
+  - 用户说"创建任务"、"分配任务"、"下发任务"等
 when_not_to_use: |
-  - User is asking general questions
-  - User wants to view existing tasks (use list_tasks)
-  - User is providing feedback on existing tasks
-  - User wants to analyze risk data (use risk-analyzer)
+  - 用户只是在问一般问题
+  - 用户想查看现有任务（使用 list_tasks）
+  - 用户在给现有任务提供反馈
+  - 用户想分析风险数据（使用 risk-analyzer）
 input_format: |
-  Task creation request can be:
-  - Plain text describing the risk or task requirement
-  - Structured information (task_type, risk_description, assignee)
+  任务创建请求可以是：
+  - 描述风险或任务要求的纯文本
+  - 结构化信息（task_type, risk_description, assignee）
 output_format: |
-  Returns JSON with task details:
-  - task_id: Unique task identifier
-  - status: Task status (created/assigned/pending)
-  - assigned_to: Staff member name and ID
-  - feedback_deadline: Task deadline timestamp
-  - confirmation message
+  返回任务详情的 JSON：
+  - task_id: 唯一任务标识符
+  - status: 任务状态（created/assigned/pending）
+  - assigned_to: 员工姓名和 ID
+  - feedback_deadline: 任务截止时间戳
+  - 确认消息
 ---
 
 # Task Creator Skill
