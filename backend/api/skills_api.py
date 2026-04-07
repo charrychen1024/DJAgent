@@ -9,8 +9,8 @@ Skills API Routes
 - DELETE /api/skills/{name} - 删除 Skill
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from typing import List, Dict, Any
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
+from typing import List, Dict, Any, Optional
 import os
 import json
 from pathlib import Path
@@ -90,9 +90,12 @@ def get_all_skills() -> List[Dict[str, Any]]:
 
 
 @router.get("")
-async def list_skills():
+async def list_skills(role: Optional[str] = Query(None, description="Filter by role: manager or staff")):
     """
     获取所有可用的 Skill 列表
+
+    Query Parameters:
+        - role: 可选，按角色过滤 - 'manager' 或 'staff'
 
     返回示例:
     {
@@ -110,7 +113,8 @@ async def list_skills():
     }
     """
     try:
-        skills = get_all_skills()
+        # 使用 SkillService 进行正确解析和角色过滤
+        skills = _skill_service.get_all_skills(user_role=role)
         return {"skills": skills, "total": len(skills)}
     except Exception as e:
         logger.error(f"Error listing skills: {e}")
