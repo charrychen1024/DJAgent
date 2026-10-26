@@ -14,3 +14,12 @@ build/
 venv/
 ENV/
 
+.gstack/
+
+# Secrets (never commit)
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store

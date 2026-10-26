@@ -32,7 +32,7 @@ ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL", "")
 ANTHROPIC_AUTH_TOKEN = os.getenv("ANTHROPIC_AUTH_TOKEN", "")
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = os.getenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1")
 
-print(f"[Claude] 使用环境变量: ANTHROPIC_BASE_URL={ANTHROPIC_BASE_URL}, ANTHROPIC_AUTH_TOKEN={ANTHROPIC_AUTH_TOKEN}")
+print(f"[Claude] 使用环境变量: ANTHROPIC_BASE_URL={ANTHROPIC_BASE_URL}, ANTHROPIC_AUTH_TOKEN={ANTHROPIC_AUTH_TOKEN[:12]}***")
 
 # 用户目录 ~/.claude 路径
 USER_CLAUDE_DIR = Path.home() / ".claude"
@@ -93,18 +93,25 @@ def build_options(mcp_servers: dict, user_settings: dict) -> ClaudeAgentOptions:
     """
     构建 ClaudeAgentOptions，注入环境变量和 MCP 配置。
     """
-    env = {}
-    if ANTHROPIC_BASE_URL:
-        env["ANTHROPIC_BASE_URL"] = ANTHROPIC_BASE_URL
+    # 环境变量统一从 .env / 进程环境读取（禁止硬编码 token）
+    env = {
+        "ANTHROPIC_BASE_URL": ANTHROPIC_BASE_URL,
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC,
+        "ANTHROPIC_MODEL": "MiniMax-M2.7",
+    }
     if ANTHROPIC_AUTH_TOKEN:
         env["ANTHROPIC_AUTH_TOKEN"] = ANTHROPIC_AUTH_TOKEN
         # 某些代理场景下 AUTH_TOKEN 同时用作 API_KEY
         env["ANTHROPIC_API_KEY"] = ANTHROPIC_AUTH_TOKEN
-    if CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:
-        env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+    else:
+        raise RuntimeError("缺少 ANTHROPIC_AUTH_TOKEN，请在 .env 中配置")
 
     options = ClaudeAgentOptions(
         env=env,
+        # 显式指定模型
+        model="MiniMax-M2.7",
+        # 禁用从配置文件加载设置，强制使用 env 中的配置
+        setting_sources=[],
         # 合并从配置文件中发现的 MCP 服务器
         mcp_servers=mcp_servers if mcp_servers else {},
         # 权限模式：acceptEdits 自动批准文件编辑
